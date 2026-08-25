@@ -19,6 +19,7 @@ import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.annotation.SuppressLint
 import android.os.ParcelUuid
 import app.findmeinwood.core.crypto.FrameCodec
 import app.findmeinwood.core.model.TransportId
@@ -80,6 +81,7 @@ class BluetoothTransport(private val context: Context) : Transport {
         return events
     }
 
+    @SuppressLint("MissingPermission") // scan permission is gated by callers of start()/stop()
     override suspend fun stop() {
         running = false
         ready = false
