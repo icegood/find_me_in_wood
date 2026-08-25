@@ -83,7 +83,7 @@ class BluetoothTransport(private val context: Context) : Transport {
     override suspend fun stop() {
         running = false
         ready = false
-        try { adapter?.bluetoothLeScanner?.stopScan(scannerCallback) } catch (_: Exception) {}
+        try { adapter?.bluetoothLeScanner?.stopScan(scannerCallback) } catch (_: SecurityException) {}
         scannerCallback = null
         advertiser?.let { adapter?.bluetoothLeAdvertiser?.stopAdvertising(it) }
         advertiser = null
