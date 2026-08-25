@@ -1,5 +1,6 @@
 package app.findmeinwood.transport.wifidirect
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pConfig
@@ -29,7 +30,11 @@ import kotlinx.coroutines.launch
 /**
  * WiFi Direct transport (T4.1, wifidirect.wsd): P2P group + TCP sockets,
  * framing [u32be len][frame], one socket per peer, send fans out.
+ *
+ * Nearby-devices/location permission is requested and gated by the app layer
+ * before this transport is started; runtime rejections surface as SecurityException.
  */
+@SuppressLint("MissingPermission")
 class WifiDirectTransport(private val context: Context) : Transport {
     override val id: TransportId = TransportId.WIFI_DIRECT
 
@@ -123,9 +128,16 @@ class WifiDirectTransport(private val context: Context) : Transport {
                         val key = dev.deviceAddress ?: return@forEach
                         if (sockets.containsKey(key) || !connecting.add(key)) return@forEach
                         try {
+                            val config =
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                    WifiP2pConfig.Builder().setDeviceAddress(android.net.MacAddress.fromString(key)).build()
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    WifiP2pConfig().apply { deviceAddress = key }
+                                }
                             m.connect(
                                 ch,
-                                WifiP2pConfig.Builder().setDeviceAddress(android.net.MacAddress.fromString(key)).build(),
+                                config,
                                 object : WifiP2pManager.ActionListener {
                                     override fun onSuccess() {}
                                     override fun onFailure(reason: Int) { connecting.remove(key) }

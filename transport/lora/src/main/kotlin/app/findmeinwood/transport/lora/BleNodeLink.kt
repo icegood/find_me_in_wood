@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.annotation.SuppressLint
 import android.os.ParcelUuid
 import java.util.UUID
 import kotlinx.coroutines.channels.BufferOverflow
@@ -23,7 +24,11 @@ import kotlinx.coroutines.launch
  * BLE serial link to the member's LoRa node (T5.1, lora-node.wsd):
  * Nordic UART Service, write-without-response TX, notify RX. Kable-free
  * platform implementation (single role: central only).
+ *
+ * BLUETOOTH_SCAN/CONNECT permissions are requested and gated by the app layer
+ * before this link is used.
  */
+@SuppressLint("MissingPermission")
 class BleNodeLink(
     private val context: Context,
     private val pinnedAddress: String? = null,

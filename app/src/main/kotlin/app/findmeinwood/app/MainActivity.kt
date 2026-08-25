@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
         var showNodePicker by remember { mutableStateOf(false) }
         val snackbar = remember { SnackbarHostState() }
         val diag by SessionBus.diagnostics.collectAsState()
+        val lastWire by SessionBus.lastWireFrame.collectAsState()
 
         Scaffold(topBar = { TopAppBar(title = { Text("find me in wood") }) }, snackbarHost = { SnackbarHost(snackbar) }) { pad ->
             Column(Modifier.padding(pad).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -93,7 +94,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     },
-                    enabled = SessionBus.lastWireFrame.value != null && SessionService.isRunning,
+                    enabled = lastWire != null && SessionService.isRunning,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Share position via Viber…") }
                 Text(
