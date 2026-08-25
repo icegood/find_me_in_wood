@@ -25,10 +25,20 @@ android {
                 val userFile = File(System.getProperty("user.home"), ".gradle/gradle.properties")
                 userFile.takeIf { it.exists() }?.inputStream()?.use { load(it) }
             }
-            storeFile = file(props.getProperty("fmiw.storeFile"))
-            storePassword = props.getProperty("fmiw.storePassword")
-            keyAlias = props.getProperty("fmiw.keyAlias")
-            keyPassword = props.getProperty("fmiw.keyPassword")
+            val configured = props.getProperty("fmiw.storeFile") != null
+            if (configured) {
+                storeFile = file(props.getProperty("fmiw.storeFile"))
+                storePassword = props.getProperty("fmiw.storePassword")
+                keyAlias = props.getProperty("fmiw.keyAlias")
+                keyPassword = props.getProperty("fmiw.keyPassword")
+            } else {
+                // CI fallback: sign release builds with the debug key when no
+                // fmiw.* credentials are available on the machine.
+                storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
         }
     }
     buildTypes {
