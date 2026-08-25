@@ -38,7 +38,11 @@ import kotlinx.coroutines.channels.BufferOverflow
  * BLE GATT dual-role transport (T2.3, bt-transport.wsd).
  * Every phone is peripheral (advertises + GATT server) and central (scans + connects).
  * No pairing: trust = AEAD under network keys (FR-2.3).
+ *
+ * BLUETOOTH_SCAN/CONNECT/ADVERTISE permissions are requested and gated by the app layer
+ * before this transport is started; runtime rejections surface as SecurityException.
  */
+@SuppressLint("MissingPermission")
 class BluetoothTransport(private val context: Context) : Transport {
     override val id: TransportId = TransportId.BLUETOOTH
 
@@ -81,7 +85,6 @@ class BluetoothTransport(private val context: Context) : Transport {
         return events
     }
 
-    @SuppressLint("MissingPermission") // scan permission is gated by callers of start()/stop()
     override suspend fun stop() {
         running = false
         ready = false
