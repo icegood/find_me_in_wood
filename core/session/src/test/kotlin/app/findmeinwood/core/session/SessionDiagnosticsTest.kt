@@ -40,6 +40,20 @@ class SessionDiagnosticsTest {
         scope.launch { from.sentWire.collect { w -> to.deliver(FrameCodec.decode(w)) } }
     }
 
+    /** Retries [block] up to 5s — counters are monotonic, so equality asserts are safe to poll. */
+    private suspend fun eventually(block: () -> Unit) {
+        val deadline = System.nanoTime() + 5_000_000_000L
+        while (true) {
+            try {
+                block()
+                return
+            } catch (e: AssertionError) {
+                if (System.nanoTime() > deadline) throw e
+                kotlinx.coroutines.delay(25)
+            }
+        }
+    }
+
     @Test
     fun `diagnostics counters track send receive relay authfail`() = runBlocking {
         val a = Member("a"); val b = Member("b"); val c = Member("c")
@@ -62,16 +76,18 @@ class SessionDiagnosticsTest {
             withTimeout(5_000) { mC.peerFlow.first { it.containsKey(a.memberId) } }
 
             // A sent 1; B received 1 + relayed 1 (ttl 3->2); C received 1
-            assertEquals(1, mA.diagnostics.value.sent)
-            assertEquals(1, mB.diagnostics.value.received)
-            assertEquals(1, mB.diagnostics.value.relayed)
-            assertEquals(1, mC.diagnostics.value.received)
-            assertTrue(mB.diagnostics.value.authFailed == 0)
+            eventually {
+                assertEquals(1, mA.diagnostics.value.sent)
+                assertEquals(1, mB.diagnostics.value.received)
+                assertEquals(1, mB.diagnostics.value.relayed)
+                assertEquals(1, mC.diagnostics.value.received)
+                assertTrue(mB.diagnostics.value.authFailed == 0)
+            }
 
             // tampered frame -> authFailed on B
             val badWire = aL.sentHistory.peek()!!.clone().also { it[it.size - 1] = it.last().inc() }
             mB.acceptExternalWire(badWire, TransportId.LORA)
-            assertEquals(1, mB.diagnostics.value.authFailed)
+            eventually { assertEquals(1, mB.diagnostics.value.authFailed) }
 
             // edge manager saw A on LORA
             assertEquals(
