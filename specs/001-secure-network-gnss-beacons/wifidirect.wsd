@@ -1,0 +1,43 @@
+@startuml
+title WiFi Direct transport (T4.1) — P2P group + TCP sockets
+autonumber
+participant "SessionManager" as SM
+participant "WfdTransport" as W
+participant "WifiP2pManager\n(system service)" as M
+participant "Peer WfdTransport" as PW
+
+== Discovery ==
+SM -> W : start(config)
+W -> M : discoverPeers(channel, listener)
+M --> W : WIFI_P2P_DISCOVERY_CHANGED_ACTION
+W -> M : requestPeers(channel)
+M -> W : WIFI_P2P_PEERS_CHANGED_ACTION -> peers
+W -> SM : PeerRadioVisible(peer.deviceAddress, WIFI_DIRECT)
+
+== Group formation (roles negotiated by system) ==
+W -> M : connect(WifiP2pConfig{\n  deviceAddress=peer,\n  groupOwnerIntent=0..15 random })
+M --> W : WIFI_P2P_CONNECTION_CHANGED_ACTION
+W -> M : requestConnectionInfo(channel)
+M -> W : info.groupFormed=true,\ninfo.groupOwnerAddress, info.isGroupOwner
+note over W, PW : GO gets DHCP 192.168.49.1;\nBOTH sides open ServerSocket(8765);\nclient role connects to GO:8765
+
+alt this device is group client
+  W -> W : Socket(info.groupOwnerAddress, 8765)
+else this device is group owner
+  PW -> W : serverSocket.accept() -> peer socket
+end
+W -> SM : StateChanged(READY)
+
+== Data path (TCP, both directions) ==
+SM -> W : send(wireFrame)
+W -> W : out.write(u32be(len)); out.write(wireFrame); flush
+W -> PW : TCP bytes
+PW -> PW : read loop: readFully 4B -> len,\nreadFully len B -> frame complete
+PW -> SM : FrameReceived(frame, WIFI_DIRECT)
+
+== Multiple peers / teardown ==
+note over W : one socket per connected peer;\nsend() writes to all sockets (fan-out)
+SM -> W : stop()
+W -> W : close all sockets
+W -> M : removeGroup(channel, listener)
+@enduml

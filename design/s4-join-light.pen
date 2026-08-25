@@ -1,0 +1,519 @@
+{
+  "version": "2.17",
+  "children": [
+    {
+      "type": "frame",
+      "id": "JJOMI",
+      "x": 0,
+      "y": 0,
+      "name": "S4 Join",
+      "width": 360,
+      "height": 800,
+      "fill": "#F2F4EC",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "pBLv2",
+          "name": "topbar",
+          "width": "fill_container",
+          "gap": 8,
+          "padding": [
+            14,
+            16
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "XLAVC",
+              "name": "l",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "OfvFe",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "arrow_back",
+                  "library": "Material Symbols Outlined",
+                  "fill": "#191C15"
+                },
+                {
+                  "type": "text",
+                  "id": "lLAlr",
+                  "fill": "#191C15",
+                  "content": "Join network",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "h7Qyz",
+              "name": "r",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "htIhz",
+                  "name": "chip",
+                  "cornerRadius": 99,
+                  "stroke": "#A9741B",
+                  "strokeWidth": 1,
+                  "gap": 4,
+                  "padding": [
+                    4,
+                    10
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "bt3eM",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "satellite_alt",
+                      "library": "Material Symbols Outlined",
+                      "fill": "#A9741B"
+                    },
+                    {
+                      "type": "text",
+                      "id": "EIPwe",
+                      "fill": "#A9741B",
+                      "content": "GPS —",
+                      "fontFamily": "Roboto Mono",
+                      "fontSize": 11
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "bTKnd",
+          "name": "body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": [
+            16,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "Ou94G",
+              "name": "scanhdr",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "BHAdW",
+                  "fill": "#5C6355",
+                  "content": "NEARBY NETWORKS",
+                  "fontFamily": "Inter",
+                  "fontSize": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "TpWum",
+                  "name": "scan",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "UftDq",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "radar",
+                      "library": "Material Symbols Outlined",
+                      "fill": "#A9741B"
+                    },
+                    {
+                      "type": "text",
+                      "id": "eoEhI",
+                      "fill": "#A9741B",
+                      "content": "scanning",
+                      "fontFamily": "Inter",
+                      "fontSize": 10
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tqu59",
+              "name": "scanline",
+              "width": "fill_container",
+              "height": 2,
+              "fill": "#A9741B",
+              "cornerRadius": 99
+            },
+            {
+              "type": "frame",
+              "id": "GmliY",
+              "name": "disc",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": "#D3D8C6",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                12,
+                14
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "mbtY2",
+                  "name": "r1",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "h5UIp",
+                      "name": "nm",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "oeHaa",
+                          "fill": "#191C15",
+                          "content": "hunt-2026",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "cwmYk",
+                          "name": "chip",
+                          "cornerRadius": 99,
+                          "stroke": "#3E8F23",
+                          "strokeWidth": 1,
+                          "gap": 4,
+                          "padding": [
+                            4,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "LQD39",
+                              "fill": "#3E8F23",
+                              "content": "PRIVATE",
+                              "fontFamily": "Roboto Mono",
+                              "fontSize": 11
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "UsfFb",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "chevron_right",
+                      "library": "Material Symbols Outlined",
+                      "fill": "#5C6355"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Zr4GO",
+                  "name": "r2",
+                  "width": "fill_container",
+                  "gap": 6,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "sSv3H",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "person",
+                      "library": "Material Symbols Outlined",
+                      "fill": "#5C6355"
+                    },
+                    {
+                      "type": "text",
+                      "id": "y2MZj",
+                      "fill": "#5C6355",
+                      "content": "owner Misha",
+                      "fontFamily": "Roboto Mono",
+                      "fontSize": 11
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "G3s7eB",
+              "name": "disc",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": "#D3D8C6",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 6,
+              "padding": [
+                12,
+                14
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "wjlZK",
+                  "name": "r1",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "JJgix",
+                      "name": "nm",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h0OW5l",
+                          "fill": "#191C15",
+                          "content": "mushroom-crew",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "eQBYd",
+                          "name": "chip",
+                          "cornerRadius": 99,
+                          "stroke": "#A9741B",
+                          "strokeWidth": 1,
+                          "gap": 4,
+                          "padding": [
+                            4,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "dZL7R",
+                              "fill": "#A9741B",
+                              "content": "OPEN",
+                              "fontFamily": "Roboto Mono",
+                              "fontSize": 11
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "jXF3w",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "chevron_right",
+                      "library": "Material Symbols Outlined",
+                      "fill": "#5C6355"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "aKLBL",
+                  "name": "r2",
+                  "width": "fill_container",
+                  "gap": 6,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "rcnRS",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "person",
+                      "library": "Material Symbols Outlined",
+                      "fill": "#5C6355"
+                    },
+                    {
+                      "type": "text",
+                      "id": "PVK8h",
+                      "fill": "#5C6355",
+                      "content": "owner Olya",
+                      "fontFamily": "Roboto Mono",
+                      "fontSize": 11
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "WYg7Q",
+              "name": "div",
+              "width": "fill_container",
+              "gap": 10,
+              "padding": [
+                4,
+                0
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "JcoYx",
+                  "name": "l",
+                  "width": "fill_container",
+                  "height": 1,
+                  "fill": "#D3D8C6"
+                },
+                {
+                  "type": "text",
+                  "id": "z43Pey",
+                  "fill": "#5C6355",
+                  "content": "or",
+                  "fontFamily": "Inter",
+                  "fontSize": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "zI3re",
+                  "name": "r",
+                  "width": "fill_container",
+                  "height": 1,
+                  "fill": "#D3D8C6"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "p76fu",
+              "fill": "#5C6355",
+              "content": "HAVE A JOIN CODE?",
+              "fontFamily": "Inter",
+              "fontSize": 10
+            },
+            {
+              "type": "frame",
+              "id": "brfsS",
+              "name": "field",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "u9eEn",
+                  "fill": "#5C6355",
+                  "content": "NAME#SECRET#VTAG",
+                  "fontFamily": "Inter",
+                  "fontSize": 10
+                },
+                {
+                  "type": "frame",
+                  "id": "HfaAm",
+                  "name": "inbox",
+                  "width": "fill_container",
+                  "cornerRadius": 10,
+                  "stroke": "#D3D8C6",
+                  "strokeWidth": 1,
+                  "padding": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "B0eid",
+                      "fill": "#5C6355",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "hunt-2026#9f2k…#wtr5",
+                      "fontFamily": "Roboto Mono",
+                      "fontSize": 13
+                    },
+                    {
+                      "type": "icon",
+                      "id": "L847c",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "content_paste",
+                      "library": "Material Symbols Outlined",
+                      "fill": "#5C6355"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZGNrB",
+              "name": "sp",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical"
+            },
+            {
+              "type": "text",
+              "id": "j1k6P",
+              "fill": "#5C6355",
+              "content": "All traffic stays encrypted between members.",
+              "fontFamily": "Inter",
+              "fontSize": 11
+            },
+            {
+              "type": "frame",
+              "id": "dxDye",
+              "name": "btn",
+              "width": "fill_container",
+              "fill": "#3E8F23",
+              "cornerRadius": 99,
+              "padding": 16,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QUgHr",
+                  "fill": "#FFFFFF",
+                  "content": "Join with code",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "fileToken": "f7d06abb-6ca3-4e16-ab27-59d44b562bb9"
+}

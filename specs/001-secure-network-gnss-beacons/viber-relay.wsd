@@ -1,0 +1,32 @@
+@startuml
+title Internet carrier (US-9) — coordinates via Viber share, no server, E2E by app keys
+autonumber
+participant "SessionManager\n(A)" as SM
+participant "ShareTransport\n(A)" as ST
+participant "Android\nshare sheet" as SHEET
+participant "Viber" as V
+participant "member B\n(phone)" as B
+participant "ShareInbox\n(B) + SessionManager" as IN
+
+== Outgoing (member A, internet present) ==
+SM -> ST : send(wireFrame)  // AEAD frame, ~150 B
+ST -> ST : envelope = "fmiw1:" + base64url(wireFrame)
+ST -> SHEET : startActivity(ACTION_SEND, type=text,\npackage=com.viber.voip, EXTRA_TEXT=envelope)
+ST -> SM : SendResult.HandedToUser
+SHEET -> V : user picks chat, taps send
+V -> B : Viber message (carrier sees opaque text)
+
+== Incoming (member B) ==
+B -> V : long-press message -> Share
+V -> SHEET : ACTION_SEND text/plain
+SHEET -> IN : user picks "find me in wood"
+IN -> IN : parseEnvelope -> wireFrame\n(Base64url decode)
+IN -> SM : acceptExternalWire(wire, source=INTERNET)
+SM -> SM : netId filter -> replay window ->\nAEAD open (trafficKey) -> CBOR decode
+SM -> SM : PeerTracker.onBeacon
+note over SM : invalid/tampered envelope -> drop,\nauth-fail counter++ (never processed)
+
+== Optional auto mode (FR-9.2) ==
+SM -> ST : every new fix
+ST -> ST : copy envelope to clipboard\n(user pastes into any chat)
+@enduml

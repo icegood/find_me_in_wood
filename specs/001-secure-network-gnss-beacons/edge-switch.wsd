@@ -1,0 +1,34 @@
+@startuml
+title find_me_in_wood — edge transport change: humans agree first, both sides act
+autonumber
+participant "A\nmember" as A
+participant "phone call\n(cell / in person)" as OOB
+participant "B\nmember" as B
+
+note over A, OOB : edge A<->B currently on Bluetooth,\ntoo far now -> want LoRa
+
+== 1. Agree out-of-band ==
+A -> OOB : "switch our edge to LoRa?"
+OOB -> B : (cell call / in person)
+B -> OOB : "ok, my node is ready"
+note over A, B : no signaling on the mesh —\nthe agreement itself is the OOB step
+
+== 2. Both act locally ==
+A -> A : UI: edge to B -> select LoRa\nstart LoRa link
+B -> B : UI: edge to A -> select LoRa\nstart LoRa link
+note over A, B : both edges show\n"waiting for peer..." until confirmed
+
+== 3. Confirmation = first AEAD frame ==
+A ->> B : LoRa: beacon {netId, IdA, seq=n,\nttl=3, AEAD(trafficKey)}
+B -> B : AEAD opens -> edge(A,B)=LoRa confirmed\nUI: "A · LoRa · direct"
+B ->> A : LoRa: beacon {netId, IdB, seq=m}
+A -> A : confirmed
+
+== Dead edge: automatic failover (no call possible) ==
+note over A, B : peer silent >= 3 keep-alive windows ->\nedge considered down
+A -> A : try other provisioned transports\n(order: last working, then battery cost:\nBT/WiFi-Direct before LoRa; backoff)
+B -> B : same, independently
+A ->> B : beacon on attempted transport\n(periodic beacons are the discovery —\nno HELLO, no management frames)
+B -> B : AEAD opens -> edge re-homed to\nthat transport; UI: "A · LoRa · direct"
+note over A, B : if neither side can reach the other\non any transport, edge stays down;\ncalling each other (step 1) is the recovery
+@enduml

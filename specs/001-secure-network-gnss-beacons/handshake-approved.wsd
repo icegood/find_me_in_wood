@@ -1,0 +1,33 @@
+@startuml
+title find_me_in_wood — P2P join handshake, PRIVATE policy (no server)
+autonumber
+participant "B\njoiner" as B
+participant "A\nowner / member" as A
+participant "C\nmembers" as C
+
+== Discovery (no server; over the selected Transport) ==
+loop every 60 s per member (LoRa: owner only, name <=16 chars)
+  A ->> B : HELLO {netId, name="hunt-2026",\nownerMemberId=IdA, ownerNick="Misha",\ntransports, seq, ts} sig_A
+  A ->> C : HELLO (same)
+end
+note over B : UI: "Available networks:\nhunt-2026 · owner Misha"\n(member count is not advertised)\n(CODE-policy nets list no name — hidden)
+
+== Join handshake (PRIVATE) ==
+B -> A : JOIN_REQ {netId, IdB, nickB,\nnonceB, ephB(X25519)}
+activate B
+note over B : UI: "Waiting for owner..."
+A -> A : UI: "Dana asks to join hunt-2026 [Accept]"
+A -> B : JOIN_ACK {netId, IdA, nonceB,\nephA, sasA}
+deactivate B
+note over B, A #FFF3C2 : SAS = base32(SHA-256(transcript))[0..5]\nshown on BOTH screens — human compares
+
+alt SAS matches
+  A -> B : JOIN_ACCEPT {sig_A(transcript),\nECIES(ephB -> secret + keys)}
+  B -> B : derive netId / trafficKey,\ngenerate memberId_B
+  B ->> C : beacon {netId, senderId=IdB, seq=0,\nAEAD(payload, trafficKey)}
+  note over C : AEAD opens -> PeerState(B) created\n(first beacon = membership proof, FR-8.5)
+  A ->> C : next HELLO (unchanged fields)
+else SAS mismatch / owner declines
+  A -> B : JOIN_REJECT {netId, IdA, nonceB}
+end
+@enduml

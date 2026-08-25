@@ -1,0 +1,40 @@
+@startuml
+title find_me_in_wood — CODE policy: out-of-band (OOB) join processing
+autonumber
+participant "A\ncreator" as A
+participant "OOB channel\nQR / NFC / voice" as OOB
+participant "B\njoiner" as B
+participant "Transport\nBLE / WiFiDirect / LoRa" as T
+participant "C\nmembers" as C
+
+== Creation (creator side) ==
+A -> A : create "hunt-2026", gen secret (>=128 bit)\nnetworkId = HKDF(secret,"net-id")[0..8]\ntrafficKey = HKDF(secret,"aead")\nvtag = HKDF(secret,"verify")[0..4]
+A -> A : join code = "hunt-2026#<secret>#<vtag>"
+A -> OOB : show QR / read out code
+
+== OOB transfer (the only trusted channel) ==
+OOB -> B : QR scan | NFC tap | manual typing
+B -> B : parse name#secret#vtag
+B -> B : vtag == HKDF(secret,"verify")[0..4] ?\nno -> FAIL fast (typo), radio stays silent\nyes -> store profile {name=label,\nnetId, trafficKey}
+B -> B : generate memberId_B (Ed25519)
+note over B : name is a local label only — never transmitted
+
+== Transport association (transport-specific, carries no trust) ==
+alt BLE
+  B -> T : BLE scan -> peers advertising app UUID\nGATT connect
+else WiFi Direct
+  B -> T : WFD discover -> group negotiate\n(owner/client)
+else LoRa
+  B -> T : open node link (BLE serial to node)\nnode owns the air interface
+end
+
+== Radio join (first contact = key confirmation) ==
+B -> B : listen: collect frames,\nfilter netId == local netId
+C ->> T : beacon {netId, senderId=IdC,\nseq, AEAD(payload, trafficKey)}
+T ->> B : deliver frame
+B -> B : AEAD open with trafficKey\nok -> member IdC visible (TOFU)\nfail -> drop (wrong net / noise),\nauth-fail counter++
+B ->> T : first beacon {netId, senderId=IdB,\nseq=0, AEAD}
+T ->> C : deliver
+C -> C : AEAD ok -> PeerState(B) created\n(membership proven, FR-2.3)
+note over B, C : no handshake messages at all —\nOOB secret + AEAD success replace the handshake
+@enduml

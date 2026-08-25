@@ -1,0 +1,15 @@
+@startuml
+title find_me_in_wood — OPEN policy join (secret in clear, UI warns)
+autonumber
+participant "B\njoiner" as B
+participant "A\nany member" as A
+
+A ->> B : HELLO {netId, name, ownerMemberId,\npolicy=OPEN, seq, ts} sig_A
+note over B : UI: "hunt-2026 - owner Misha - 3 members"
+B -> A : JOIN_REQ {netId, IdB, nickB, nonceB}
+A -> B : JOIN_ACCEPT {sig_A(transcript),\nsecret IN CLEAR}
+note over B : UI warning: "readable by anyone nearby"
+B -> B : derive netId / trafficKey,\ngenerate memberId_B
+B ->> A : beacon {netId, senderId=IdB, seq=0,\nAEAD(payload, trafficKey)}
+note over A : AEAD opens -> PeerState(B) created
+@enduml

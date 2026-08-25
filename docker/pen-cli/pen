@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Runs pen.dev CLI in docker as the invoking host user (uid:gid),
+# keeping file ownership on mounted volumes. Token persists in ~/.pencil.
+set -euo pipefail
+TTY=()
+[ -t 0 ] && TTY=(-t)
+exec docker run --rm --interactive "${TTY[@]}" \
+  --user "$(id -u):$(id -g)" \
+  -e HOME=/pencil-home \
+  -e PEN_CLI_KEY="${PEN_CLI_KEY:-}" \
+  -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
+  -e CLAUDE_CONFIG_DIR=/pencil-home/.claude \
+  -v "$PWD":"$PWD" -w "$PWD" \
+  -v "${HOME}/.pencil:/pencil-home/.pencil" \
+  -v "${HOME}/.claude:/pencil-home/.claude:ro" \
+  -v "${HOME}/.claude.json:/pencil-home/.claude.json:ro" \
+  pen-cli "$@"

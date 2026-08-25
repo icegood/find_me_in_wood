@@ -1,0 +1,376 @@
+{
+  "version": "2.17",
+  "children": [
+    {
+      "type": "frame",
+      "id": "L1W6U3",
+      "x": 0,
+      "y": 0,
+      "name": "S10 JoinSAS",
+      "width": 360,
+      "height": 800,
+      "fill": "#121410",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "Men6F",
+          "name": "topbar",
+          "width": "fill_container",
+          "gap": 8,
+          "padding": [
+            14,
+            16
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "D8vt6a",
+              "name": "l",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "LQLyp",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "arrow_back",
+                  "library": "Material Symbols Outlined",
+                  "fill": "#EDEFEA"
+                },
+                {
+                  "type": "text",
+                  "id": "j5UR6N",
+                  "fill": "#EDEFEA",
+                  "content": "Join hunt-2026",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "mHGoq",
+              "name": "r",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "gSXOs",
+                  "name": "chip",
+                  "cornerRadius": 99,
+                  "stroke": "#F2B84B",
+                  "strokeWidth": 1,
+                  "gap": 4,
+                  "padding": [
+                    4,
+                    10
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "bWzj3",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "satellite_alt",
+                      "library": "Material Symbols Outlined",
+                      "fill": "#F2B84B"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Ynrxd",
+                      "fill": "#F2B84B",
+                      "content": "GPS —",
+                      "fontFamily": "Roboto Mono",
+                      "fontSize": 11
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "lXZWf",
+          "name": "body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            16,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "uhLl7",
+              "name": "prog",
+              "width": "fill_container",
+              "fill": "#1C1F1A",
+              "cornerRadius": 12,
+              "stroke": "#2E332B",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": [
+                14,
+                16
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "N9DWZG",
+                  "name": "st",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "yUqae",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "check_circle",
+                      "library": "Material Symbols Outlined",
+                      "fill": "#7ADB4F"
+                    },
+                    {
+                      "type": "text",
+                      "id": "J4wdZ8",
+                      "fill": "#EDEFEA",
+                      "content": "Request sent to owner",
+                      "fontFamily": "Inter",
+                      "fontSize": 12
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "a5OzI",
+                  "name": "st",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "ehpO4",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "radar",
+                      "library": "Material Symbols Outlined",
+                      "fill": "#F2B84B"
+                    },
+                    {
+                      "type": "text",
+                      "id": "z8wxP",
+                      "fill": "#EDEFEA",
+                      "content": "Waiting for owner…",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "dLTba",
+                  "name": "st",
+                  "opacity": 0.55,
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "dgUyI",
+                      "width": 12,
+                      "height": 12,
+                      "stroke": "#2E332B",
+                      "strokeWidth": 1.5
+                    },
+                    {
+                      "type": "text",
+                      "id": "bwZY5",
+                      "fill": "#9AA096",
+                      "content": "Compare 6-char code",
+                      "fontFamily": "Inter",
+                      "fontSize": 12
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "jyD5D",
+                  "name": "st",
+                  "opacity": 0.55,
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "GD1Py",
+                      "width": 12,
+                      "height": 12,
+                      "stroke": "#2E332B",
+                      "strokeWidth": 1.5
+                    },
+                    {
+                      "type": "text",
+                      "id": "VbaNs",
+                      "fill": "#9AA096",
+                      "content": "Connected",
+                      "fontFamily": "Inter",
+                      "fontSize": 12
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "HXMnO",
+              "name": "sas",
+              "width": "fill_container",
+              "fill": "#1C1F1A",
+              "cornerRadius": 12,
+              "stroke": "#F2B84B",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "G4AhY",
+                  "name": "sh",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "t0o69Z",
+                      "fill": "#9AA096",
+                      "content": "VERIFY CODE",
+                      "fontFamily": "Inter",
+                      "fontSize": 10
+                    },
+                    {
+                      "type": "icon",
+                      "id": "oEIAv",
+                      "width": 14,
+                      "height": 14,
+                      "icon": "shield",
+                      "library": "Material Symbols Outlined",
+                      "fill": "#F2B84B"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "d5EIEa",
+                  "fill": "#7ADB4F",
+                  "content": "4F2K-Q7MZ",
+                  "fontFamily": "Roboto Mono",
+                  "fontSize": 28,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "z00zK",
+                  "fill": "#9AA096",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Show this to the network owner. Accept only if the codes match on both screens.",
+                  "fontFamily": "Inter",
+                  "fontSize": 11
+                },
+                {
+                  "type": "frame",
+                  "id": "Gknxc",
+                  "name": "br",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "kG7TK",
+                      "name": "no",
+                      "width": "fill_container",
+                      "cornerRadius": 99,
+                      "stroke": "#E5533D",
+                      "strokeWidth": 1.5,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "f6vej",
+                          "fill": "#E5533D",
+                          "content": "Mismatch",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MuKeN",
+                      "name": "btn",
+                      "width": "fill_container",
+                      "fill": "#7ADB4F",
+                      "cornerRadius": 99,
+                      "padding": 16,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "JazzY",
+                          "fill": "#0E120C",
+                          "content": "Codes match",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "RPQql",
+              "name": "sp",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical"
+            },
+            {
+              "type": "text",
+              "id": "aFOOy",
+              "fill": "#9AA096",
+              "content": "PRIVATE network · owner Misha must accept your request.",
+              "fontFamily": "Inter",
+              "fontSize": 10
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "fileToken": "5ea13422-8601-40ac-9fd8-a13a1a6e122e"
+}

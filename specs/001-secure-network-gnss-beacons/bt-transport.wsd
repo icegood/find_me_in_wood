@@ -1,0 +1,65 @@
+@startuml
+title BLE transport (T2.3) — dual-role GATT, custom service, no pairing
+autonumber
+participant "SessionManager" as SM
+participant "BtCentral\n(client role)" as C
+participant "Android BLE stack\n(Scanner / Gatt)" as API
+participant "BtPeripheral\n(server role)" as P
+
+note over C, P
+  SERVICE_UUID = f11d0a01-5c1e-4a9b-9d3f-2a7b8c6d5e4f
+  CHAR_WRITE   = write-without-response (client -> server)
+  CHAR_NOTIFY  = notify (server -> client), CCCD 0x2902
+  MTU request  = 247  -> chunk payload = MTU-3 = 244 B
+  wire framing = [u16be totalLen][FrameCodec bytes...] reassembled by receiver
+  no bonding/pairing: trust = AEAD (FR-2.3), radio is untrusted
+end note
+
+== Both phones: peripheral role startup ==
+P -> API : adapter check + BLUETOOTH_SCAN/CONNECT granted
+P -> API : adapter.openGattServer(ctx, gattServerCallback)
+P -> P : gattServer.addService(SERVICE_UUID, PRIMARY)\n{ CHAR_WRITE: PROPERTY_WRITE_NO_RESPONSE\n  CHAR_NOTIFY: PROPERTY_NOTIFY + CCCD descriptor }
+P -> API : advertiser.startAdvertising(\n  settings=LOW_LATENCY,\n  data=ScanData().addServiceUuid(SERVICE_UUID))
+API -> P : onAdvertisingEnabled(status)
+
+== Central role: discovery & connection ==
+SM -> C : start(config)
+C -> API : bluetoothLeScanner.startScan(\n  filter: ScanFilter.setServiceUuid(SERVICE_UUID))
+API -> C : onScanResult(ScanResult{device})
+C -> SM : PeerRadioVisible(device.address, BLUETOOTH)
+C -> API : device.connectGatt(ctx, autoConnect=false,\n  gattCallback, TRANSPORT_LE)
+API -> C : onConnectionStateChange(STATE_CONNECTED)
+C -> API : gatt.requestMtu(247)
+API -> C : onMtuChanged(gatt, mtu)
+C -> API : gatt.discoverServices()
+API -> C : onServicesDiscovered()
+C -> API : gatt.setCharacteristicNotification(CHAR_NOTIFY, true)
+C -> API : gatt.writeDescriptor(CCCD, ENABLE_NOTIFICATION_VALUE)
+API -> C : onDescriptorWrite(status=SUCCESS)
+C -> SM : StateChanged(READY)
+
+== Send path: client writes to server ==
+SM -> C : send(wireFrame)
+C -> C : out = u16be(len) + wireFrame\nchunks = out.split(mtu-3)
+loop per chunk, paced by onCharacteristicWrite
+  C -> API : gatt.writeCharacteristic(CHAR_WRITE,\n  chunk, WRITE_TYPE_NO_RESPONSE)
+  API -> C : onCharacteristicWrite(char, status)
+end
+API -> P : onCharacteristicWriteRequest(device,\n  requestId, CHAR_WRITE, chunk)
+P -> P : reassemble: acc += chunk\nuntil acc.size >= totalLen
+P -> SM : FrameReceived(FrameCodec.decode(frame), BLUETOOTH)
+
+== Send path: server notifies client ==
+SM -> P : send(wireFrame)
+P -> P : chunk as above
+P -> API : gattServer.notifyCharacteristicChanged(\n  device, CHAR_NOTIFY, confirm=false, chunk)
+API -> C : onCharacteristicChanged(CHAR_NOTIFY, chunk)
+C -> C : reassemble -> frame complete
+C -> SM : FrameReceived(frame, BLUETOOTH)
+
+== Teardown ==
+SM -> C : stop()
+C -> API : gatt.disconnect() ; gatt.close()
+SM -> P : stop()
+P -> API : advertiser.stopAdvertising() ; gattServer.close()
+@enduml

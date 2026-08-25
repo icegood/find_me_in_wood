@@ -1,0 +1,59 @@
+@startuml
+title LoRa transport (T5.1/T5.1b) — node = opaque byte pipe (BLE NUS or USB serial)
+autonumber
+participant "SessionManager" as SM
+participant "LoraTransport" as L
+participant "LoraNodeLink\n(BleNodeLink | UsbSerialLink)" as N
+participant "Android\nBLE / USB stack" as API
+participant "LoRa node\n(Meshtastic / RadioLib fw)" as NODE
+participant "peer phone\n+ its own node" as PEER
+
+note over L, NODE
+  app<->node framing: 0x46 0x4D magic + u16be(len) + FrameCodec bytes\n
+  node<->node air protocol: ENTIRELY the firmware's business (FR-7.2)
+  BLE NUS: svc 6e400001-b5a3-f393-e0a9-e50e24dcca9e,
+           RX(write w/o response, app->node) 6e400002...,
+           TX(notify, node->app) 6e400003...
+  USB: usb-serial-for-android, CH340/CP210x/FTDI/CDC-ACM, 115200 8N1
+end note
+
+== Link bring-up (BLE variant, T5.1) ==
+SM -> L : start(config)
+L -> N : connect()
+N -> API : BluetoothLeScanner.startScan(filter NUS UUID)
+API -> N : onScanResult(node)
+N -> API : device.connectGatt -> STATE_CONNECTED
+N -> API : gatt.requestMtu(247) -> onMtuChanged
+N -> API : gatt.discoverServices() -> onServicesDiscovered
+N -> API : setCharacteristicNotification(NUS_TX, true) + write CCCD
+N -> L : NodeLinkState.READY
+L -> SM : StateChanged(READY)
+
+== Link bring-up (USB variant, T5.1b) ==
+L -> N : connect()
+N -> API : UsbManager.getDeviceList()\n-> requestPermission(intent) -> openConnection\n-> driver.setBaudRate(115200, 8N1)
+N -> L : NodeLinkState.READY
+L -> SM : StateChanged(READY)
+
+== Send path ==
+SM -> L : send(wireFrame)
+L -> L : packet = 0x464D + u16be(len) + wireFrame\nchunks = split(link.mtuPayload)
+loop per chunk
+  L -> N : write(chunk)
+  N -> API : BLE writeCharacteristic(NUS_RX, WO-RESPONSE)\n| USB bulkWrite(endpoint)
+  API -> NODE : bytes
+end
+NODE -> NODE : firmware frames its own LoRa air protocol
+NODE -> PEER : LoRa packet over the air (opaque)
+
+== Receive path ==
+NODE -> API : LoRa packet received, firmware streams payload
+API -> N : RX notify / bulkRead bytes
+N -> L : stream chunks up
+L -> L : scan for magic, read u16 len,\nreassemble until frame complete
+L -> SM : FrameReceived(frame, LORA)
+
+== Watchdog & reconnect (FR-7.4 / FR-7.5) ==
+L -> L : if no RX for 30 s or link error ->\nStateChanged(LINK_DOWN),\nTX queue keeps last N=5,\nretry connect with exponential backoff
+L -> N : connect() (again)
+@enduml

@@ -1,0 +1,29 @@
+@startuml
+title find_me_in_wood — mesh relay: A(far, LoRa) — B(bridge: LoRa node + Bluetooth) — C(near, Bluetooth)
+autonumber
+participant "A\nfar member" as A
+participant "B\nbridge" as B
+participant "C\nnear member" as C
+
+note over A, C : one network "hunt-2026"; edges:\nA<->B = LoRa (nodes), B<->C = Bluetooth
+
+== A broadcasts its position ==
+A -> A : GNSS fix -> beacon\n{netId, senderId=IdA, seq=41,\nttl=3, AEAD(trafficKey)}
+A ->> B : LoRa (via nodes, byte pipe)
+
+== B receives, verifies, relays ==
+B -> B : AEAD opens (member ok)\nseen-cache: (IdA,41) new -> track PeerState(A)
+B -> B : relay check: ttl 3>0, split horizon\n(never resend on ingress LoRa edge)
+B ->> C : Bluetooth: same frame,\nttl=2, AEAD intact (B cannot and\nneed not decrypt to relay —\nbut as member it can read)
+
+== C receives ==
+C -> C : AEAD opens, seen-cache new\nPeerState(A) via relay
+note over C : UI: "A · via B (LoRa)"\nstaleness per FR-6.3
+
+== Loop / duplicate safety ==
+B ->> C : (someone else re-forwards\n(IdA,41) over another edge)
+C -> C : seen-cache hit -> silently dropped
+A ->> B : (IdA,41) again after TTL expiry path
+B -> B : seen-cache hit -> dropped
+note over A, C : ttl=0 frames are never forwarded\nbeacons are periodic -> loss self-heals\non next seq
+@enduml

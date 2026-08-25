@@ -1,0 +1,42 @@
+# Gradle
+.gradle/
+build/
+
+# Kotlin
+.kotlin/
+
+# Android
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# IDE: IntelliJ / Android Studio / VS Code
+.idea/
+*.iml
+*.ipr
+*.iws/
+.vscode/
+
+# Signing material — never commit
+*.jks
+*.keystore
+keystore.properties
+
+# Logs & crash dumps
+*.log
+hs_err_pid*
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------
+# Exceptions (force-include despite rules above)
+# ---------------------------------------------------------------
+!gradle/wrapper/gradle-wrapper.jar
+!.gitignore
+!**/.gitkeep
+!design/**
+!specs/**
+!docker/**
