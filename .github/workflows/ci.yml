@@ -38,8 +38,17 @@ jobs:
       - name: Build & test
         run: ./gradlew build --stacktrace
 
+      - name: Coverage gate (>=95% lines, gated scope)
+        run: ./gradlew coverageVerify --stacktrace
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: build/reports/jacoco/aggregated-html/

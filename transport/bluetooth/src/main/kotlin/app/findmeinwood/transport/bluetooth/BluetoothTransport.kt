@@ -8,16 +8,11 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
-import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.AdvertiseCallback
-import android.bluetooth.le.AdvertiseData
-import android.bluetooth.le.AdvertiseSettings
 import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
-import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.annotation.SuppressLint
 import android.os.ParcelUuid
@@ -43,7 +38,12 @@ import kotlinx.coroutines.channels.BufferOverflow
  * before this transport is started; runtime rejections surface as SecurityException.
  */
 @SuppressLint("MissingPermission")
-class BluetoothTransport(private val context: Context) : Transport {
+class BluetoothTransport internal constructor(
+    private val context: Context,
+    private val wiring: BluetoothGattWiring,
+) : Transport {
+
+    constructor(context: Context) : this(context, BluetoothGattWiring(context))
     override val id: TransportId = TransportId.BLUETOOTH
 
     private val events = MutableSharedFlow<TransportEvent>(
@@ -78,7 +78,9 @@ class BluetoothTransport(private val context: Context) : Transport {
                 startCentral()
                 emit(RadioState.READY)
                 ready = true
-            } catch (e: SecurityException) {
+            } catch (e: Exception) {
+                // Transport contract: start must not throw for normal failures
+                // (missing radios/permissions surface as LINK_DOWN).
                 emit(RadioState.LINK_DOWN)
             }
         }
@@ -130,41 +132,9 @@ class BluetoothTransport(private val context: Context) : Transport {
     }
 
     private fun startPeripheral() {
-        val gattServer = manager!!.openGattServer(context, serverCallback)
-        this.gattServer = gattServer
-        val service = BluetoothGattService(SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
-        val write = BluetoothGattCharacteristic(
-            CHAR_WRITE_UUID,
-            BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
-            BluetoothGattCharacteristic.PERMISSION_WRITE,
-        )
-        val notify = BluetoothGattCharacteristic(
-            CHAR_NOTIFY_UUID,
-            BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-            BluetoothGattCharacteristic.PERMISSION_READ,
-        )
-        notify.addDescriptor(
-            BluetoothGattDescriptor(CCCD_UUID, BluetoothGattDescriptor.PERMISSION_WRITE),
-        )
-        service.addCharacteristic(write)
-        service.addCharacteristic(notify)
-        gattServer.addService(service)
-
-        adapter?.bluetoothLeAdvertiser?.let { adv ->
-            val cb = object : AdvertiseCallback() {}
-            advertiser = cb
-            adv.startAdvertising(
-                AdvertiseSettings.Builder()
-                    .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
-                    .setConnectable(true)
-                    .build(),
-                AdvertiseData.Builder()
-                    .setIncludeDeviceName(false)
-                    .addServiceUuid(ParcelUuid(SERVICE_UUID))
-                    .build(),
-                cb,
-            )
-        }
+        gattServer = wiring.openServer(manager!!, serverCallback)
+        gattServer?.addService(wiring.buildService())
+        advertiser = wiring.startAdvertising(adapter)
     }
 
     private val serverCallback = object : BluetoothGattServerCallback() {
@@ -225,10 +195,8 @@ class BluetoothTransport(private val context: Context) : Transport {
     }
 
     private fun startCentral() {
-        val scanner = adapter?.bluetoothLeScanner ?: return
-        val cb = object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult) {
-                if (!running || clientGatt != null) return
+        scannerCallback = wiring.startScan(adapter) { result ->
+            if (running && clientGatt == null) {
                 events.tryEmit(TransportEvent.PeerRadioVisible(result.device.address, id))
                 try {
                     result.device.connectGatt(
@@ -238,14 +206,6 @@ class BluetoothTransport(private val context: Context) : Transport {
                 }
             }
         }
-        scannerCallback = cb
-        scanner.startScan(
-            listOf(ScanFilter.Builder().setServiceUuid(ParcelUuid(SERVICE_UUID)).build()),
-            ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-                .build(),
-            cb,
-        )
     }
 
     private val clientCallback = object : BluetoothGattCallback() {
@@ -306,8 +266,8 @@ class BluetoothTransport(private val context: Context) : Transport {
         }
     }
 
-    private fun notifyClient(device: BluetoothDevice, chunk: ByteArray) {
-        val server = gattServer ?: return
+    internal fun notifyClient(device: BluetoothDevice, chunk: ByteArray, serverOverride: BluetoothGattServer? = gattServer) {
+        val server = serverOverride ?: return
         try {
             val service = server.getService(SERVICE_UUID) ?: return
             val notify = service.getCharacteristic(CHAR_NOTIFY_UUID) ?: return
@@ -317,8 +277,8 @@ class BluetoothTransport(private val context: Context) : Transport {
         }
     }
 
-    private fun pumpClientWrites() {
-        val gatt = clientGatt ?: return
+    internal fun pumpClientWrites(gattOverride: BluetoothGatt? = clientGatt) {
+        val gatt = gattOverride ?: return
         if (writePending) return
         val next = writeQueue.firstOrNull() ?: return
         try {

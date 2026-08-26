@@ -39,6 +39,7 @@ class SessionManager(
     private val relayEnabled: Boolean = true,
     private val edgeManager: EdgeManager? = null,
     private val scope: CoroutineScope,
+    private val keepAliveMs: Long = KEEP_ALIVE_MS,
 ) {
     companion object {
         const val INITIAL_TTL: UByte = 3u
@@ -87,13 +88,13 @@ class SessionManager(
             }
         }
         jobs += scope.launch {
-            BeaconScheduler(KEEP_ALIVE_MS, clock)
+            BeaconScheduler(keepAliveMs, clock)
                 .commands(fixes)
                 .collect { sendBeacon(it.fix) }
         }
         jobs += scope.launch {
             while (true) {
-                delay(KEEP_ALIVE_MS)
+                delay(keepAliveMs)
                 tracker.tick()
                 edgeManager?.tick()?.forEach { peer ->
                     val candidates = edgeManager.failoverOrder(peer, transports.map { it.id }.toSet())

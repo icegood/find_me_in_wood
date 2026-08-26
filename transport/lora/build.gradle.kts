@@ -12,6 +12,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -20,5 +25,9 @@ dependencies {
     implementation(project(":core:crypto"))
     implementation("com.github.mik3y:usb-serial-for-android:3.7.3")
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+
     implementation(libs.kotlinx.coroutines.core)
 }

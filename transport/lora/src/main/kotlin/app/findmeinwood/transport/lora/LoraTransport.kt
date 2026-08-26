@@ -26,6 +26,9 @@ import kotlinx.coroutines.launch
 class LoraTransport(
     private val context: Context,
     private val link: LoraNodeLink = BleNodeLink(context),
+    private val reconnectDelayMs: Long = 5_000,
+    private val watchdogPeriodMs: Long = 10_000,
+    private val watchdogTimeoutMs: Long = 30_000,
 ) : Transport {
     override val id: TransportId = TransportId.LORA
 
@@ -99,10 +102,10 @@ class LoraTransport(
     }
 
     private suspend fun reconnectWithBackoff() {
-        var delayMs = 5_000L
+        var delayMs = reconnectDelayMs
         while (running && !linkReady) {
             delay(delayMs)
-            delayMs = (delayMs * 2).coerceAtMost(60_000)
+            delayMs = (delayMs * 2).coerceAtMost(60_000) // capped backoff
             link.connect()
             return // connect() re-subscribes; DOWN events re-trigger backoff
         }
@@ -110,8 +113,8 @@ class LoraTransport(
 
     private suspend fun watchdogLoop() {
         while (running) {
-            delay(10_000)
-            if (linkReady && System.currentTimeMillis() - lastRxMs > 30_000) {
+            delay(watchdogPeriodMs)
+            if (linkReady && System.currentTimeMillis() - lastRxMs > watchdogTimeoutMs) {
                 onLinkState(NodeLinkState.DOWN)
             }
         }

@@ -31,32 +31,32 @@ class ShareTransport(private val context: Context) : Transport {
 
     override suspend fun send(wireFrame: ByteArray): SendResult {
         val envelope = encodeEnvelope(wireFrame)
-        val viber = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            `package` = VIBER_PACKAGE
-            putExtra(Intent.EXTRA_TEXT, envelope)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        return try {
-            context.startActivity(viber)
-            SendResult.HandedToUser
-        } catch (_: Exception) {
-            // Viber absent: generic chooser — Telegram, SMS, any text-capable app (FR-9.1)
-            val chooser = Intent.createChooser(
+        // Contract: must not throw. Viber first, then any text-capable app (FR-9.1).
+        val viaViber = runCatching {
+            context.startActivity(
                 Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
+                    `package` = VIBER_PACKAGE
                     putExtra(Intent.EXTRA_TEXT, envelope)
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 },
-                "Send position via…",
-            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            try {
-                context.startActivity(chooser)
-                SendResult.HandedToUser
-            } catch (e: Exception) {
-                SendResult.Failed("no share target available")
-            }
+            )
+            SendResult.HandedToUser
         }
+        if (viaViber.getOrNull() == SendResult.HandedToUser) return SendResult.HandedToUser
+        return runCatching {
+            context.startActivity(
+                Intent.createChooser(
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, envelope)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                    "Send position via…",
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            SendResult.HandedToUser
+        }.getOrDefault(SendResult.Failed("no share target available"))
     }
 
     companion object {
@@ -68,6 +68,7 @@ class ShareTransport(private val context: Context) : Transport {
             if (idx < 0) return null
             val raw = text.substring(idx + ENVELOPE_PREFIX.length).trim()
             val b64 = raw.lineSequence().first().trimEnd('.')
+            if (b64.isEmpty()) return null
             return try {
                 Base64.getUrlDecoder().decode(b64)
             } catch (_: Exception) {

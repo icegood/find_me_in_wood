@@ -26,23 +26,34 @@ data class StoredProfile(
 /** JSON-file persistence (v0.1; T3.5 Room migration tracked in tasks). */
 object ProfileStore {
     private val json = Json { prettyPrint = true }
-    private fun file(ctx: Context) = File(ctx.filesDir, "profiles.json")
+    private fun file(ctx: Context) = dir(ctx).resolve("profiles.json")
+    internal fun dir(ctx: Context) = ctx.filesDir.apply { mkdirs() }
 
-    fun load(ctx: Context): List<StoredProfile> = try {
+    // Dir-based core ops (pure JVM-testable); ctx overloads are thin delegates.
+    internal fun load(dir: File): List<StoredProfile> = try {
         json.decodeFromString(
-            ListSerializer(StoredProfile.serializer()), file(ctx).readText(),
+            ListSerializer(StoredProfile.serializer()), dir.resolve("profiles.json").readText(),
         )
     } catch (_: Exception) {
         emptyList()
     }
 
-    fun save(ctx: Context, profiles: List<StoredProfile>) {
-        file(ctx).writeText(json.encodeToString(ListSerializer(StoredProfile.serializer()), profiles))
+    internal fun save(dir: File, profiles: List<StoredProfile>) {
+        dir.resolve("profiles.json").writeText(
+            json.encodeToString(ListSerializer(StoredProfile.serializer()), profiles),
+        )
     }
 
-    fun add(ctx: Context, p: StoredProfile) = save(ctx, load(ctx).filterNot { it.networkIdHex == p.networkIdHex } + p)
+    internal fun add(dir: File, p: StoredProfile) =
+        save(dir, load(dir).filterNot { it.networkIdHex == p.networkIdHex } + p)
 
-    fun remove(ctx: Context, networkIdHex: String) = save(ctx, load(ctx).filterNot { it.networkIdHex == networkIdHex })
+    internal fun remove(dir: File, networkIdHex: String) =
+        save(dir, load(dir).filterNot { it.networkIdHex == networkIdHex })
+
+    fun load(ctx: Context): List<StoredProfile> = load(dir(ctx))
+    fun save(ctx: Context, profiles: List<StoredProfile>) = save(dir(ctx), profiles)
+    fun add(ctx: Context, p: StoredProfile) = add(dir(ctx), p)
+    fun remove(ctx: Context, networkIdHex: String) = remove(dir(ctx), networkIdHex)
 
     fun toProfile(p: StoredProfile): NetworkProfile = NetworkProfile(
         name = p.name,
