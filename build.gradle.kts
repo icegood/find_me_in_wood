@@ -221,3 +221,25 @@ tasks.register("coverageVerify") {
         "coverageGate",
     )
 }
+
+tasks.register<JacocoReport>("coverageGateReport") {
+    group = "verification"
+    description = "HTML/XML report for exactly the gated scope"
+    dependsOn(subprojects.map { it.tasks.named("jacocoModuleReport") })
+    sourceDirectories.setFrom(subprojects.map { q -> q.files("src/main/kotlin", "src/main/java") })
+    classDirectories.setFrom(
+        provider {
+            files(moduleClassDirs()).asFileTree.matching {
+                include(gateIncludes)
+                exclude(gateScopeExcludes)
+            }
+        },
+    )
+    executionData.setFrom(provider { existingExecs() })
+    reports {
+        xml.required.set(true)
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/gated.xml"))
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/gated-html"))
+    }
+}

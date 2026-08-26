@@ -41,14 +41,55 @@ jobs:
       - name: Coverage gate (>=95% lines, gated scope)
         run: ./gradlew coverageVerify --stacktrace
 
+      - name: Coverage report & summary
+        if: always()
+        run: |
+          ./gradlew jacocoAggregateReport coverageGateReport
+          mkdir -p site/full
+          cp -r build/reports/jacoco/gated-html/* site/
+          cp -r build/reports/jacoco/aggregated-html/* site/full/
+          python3 scripts/coverage-summary.py \
+            build/reports/jacoco/gated.xml build/reports/jacoco/aggregated.xml \
+            >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/*.apk
 
-      - name: Upload coverage report
+      - name: Upload coverage site (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: coverage-html
-          path: build/reports/jacoco/aggregated-html/
+          path: site/
+
+  deploy-coverage-pages:
+    name: Publish coverage to GitHub Pages
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download coverage site
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-html
+          path: site
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
