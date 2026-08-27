@@ -9,6 +9,18 @@ object PayloadCodec {
     fun decode(bytes: ByteArray): BeaconPayload =
         Cbor.decodeFromByteArray(BeaconPayload.serializer(), bytes)
 
+    fun encodeChat(payload: ChatPayload): ByteArray =
+        ChatPayloadCodec.encode(payload)
+
+    fun decodeChat(bytes: ByteArray): ChatPayload =
+        ChatPayloadCodec.decode(bytes)
+
+    fun tryDecodeChat(bytes: ByteArray): ChatPayload? = try {
+        ChatPayloadCodec.decode(bytes)
+    } catch (_: Exception) {
+        null
+    }
+
     fun fromFix(fix: GnssFix, batteryPct: Int? = null): BeaconPayload = BeaconPayload(
         position = BeaconPosition(
             latE7 = (fix.lat * 1e7).toInt(),

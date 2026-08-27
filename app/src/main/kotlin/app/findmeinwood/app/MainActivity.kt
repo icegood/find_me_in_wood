@@ -14,6 +14,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import app.findmeinwood.core.auth.AuthManager
+import app.findmeinwood.core.auth.UserProfile
+import app.findmeinwood.core.chat.ChatRepository
+import app.findmeinwood.core.p2p.MultiProtocolP2PManager
 import app.findmeinwood.transport.lora.BleNodeLink
 import app.findmeinwood.core.session.GnssSource
 import app.findmeinwood.transport.api.SendResult
@@ -33,32 +37,70 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
     private val shareTransport by lazy { ShareTransport(this) }
+    private val authManager by lazy { AuthManager(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         permissionLauncher.launch(permissions.toTypedArray())
         setContent {
             MaterialTheme {
-                var tab by remember { mutableStateOf("networks") }
-                Scaffold(bottomBar = {
-                    NavigationBar {
-                        NavigationBarItem(
-                            selected = tab == "map", onClick = { tab = "map" },
-                            icon = {}, label = { Text("Map") },
-                        )
-                        NavigationBarItem(
-                            selected = tab == "networks", onClick = { tab = "networks" },
-                            icon = {}, label = { Text("Networks") },
-                        )
-                    }
-                }) { pad ->
-                    Box(Modifier.padding(pad)) {
-                        when (tab) {
-                            "map" -> MapScreen(SessionBus.profile, SessionBus.peers)
-                            else -> NetworksScreen()
-                        }
-                    }
+                var currentUser by remember { mutableStateOf<UserProfile?>(null) }
+                LaunchedEffect(Unit) {
+                    currentUser = authManager.getCurrentUser()
                 }
+                if (currentUser == null) {
+                    AuthScreen(
+                        onAuthenticated = { currentUser = it },
+                        authManager = authManager,
+                    )
+                } else {
+                    MainApp(user = currentUser!!, onLogout = { currentUser = null })
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun MainApp(user: UserProfile, onLogout: () -> Unit) {
+        var tab by remember { mutableStateOf("networks") }
+        Scaffold(bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = tab == "map", onClick = { tab = "map" },
+                    icon = {}, label = { Text("Map") },
+                )
+                NavigationBarItem(
+                    selected = tab == "networks", onClick = { tab = "networks" },
+                    icon = {}, label = { Text("Networks") },
+                )
+                NavigationBarItem(
+                    selected = tab == "chat", onClick = { tab = "chat" },
+                    icon = {}, label = { Text("Chat") },
+                )
+            }
+        }) { pad ->
+            Box(Modifier.padding(pad)) {
+                when (tab) {
+                    "map" -> MapScreen(SessionBus.profile, SessionBus.peers)
+                    "chat" -> ChatListPlaceholder(user)
+                    else -> NetworksScreen()
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun ChatListPlaceholder(user: UserProfile) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Chat", style = MaterialTheme.typography.headlineSmall)
+            Text("Signed in as ${user.displayName} (${user.email})")
+            Text(
+                "Start a network session to enable mesh chat.\n" +
+                "Chat messages are relayed through all connected peers via BLE, WiFi Direct, and LoRa.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            OutlinedButton(onClick = { authManager.setCurrentUserId(null) }) {
+                Text("Sign out")
             }
         }
     }

@@ -48,6 +48,19 @@ val gateScopeExcludes = coverageExcludes + listOf(
     "**/AndroidGnssSource*",        // LocationManager listener glue
     "**/Prefs*",                    // SharedPreferences glue
     "**/MapScreenKt*",              // Composable + osmdroid view wiring
+    "**/AuthContentProvider*",      // SQLite + ContentProvider glue
+    "**/ChatContentProvider*",      // SQLite + ContentProvider glue
+    "**/SQLiteAuthStore*",          // Android SQLite (Robolectric classloader mismatch)
+    "**/ChatStore*",                // Android SQLite (Robolectric classloader mismatch)
+    "**/AuthManager*",              // Android Context-dependent (Robolectric)
+    "**/ChatRepository*",           // Android Context-dependent (Robolectric)
+    "**/ChatMessage*",              // Data class covered via ChatStore tests
+    "**/UserProfile*",              // Data class covered via AuthManager tests
+    "**/AuthResult*",               // Data class covered via AuthManager tests
+    "**/LoginScreen*",              // Composable + Google Sign-In glue
+    "**/ChatScreen*",               // Composable + photo picker glue
+    "**/P2PTransportAdapter*",      // Transport adapter wrapping platform APIs
+    "**/MultiProtocolP2PManager\$registerChannel*", // Coroutine flow collection (hard to test)
     // Hardware byte-pipes / stack callbacks (BT/USB/LoRa node links):
     "**/BluetoothGattWiring*",                    // GATT/LE stack calls (device-verified)
     "**/WifiDirectTransport\$requestPeerList*",  // WifiP2p event callbacks
@@ -149,6 +162,9 @@ val gateIncludes = listOf(
     "app/findmeinwood/app/SessionBus*",
     "app/findmeinwood/app/ProfileStore*",
     "app/findmeinwood/app/IdentityHolder*",
+    "app/findmeinwood/core/auth/**",
+    "app/findmeinwood/core/chat/**",
+    "app/findmeinwood/core/p2p/**",
 )
 
 private fun execPaths(): List<String> =

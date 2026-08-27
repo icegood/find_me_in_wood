@@ -10,6 +10,7 @@ lifecycle = "2.9.3"
 robolectric = "4.16"
 mockito = "5.14.2"
 mockito-kotlin = "5.4.0"
+play-services-auth = "21.3.0"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -30,6 +31,7 @@ mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 androidx-test-core = { module = "androidx.test:core", version = "1.7.0" }
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "play-services-auth" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
