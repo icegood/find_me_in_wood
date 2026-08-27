@@ -24,6 +24,9 @@ class ChatRepository(
     fun observeMessages(channelId: String): Flow<List<ChatMessage>> =
         store.observe(channelId)
 
+    fun observeChannelIds(): Flow<List<String>> =
+        store.observeChannelIds()
+
     fun getMessages(channelId: String): List<ChatMessage> =
         store.getMessages(channelId)
 

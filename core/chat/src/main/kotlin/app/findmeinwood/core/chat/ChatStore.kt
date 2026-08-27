@@ -63,6 +63,10 @@ internal class ChatStore(context: Context) :
         return changeFlow.map { getMessages(channelId) }
     }
 
+    fun observeChannelIds(): Flow<List<String>> {
+        return changeFlow.map { getChannelIds() }
+    }
+
     fun getChannelIds(): List<String> {
         val c = readableDatabase.rawQuery(
             "SELECT $COL_CHANNEL FROM $TABLE GROUP BY $COL_CHANNEL ORDER BY MAX($COL_TIMESTAMP) DESC", null,

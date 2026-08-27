@@ -84,6 +84,9 @@ class SessionService : Service() {
             scope.launch { manager.acceptExternalWire(wire, TransportId.INTERNET) }
         }
         manager.onFrameSent = { wire -> SessionBus.publish(profile, manager.peerFlow.value, wire) }
+        manager.onFrameReceived = { plain, sender ->
+            scope.launch { SessionBus.publishIncoming(plain, sender) }
+        }
         scope.launch {
             manager.peerFlow.collect { peers -> SessionBus.publish(profile, peers, SessionBus.lastWireFrame.value) }
         }
@@ -92,12 +95,14 @@ class SessionService : Service() {
         }
         manager.start()
         session = manager
+        activeManager = manager
         isRunning = true
     }
 
     private fun stopSession() {
         val s = session
         session = null
+        activeManager = null
         ShareInbox.sink = null
         s?.let { runBlocking { it.stop() } }
         scope.cancel()
@@ -141,6 +146,9 @@ class SessionService : Service() {
         const val EXTRA_POLICY = "policy"
 
         @Volatile var isRunning: Boolean = false
+            private set
+
+        @Volatile var activeManager: SessionManager? = null
             private set
 
         fun start(context: Context, p: StoredProfile) {

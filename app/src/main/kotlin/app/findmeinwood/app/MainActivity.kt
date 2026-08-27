@@ -63,6 +63,25 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun MainApp(user: UserProfile, onLogout: () -> Unit) {
         var tab by remember { mutableStateOf("networks") }
+        var openChat by remember { mutableStateOf<String?>(null) }
+        val profile by SessionBus.profile.collectAsState()
+        val scope = rememberCoroutineScope()
+        val chatRepo = remember { mutableStateOf<ChatRepository?>(null) }
+
+        LaunchedEffect(profile) {
+            val p = profile ?: return@LaunchedEffect
+            val manager = SessionService.activeManager
+            if (manager != null && chatRepo.value == null) {
+                val repo = ChatRepository(this@MainActivity, manager, p.myMemberId, scope)
+                chatRepo.value = repo
+                scope.launch {
+                    SessionBus.incomingPayloads.collect { (payload, sender) ->
+                        repo.handleIncomingPayload(payload, sender)
+                    }
+                }
+            }
+        }
+
         Scaffold(bottomBar = {
             NavigationBar {
                 NavigationBarItem(
@@ -80,9 +99,16 @@ class MainActivity : ComponentActivity() {
             }
         }) { pad ->
             Box(Modifier.padding(pad)) {
-                when (tab) {
-                    "map" -> MapScreen(SessionBus.profile, SessionBus.peers)
-                    "chat" -> ChatListPlaceholder(user)
+                val repo = chatRepo.value
+                when {
+                    tab == "chat" && openChat != null && repo != null && SessionService.isRunning -> {
+                        ChatScreen(openChat!!, repo, onBack = { openChat = null })
+                    }
+                    tab == "chat" && repo != null && SessionService.isRunning -> {
+                        ChatListScreen(repo, onSelectChannel = { openChat = it })
+                    }
+                    tab == "chat" -> ChatListPlaceholder()
+                    tab == "map" -> MapScreen(SessionBus.profile, SessionBus.peers)
                     else -> NetworksScreen()
                 }
             }
@@ -90,17 +116,20 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun ChatListPlaceholder(user: UserProfile) {
+    private fun ChatListPlaceholder() {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Chat", style = MaterialTheme.typography.headlineSmall)
-            Text("Signed in as ${user.displayName} (${user.email})")
-            Text(
-                "Start a network session to enable mesh chat.\n" +
-                "Chat messages are relayed through all connected peers via BLE, WiFi Direct, and LoRa.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            OutlinedButton(onClick = { authManager.setCurrentUserId(null) }) {
-                Text("Sign out")
+            if (SessionService.isRunning) {
+                Text(
+                    "Waiting to collect peers…",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else {
+                Text(
+                    "Start a network session to enable mesh chat.\n" +
+                    "Chat messages are relayed through all connected peers via BLE, WiFi Direct, and LoRa.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
         }
     }

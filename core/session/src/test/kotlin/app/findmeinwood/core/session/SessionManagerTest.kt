@@ -101,4 +101,27 @@ class SessionManagerTest {
             assertEquals(seen, mB.peerFlow.value[alice.memberId]!!.lastSeq)
         } finally { mA.stop(); mB.stop(); scope.cancel() }
     }
+
+    @Test
+    fun `onFrameReceived fires with decrypted payload and sender`() = runBlocking {
+        val alice = Member("alice"); val bob = Member("bob")
+        val tA = FakeTransport(TransportId.BLUETOOTH)
+        val tB = FakeTransport(TransportId.BLUETOOTH)
+        pump(tA, tB); pump(tB, tA)
+        val mA = SessionManager(alice.profile, listOf(tA), flowOf(), { now }, scope = scope)
+        val mB = SessionManager(bob.profile, listOf(tB), flowOf(), { now }, scope = scope)
+        var received: Pair<ByteArray, MemberId>? = null
+        mB.onFrameReceived = { plain, sender -> received = plain to sender }
+        mA.start(); mB.start()
+        try {
+            mA.sendBeacon(GnssFix(48.8, 2.3, 3f, 0.0, now))
+            withTimeout(5_000) {
+                while (true) if (received != null) break else kotlinx.coroutines.yield()
+            }
+            kotlin.test.assertNotNull(received)
+            kotlin.test.assertEquals(alice.memberId, received!!.second)
+            val decoded = app.findmeinwood.core.model.PayloadCodec.decode(received!!.first)
+            kotlin.test.assertTrue(decoded is app.findmeinwood.core.model.BeaconPayload)
+        } finally { mA.stop(); mB.stop(); scope.cancel() }
+    }
 }

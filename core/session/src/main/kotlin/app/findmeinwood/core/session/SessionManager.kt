@@ -57,6 +57,9 @@ class SessionManager(
     /** Wire bytes of every beacon sent (used by carriers, e.g. Viber share — US-9). */
     var onFrameSent: ((ByteArray) -> Unit)? = null
 
+    /** Decrypted payload of every authenticated incoming frame, with sender (chat etc.). */
+    var onFrameReceived: ((ByteArray, MemberId) -> Unit)? = null
+
     /** Called when an edge goes DOWN; candidates per FR-3.6a for auto-failover. */
     var onEdgeDown: ((MemberId, List<TransportId>) -> Unit)? = null
 
@@ -164,6 +167,7 @@ class SessionManager(
         }
         bump { it.copy(received = it.received + 1) }
         tracker.onBeacon(DecryptedBeacon(f.senderId, f.seq, f.sentAtMs, payload))
+        onFrameReceived?.invoke(plain, f.senderId)
         edgeManager?.onFrameFrom(f.senderId, ev.source)
         if (relayEnabled && f.ttl > 1u) {
             val relayed = f.copy(ttl = (f.ttl - 1u).toUByte())

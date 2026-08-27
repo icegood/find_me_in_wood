@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MultiProtocolP2PManagerTest {
@@ -107,5 +108,39 @@ class MultiProtocolP2PManagerTest {
         val protocols = mgr.getAvailableProtocols()
         assertTrue("INTERNET" in protocols)
         assertTrue("ws" in protocols)
+    }
+
+    @Test
+    fun `send via specific transport returns failed for nonexistent transport`() = runTest {
+        val mgr = MultiProtocolP2PManager(emptyMap(), kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
+        val result = mgr.sendViaTransport(app.findmeinwood.core.model.TransportId.BLUETOOTH, byteArrayOf(1))
+        assertTrue(result is app.findmeinwood.transport.api.SendResult.Failed)
+    }
+
+    @Test
+    fun `send via best transport returns failed when no transports`() = runTest {
+        val mgr = MultiProtocolP2PManager(emptyMap(), kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
+        val result = mgr.sendViaBestTransport(byteArrayOf(1))
+        assertTrue(result is app.findmeinwood.transport.api.SendResult.Failed)
+    }
+
+    @Test
+    fun `send via channel returns false for nonexistent channel`() = runTest {
+        val mgr = MultiProtocolP2PManager(emptyMap(), kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
+        val ok = mgr.sendViaChannel("nonexistent", "peer1", byteArrayOf(1))
+        assertFalse(ok)
+    }
+
+    @Test
+    fun `getProtocolForPeer returns empty for unknown peer`() {
+        val mgr = MultiProtocolP2PManager(emptyMap(), kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
+        val protocols = mgr.getProtocolForPeer("unknown-peer")
+        assertTrue(protocols.isEmpty())
+    }
+
+    @Test
+    fun `empty transports and channels produce empty protocols`() {
+        val mgr = MultiProtocolP2PManager(emptyMap(), kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
+        assertTrue(mgr.getAvailableProtocols().isEmpty())
     }
 }
