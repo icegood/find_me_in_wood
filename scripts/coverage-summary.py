@@ -69,7 +69,7 @@ print("| Package | Lines | Covered | % | |")
 print("|---|---|---|---|---|")
 for name, cov, mis in rows:
     p_ = pct(cov, mis)
-    short = name.replace("app.findmeinwood.", "").replace("/", ".")
+    short = name.replace("com.icegood.findmeinwood.", "").replace("/", ".")
     print(f"| `{short}` | {cov + mis} | {cov} | {p_:.1f}% | {badge(p_)} |")
 print()
 print("<sub>Browsable HTML: GitHub Pages → https://icegood.github.io/find_me_in_wood/ "

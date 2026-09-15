@@ -5,9 +5,9 @@ plugins {
 }
 
 android {
-    namespace = "app.findmeinwood.feature.map"
+    namespace = "com.icegood.findmeinwood.feature.map"
     compileSdk = 36
-    defaultConfig { minSdk = 26 }
+    defaultConfig { minSdk = 29 }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -24,4 +24,6 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.osmdroid)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.robolectric)
 }

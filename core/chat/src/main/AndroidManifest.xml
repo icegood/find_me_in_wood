@@ -3,7 +3,7 @@
     <application>
         <provider
             android:name=".ChatContentProvider"
-            android:authorities="app.findmeinwood.chat"
+            android:authorities="com.icegood.findmeinwood.chat"
             android:exported="false" />
     </application>
 </manifest>

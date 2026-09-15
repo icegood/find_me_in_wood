@@ -9,15 +9,19 @@ plugins {
 }
 
 android {
-    namespace = "app.findmeinwood.app"
+    namespace = "com.icegood.findmeinwood.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "app.findmeinwood.app"
-        minSdk = 26
+        applicationId = "com.icegood.findmeinwoods"
+        minSdk = 29
         targetSdk = 36
         versionCode = 1
         versionName = "0.1"
+
+        val googleClientId = (project.findProperty("google.webClientId") as String?)
+            ?: properties["google.webClientId"] as String? ?: ""
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleClientId\"")
     }
     signingConfigs {
         create("release") {
@@ -57,7 +61,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -92,5 +99,7 @@ dependencies {    testImplementation(libs.kotlin.test)
     implementation(libs.compose.material3)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.play.services.auth)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.androidx.credentials.googleid)
 }

@@ -7,12 +7,12 @@
 # kotlinx.serialization: keep serializers for payload models
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.**
--keepclassmembers class app.findmeinwood.core.model.** {
+-keepclassmembers class com.icegood.findmeinwood.core.model.** {
     *** Companion;
 }
--keepclasseswithmembers class app.findmeinwood.core.model.** {
+-keepclasseswithmembers class com.icegood.findmeinwood.core.model.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
 # BLE callbacks invoked from framework
--keep class app.findmeinwood.transport.bluetooth.** { *; }
--keep class app.findmeinwood.transport.lora.** { *; }
+-keep class com.icegood.findmeinwood.transport.bluetooth.** { *; }
+-keep class com.icegood.findmeinwood.transport.lora.** { *; }

@@ -4,9 +4,9 @@ plugins {
 }
 
 android {
-    namespace = "app.findmeinwood.transport.share"
+    namespace = "com.icegood.findmeinwood.transport.share"
     compileSdk = 36
-    defaultConfig { minSdk = 26 }
+    defaultConfig { minSdk = 29 }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -24,6 +24,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:crypto"))
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.androidx.core.ktx)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.mockito.core)
     testImplementation(libs.robolectric)

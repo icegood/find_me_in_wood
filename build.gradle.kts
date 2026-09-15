@@ -65,6 +65,7 @@ val gateScopeExcludes = coverageExcludes + listOf(
     "**/BluetoothGattWiring*",                    // GATT/LE stack calls (device-verified)
     "**/WifiDirectTransport\$requestPeerList*",  // WifiP2p event callbacks
     "**/WifiDirectTransport\$requestConnectionInfo*",
+    "**/WifiDirectWiring*",                       // WifiP2p stack calls (device-verified)
     "**/UsbSerialLink*",
 )
 
@@ -146,25 +147,25 @@ subprojects {
 // transport decision logic testable as plain JVM. Excluded = platform/HW border
 // implementations verified on devices (constitution P6).
 val gateIncludes = listOf(
-    "app/findmeinwood/core/**",
-    "app/findmeinwood/transport/api/**",
-    "app/findmeinwood/transport/lora/StreamFramer*",
-    "app/findmeinwood/transport/lora/FrameChunker*",
-    "app/findmeinwood/transport/lora/LoraTransport*",
-    "app/findmeinwood/transport/lora/LoraNodeLink*",
-    "app/findmeinwood/transport/bluetooth/FrameFramer*",
-    "app/findmeinwood/transport/bluetooth/BluetoothTransport.class",
+    "com/icegood/findmeinwood/core/**",
+    "com/icegood/findmeinwood/transport/api/**",
+    "com/icegood/findmeinwood/transport/lora/StreamFramer*",
+    "com/icegood/findmeinwood/transport/lora/FrameChunker*",
+    "com/icegood/findmeinwood/transport/lora/LoraTransport*",
+    "com/icegood/findmeinwood/transport/lora/LoraNodeLink*",
+    "com/icegood/findmeinwood/transport/bluetooth/FrameFramer*",
+    "com/icegood/findmeinwood/transport/bluetooth/BluetoothTransport.class",
     
-    "app/findmeinwood/transport/bluetooth/BluetoothTransportKt*",
-    "app/findmeinwood/transport/share/ShareInbox.class",
-    "app/findmeinwood/transport/share/ShareTransport\$Companion*",
-    "app/findmeinwood/transport/wifidirect/WifiDirectTransport*",
-    "app/findmeinwood/app/SessionBus*",
-    "app/findmeinwood/app/ProfileStore*",
-    "app/findmeinwood/app/IdentityHolder*",
-    "app/findmeinwood/core/auth/**",
-    "app/findmeinwood/core/chat/**",
-    "app/findmeinwood/core/p2p/**",
+    "com/icegood/findmeinwood/transport/bluetooth/BluetoothTransportKt*",
+    "com/icegood/findmeinwood/transport/share/ShareInbox.class",
+    "com/icegood/findmeinwood/transport/share/ShareTransport\$Companion*",
+    "com/icegood/findmeinwood/transport/wifidirect/WifiDirectTransport*",
+    "com/icegood/findmeinwood/app/SessionBus*",
+    "com/icegood/findmeinwood/app/ProfileStore*",
+    "com/icegood/findmeinwood/app/IdentityHolder*",
+    "com/icegood/findmeinwood/core/auth/**",
+    "com/icegood/findmeinwood/core/chat/**",
+    "com/icegood/findmeinwood/core/p2p/**",
 )
 
 private fun execPaths(): List<String> =
@@ -257,5 +258,12 @@ tasks.register<JacocoReport>("coverageGateReport") {
         xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/gated.xml"))
         html.required.set(true)
         html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/gated-html"))
+    }
+}
+
+// Robolectric + sqlite tests are timing sensitive: keep module tests serial.
+subprojects {
+    tasks.withType<Test>().configureEach {
+        maxParallelForks = 1
     }
 }
