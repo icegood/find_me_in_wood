@@ -1,6 +1,7 @@
 package com.icegood.findmeinwood.app
 
 import android.content.Context
+import com.icegood.findmeinwood.core.model.ThemeMode
 
 object Prefs {
     private const val FILE = "prefs"
@@ -10,7 +11,9 @@ object Prefs {
     private const val KEY_SECRET_PREFIX = "secret_"
     private const val KEY_UNVERIFIED_PREFIX = "unverified_"
     private const val KEY_TILE_SOURCE = "tile_source"
+    private const val KEY_TILE_API_KEY_PREFIX = "tile_api_key_"
     private const val KEY_P2P_OWNER = "p2p_group_owner"
+    private const val KEY_THEME_MODE = "theme_mode"
 
     /** FR-4.2/FR-9.2: beacon + share cadence, 5–300 s, default 60 s. */
     const val MIN_INTERVAL_MS = 5_000L
@@ -66,12 +69,38 @@ object Prefs {
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString(KEY_TILE_SOURCE, source).apply()
     }
 
+    /**
+     * Tile API key for one concrete tile provider, identified by its [TileProvider.id]
+     * (e.g. `USGS_SAT`, `Mapnik`, `CartoDB-DarkMatter`) rather than by the coarser
+     * `TileSource`. This matters because OSM resolves to a different provider per theme,
+     * and each provider has its own credentials. The key is appended to that provider's
+     * download requests as `?token=<key>`; providers that need none never receive one.
+     */
+    fun mapTileApiKey(ctx: Context, providerId: String): String =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_TILE_API_KEY_PREFIX + providerId, null) ?: ""
+
+    fun setMapTileApiKey(ctx: Context, providerId: String, key: String?) {
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().apply {
+            if (key.isNullOrBlank()) remove(KEY_TILE_API_KEY_PREFIX + providerId) else putString(KEY_TILE_API_KEY_PREFIX + providerId, key.trim())
+        }.apply()
+    }
+
     /** Wi-Fi Direct role: host the P2P group (server) instead of letting the system pick. */
     fun p2pGroupOwner(ctx: Context): Boolean =
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY_P2P_OWNER, false)
 
     fun setP2pGroupOwner(ctx: Context, value: Boolean) {
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_P2P_OWNER, value).apply()
+    }
+
+    /** Explicit light/dark selection; SYSTEM follows the device setting. */
+    fun themeMode(ctx: Context): ThemeMode {
+        val stored = ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_THEME_MODE, null)
+        return runCatching { ThemeMode.valueOf(stored ?: ThemeMode.SYSTEM.name) }.getOrDefault(ThemeMode.SYSTEM)
+    }
+
+    fun setThemeMode(ctx: Context, mode: ThemeMode) {
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString(KEY_THEME_MODE, mode.name).apply()
     }
 
     fun currentUid(ctx: Context): String? =

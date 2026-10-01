@@ -7,6 +7,8 @@ import com.icegood.findmeinwood.core.model.NetworkId
 import com.icegood.findmeinwood.core.model.NetworkProfile
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.session.Diagnostics
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import java.nio.file.Files
 import kotlin.test.Test
@@ -56,6 +58,21 @@ class SessionBusTest {
         assertEquals(true, SessionBus.sessionRunning.value)
         SessionBus.clear()
         assertEquals(false, SessionBus.sessionRunning.value)
+    }
+
+    @Test
+    fun `incoming payload replay buffer is dropped on clear`() = runTest {
+        SessionBus.publishIncoming(byteArrayOf(1), MemberId(ByteArray(32)))
+        val before = SessionBus.incomingPayloads
+        SessionBus.clear()
+        assertTrue(before !== SessionBus.incomingPayloads)
+        val seen = mutableListOf<Pair<ByteArray, MemberId>>()
+        val job = launch {
+            SessionBus.incomingPayloads.collect { seen += it }
+        }
+        delay(20)
+        job.cancel()
+        assertTrue(seen.isEmpty())
     }
 
     @Test

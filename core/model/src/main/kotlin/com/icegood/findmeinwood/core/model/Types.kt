@@ -2,6 +2,9 @@ package com.icegood.findmeinwood.core.model
 
 enum class TransportId { WIFI_DIRECT, BLUETOOTH, LORA, INTERNET }
 
+/** Explicit UI theme: follow the system, or force light / dark regardless of it. */
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
 enum class JoinPolicy { OPEN, PRIVATE, CODE }
 
 class NetworkId(val bytes: ByteArray) {

@@ -63,8 +63,8 @@ object SessionBus {
     fun publishJoinOutcome(outcome: JoinOutcome?) { _joinOutcome.value = outcome }
 
     /** Decrypted incoming payloads (chat etc.), replayed to late collectors. */
-    private val _incomingPayloads = MutableSharedFlow<Pair<ByteArray, MemberId>>(replay = 64)
-    val incomingPayloads: SharedFlow<Pair<ByteArray, MemberId>> = _incomingPayloads
+    private var _incomingPayloads = MutableSharedFlow<Pair<ByteArray, MemberId>>(replay = 64)
+    val incomingPayloads: SharedFlow<Pair<ByteArray, MemberId>> get() = _incomingPayloads
 
     fun publish(profile: NetworkProfile?, peers: Map<MemberId, PeerState>, lastWire: ByteArray?) {
         _profile.value = profile
@@ -91,5 +91,10 @@ object SessionBus {
         _ownerSas.value = null
         _ownerNote.value = null
         _joinOutcome.value = null
+        _radioStates.value = emptyMap()
+        // Swap out the chat replay buffer entirely: a stale session's payloads must
+        // not replay into a fresh collector after Stop (same "buffer still shown"
+        // class of bug, but for messages).
+        _incomingPayloads = MutableSharedFlow(replay = 64)
     }
 }

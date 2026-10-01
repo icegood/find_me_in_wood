@@ -1,0 +1,98 @@
+package com.icegood.findmeinwood.feature.map
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [29])
+class TileProviderTest {
+    @Test
+    fun `OSM resolves to a different provider per theme`() {
+        assertEquals(TileProvider.MAPNIK, TileProvider.forSource(TileSource.OSM, isDarkTheme = false))
+        assertEquals(TileProvider.CARTO_DARK, TileProvider.forSource(TileSource.OSM, isDarkTheme = true))
+    }
+
+    @Test
+    fun `satellite always resolves to USGS regardless of theme`() {
+        assertEquals(TileProvider.USGS_SAT, TileProvider.forSource(TileSource.SATELLITE, isDarkTheme = false))
+        assertEquals(TileProvider.USGS_SAT, TileProvider.forSource(TileSource.SATELLITE, isDarkTheme = true))
+    }
+
+    @Test
+    fun `provider ids round-trip`() {
+        TileProvider.entries.forEach { p ->
+            assertSame(p, TileProvider.byId(p.id), "byId(${p.id})")
+        }
+    }
+
+    @Test
+    fun `a key is only ever appended to the provider that needs one`() {
+        // The bug this guards: a single "OSM" key used to be appended to both Mapnik and
+        // CartoDB, breaking both. Keys must never leak between providers.
+        assertEquals(
+            ".png?token=SECRET",
+            buildTileSource(TileProvider.USGS_SAT, "SECRET").imageFilenameEnding(),
+            "satellite should carry its key",
+        )
+        assertEquals(
+            ".png",
+            buildTileSource(TileProvider.MAPNIK, "SECRET").imageFilenameEnding(),
+            "mapnik must never receive a key",
+        )
+        assertEquals(
+            ".png",
+            buildTileSource(TileProvider.CARTO_DARK, "SECRET").imageFilenameEnding(),
+            "carto must never receive a key",
+        )
+    }
+
+    @Test
+    fun `providers that need no key stay key-free even when a key is stored`() {
+        val noKey = TileProvider.entries.filter { !it.needsApiKey }
+        assertTrue(noKey.isNotEmpty(), "some providers should need no key")
+        noKey.forEach { p ->
+            assertEquals(".png", buildTileSource(p, "SECRET").imageFilenameEnding(), "${p.id} must ignore keys")
+        }
+    }
+
+    @Test
+    fun `blank key produces no token query`() {
+        TileProvider.entries.forEach { p ->
+            assertEquals(".png", buildTileSource(p, "   ").imageFilenameEnding(), "${p.id} with blank key")
+        }
+    }
+
+    @Test
+    fun `tile source name matches the provider id so cache rows stay bound`() {
+        // osmdroid stores tiles under the tile source name; offline regions look the
+        // provider up by that same id, so the two must not drift apart.
+        TileProvider.entries.forEach { p ->
+            assertEquals(p.id, buildTileSource(p, "").name(), "${p.id} source name")
+            assertEquals(p.id, tileSourceById(p.id).name(), "${p.id} lookup by id")
+        }
+    }
+
+    @Test
+    fun `generated tile url carries the token only for the keyed provider`() {
+        val sat = buildTileSource(TileProvider.USGS_SAT, "SECRET").getTileURLString(0L)
+        assertTrue(sat.contains("token=SECRET"), "satellite url should carry the key: $sat")
+
+        val mapnik = buildTileSource(TileProvider.MAPNIK, "SECRET").getTileURLString(0L)
+        assertFalse(mapnik.contains("token"), "mapnik url must not carry a key: $mapnik")
+
+        val carto = buildTileSource(TileProvider.CARTO_DARK, "SECRET").getTileURLString(0L)
+        assertFalse(carto.contains("token"), "carto url must not carry a key: $carto")
+    }
+
+    @Test
+    fun `unknown provider id falls back to mapnik rather than throwing`() {
+        assertEquals(TileProvider.MAPNIK.id, tileSourceById("SomeRemovedProvider").name())
+        assertEquals(null, TileProvider.byId("nope"))
+    }
+}

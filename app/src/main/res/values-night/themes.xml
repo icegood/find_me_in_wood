@@ -1,0 +1,6 @@
+<resources>
+    <!-- Dark: matches the Compose darkColorScheme used when the system is in dark mode. -->
+    <style name="Theme.FindMeInWood" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>

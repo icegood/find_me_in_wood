@@ -1,0 +1,6 @@
+<resources>
+    <!-- Light: matches the Compose lightColorScheme used when the system is in light mode. -->
+    <style name="Theme.FindMeInWood" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+</resources>

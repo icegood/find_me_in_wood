@@ -2,61 +2,110 @@ package com.icegood.findmeinwood.feature.map
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Handler
 import android.os.Looper
+import android.widget.Toast
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.NetworkProfile
 import com.icegood.findmeinwood.core.session.PeerState
+import java.io.File
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlinx.coroutines.flow.StateFlow
+import org.osmdroid.api.IGeoPoint
 import org.osmdroid.config.Configuration
+import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.events.MapListener
+import org.osmdroid.events.ScrollEvent
+import org.osmdroid.events.ZoomEvent
 import org.osmdroid.tileprovider.MapTileProviderArray
 import org.osmdroid.tileprovider.MapTileProviderBasic
-import org.osmdroid.tileprovider.modules.MapTileFileArchiveProvider
+import org.osmdroid.tileprovider.cachemanager.CacheManager
 import org.osmdroid.tileprovider.modules.MBTilesFileArchive
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.modules.MapTileFileArchiveProvider
+import org.osmdroid.tileprovider.modules.MapTileFilesystemProvider
+import org.osmdroid.tileprovider.modules.MapTileModuleProviderBase
+import org.osmdroid.tileprovider.modules.SqlTileWriter
 import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.tileprovider.util.SimpleRegisterReceiver
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
-import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
-import java.io.File
+import org.osmdroid.views.overlay.ScaleBarOverlay
 
 /**
  * FR-6.2/FR-6.5: shows my position (device GNSS) plus every located peer on OSM tiles.
  * Tiles come from the network by default (NFR-2 note: INTERNET is already used for
  * Google sign-in); when an MBTiles archive is dropped in files/maps/offline.mbtiles the
  * map switches to that archive and stays offline.
+ *
+ * Extra navigation aids: tap a member marker to follow it (arrow + distance +
+ * bearing), a scale bar (bottom-left), a compass, and an arrow for my own movement
+ * derived from consecutive GPS fixes.
  */
-enum class TileSource { OFFLINE, OSM, SATELLITE }
+/** My GNSS fix plus the movement heading derived from consecutive fixes. */
+data class DeviceFix(val location: Location, val headingDeg: Float?)
 
 /** FR-6.4: distance (m) and bearing (deg, 0 = north) from [from] to [to]. */
 internal fun distanceBearing(from: Location, toLatE7: Int, toLonE7: Int): Pair<Double, Double> {
@@ -71,33 +120,292 @@ private fun compass(bearing: Double): String {
     return dirs[((bearing + 22.5) / 45).toInt() % 8]
 }
 
+/**
+ * Confirmation sheet for an offline area: name it, pick the zoom window, see the tile/size
+ * estimate before anything is downloaded. The zoom range is clamped so the request always
+ * fits the provider and a sane tile budget.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun OfflineAreaDialog(
+    bbox: BoundingBox,
+    providerLabel: String,
+    currentZoom: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (name: String, zoomMin: Int, zoomMax: Int) -> Unit,
+) {
+    val initialName = remember(bbox) { "Area %.3f°, %.3f°".format(bbox.centerLatitude, bbox.centerLongitude) }
+    var name by remember(bbox) { mutableStateOf(initialName) }
+    // Default to the level the user is actually looking at: deeper levels are invisible and
+    // would dominate the tile count, so the slider starts there rather than at the max.
+    var zoomMax by remember(bbox, currentZoom) { mutableIntStateOf(currentZoom.coerceIn(MIN_ZOOM, PROVIDER_MAX_ZOOM)) }
+    val range = remember(bbox, zoomMax, currentZoom) {
+        clampZoomRange(PROVIDER_MAX_ZOOM, currentZoom, MIN_ZOOM, zoomMax, bbox)
+    }
+    val tiles = remember(bbox, range) { estimateTiles(bbox, range.first, range.last) }
+    val zoomCapped = zoomMax > range.last
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Save offline area") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "provider: $providerLabel\n" +
+                        "bounds: %.4f, %.4f → %.4f, %.4f".format(
+                            bbox.latSouth, bbox.lonWest, bbox.latNorth, bbox.lonEast,
+                        ),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Area name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Column {
+                    Text("Maximum zoom: $zoomMax", style = MaterialTheme.typography.labelMedium)
+                    Slider(
+                        value = zoomMax.toFloat(),
+                        onValueChange = { zoomMax = it.toInt() },
+                        valueRange = MIN_ZOOM.toFloat()..PROVIDER_MAX_ZOOM.toFloat(),
+                        steps = PROVIDER_MAX_ZOOM - MIN_ZOOM - 1,
+                    )
+                }
+                Text(
+                    "zoom ${range.first}–${range.last} · ${estimateLabel(tiles)}" +
+                        if (zoomCapped) "\nlimited to zoom ${range.last} (deeper levels are off-screen or too many tiles)" else "",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(name.trim().ifBlank { initialName }, range.first, range.last) },
+            ) { Text("Download") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+private const val MIN_ZOOM = 8
+private const val PROVIDER_MAX_ZOOM = 19
+
 @Composable
 fun MapScreen(
     profile: StateFlow<NetworkProfile?>,
     peers: StateFlow<Map<MemberId, PeerState>>,
     modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = false,
     tileSource: TileSource = TileSource.OFFLINE,
+    tileApiKeys: Map<TileProvider, String> = emptyMap(),
     onTileSourceChange: (TileSource) -> Unit = {},
 ) {
     val context = LocalContext.current
     val p by profile.collectAsState()
     val ps by peers.collectAsState()
-    val me = rememberDeviceLocation(context)
-    val mapView = remember(tileSource) { createMapView(context, tileSource) }
+    val fix = rememberDeviceFix(context)
+    val me = fix?.location
+    var follow by remember { mutableStateOf<MemberId?>(null) }
+    var mapVersion by remember { mutableStateOf(0) }
+    val azimuth = rememberCompassAzimuth(context)
+    // The source OFFLINE reads: the last source used while online, so saved offline
+    // areas (and anything previously viewed) appear without a connection.
+    var lastOnlineSource by remember { mutableStateOf(TileSource.OSM) }
+    LaunchedEffect(tileSource) {
+        if (tileSource != TileSource.OFFLINE) lastOnlineSource = tileSource
+    }
+    // The concrete provider actually being requested, and the api key that belongs to
+    // *that* provider (OSM resolves to Mapnik or CARTO dark depending on the theme).
+    val effectiveSource = if (tileSource == TileSource.OFFLINE) lastOnlineSource else tileSource
+    val provider = TileProvider.forSource(effectiveSource, isDarkTheme)
+    val providerLabel = provider.label
+    val tileApiKey = tileApiKeys[provider].orEmpty()
 
-    DisposableEffect(Unit) {
-        mapView.onResume()
-        onDispose {
-            mapView.overlays.filterIsInstance<MyLocationNewOverlay>().forEach { it.disableMyLocation() }
-            mapView.onPause()
-            mapView.onDetach()
-        }
+    // Offline-area picking: drag a rectangle on the map, then name it and confirm.
+    var selecting by remember { mutableStateOf(false) }
+    var dragStart by remember { mutableStateOf<IGeoPoint?>(null) }
+    var dragEnd by remember { mutableStateOf<IGeoPoint?>(null) }
+    var pendingArea by remember { mutableStateOf<BoundingBox?>(null) }
+    var downloadUi by remember { mutableStateOf<DownloadUi?>(null) }
+    val activeCacheManager = remember { mutableStateOf<CacheManager?>(null) }
+    // Current map zoom, so the offline-area dialog can default to the level actually in view.
+    var mapZoom by remember { mutableIntStateOf(17) }
+
+    fun exitSelection() {
+        selecting = false
+        dragStart = null
+        dragEnd = null
+        pendingArea = null
     }
 
+    // Recreate the mapView whenever the tile source, theme or API key changes:
+    // AndroidView's factory lambda only runs once per node, so the whole subtree
+    // (view creation + effects + HUD overlay) is scoped under key(...).
+    val accent = MaterialTheme.colorScheme.primary
+    val myDirColor = MaterialTheme.colorScheme.secondary
+    val peer = follow?.let { ps[it] }
+
     Box(modifier.fillMaxSize()) {
-        AndroidView(modifier = Modifier.fillMaxSize(), factory = { mapView }) { mv ->
-            renderMarkers(mv, p, ps, me)
+        key(provider, tileApiKey) {
+            val mapView = remember { createMapView(context, tileSource, isDarkTheme, provider, tileApiKey) }
+
+            DisposableEffect(mapView) {
+                mapView.onResume()
+                onDispose {
+                    mapView.onPause()
+                    mapView.onDetach()
+                }
+            }
+
+            DisposableEffect(mapView) {
+                val receiver = object : MapEventsReceiver {
+                    override fun singleTapConfirmedHelper(p: GeoPoint): Boolean { follow = null; return true }
+                    override fun longPressHelper(p: GeoPoint): Boolean = false
+                }
+                val tapOverlay = MapEventsOverlay(context, receiver)
+                mapView.overlays.add(0, tapOverlay)
+                val listener = object : MapListener {
+                    override fun onScroll(event: ScrollEvent): Boolean { mapVersion++; return true }
+                    override fun onZoom(event: ZoomEvent): Boolean {
+                        mapVersion++
+                        mapZoom = event.zoomLevel.toInt()
+                        return true
+                    }
+                }
+                mapView.addMapListener(listener)
+                onDispose {
+                    mapView.overlays.remove(tapOverlay)
+                    mapView.removeMapListener(listener)
+                }
+            }
+
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { mapView },
+            ) { mv -> renderMarkers(mv, p, ps, me, follow) { id -> follow = id } }
+
+            // HUD: my movement arrow, followed-member ring and direction arrow.
+            Canvas(Modifier.fillMaxSize()) {
+                val tick = mapVersion
+                if (!(mapView.width > 0 && mapView.height > 0)) return@Canvas
+                val meNow = me
+                if (meNow != null) {
+                    val myPx = mapView.projection.toPixels(GeoPoint(meNow.latitude, meNow.longitude), null)
+                    val my = Offset(myPx.x.toFloat(), myPx.y.toFloat())
+                    // My direction: movement heading from consecutive fixes, falling back
+                    // to the compass azimuth so it always shows (not only while walking).
+                    val myDirection = fix?.headingDeg ?: azimuth.value
+                    if (myDirection != null) {
+                        rotate(myDirection, pivot = my) {
+                            drawPath(
+                                Path().apply {
+                                    moveTo(my.x, my.y - 16.dp.toPx())
+                                    lineTo(my.x - 7.dp.toPx(), my.y + 9.dp.toPx())
+                                    lineTo(my.x, my.y + 3.dp.toPx())
+                                    lineTo(my.x + 7.dp.toPx(), my.y + 9.dp.toPx())
+                                    close()
+                                },
+                                color = myDirColor,
+                            )
+                        }
+                    }
+                    val target = follow?.let { ps[it] }?.lastPosition
+                    if (target != null) {
+                        val tp = mapView.projection.toPixels(
+                            GeoPoint(target.latE7 / 1e7, target.lonE7 / 1e7), null,
+                        )
+                        val t = Offset(tp.x.toFloat(), tp.y.toFloat())
+                        drawCircle(
+                            color = accent.copy(alpha = 0.30f),
+                            radius = 18.dp.toPx(),
+                            center = t,
+                        )
+                        drawCircle(
+                            color = accent,
+                            radius = 18.dp.toPx(),
+                            center = t,
+                            style = Stroke(2.dp.toPx()),
+                        )
+                        drawDirectionArrow(my, t, accent, size)
+                    }
+                }
+                tick.hashCode()
+            }
+
+            // Rectangle picker: a transparent layer over the map that captures the drag so
+            // the map itself does not pan, exactly like picking an area in Google Maps.
+            if (selecting) {
+                val boxColor = MaterialTheme.colorScheme.tertiary
+                val a = dragStart
+                val b = dragEnd
+                Canvas(Modifier.fillMaxSize()) {
+                    if (a == null || b == null) return@Canvas
+                    val pa = mapView.projection.toPixels(a.toGeoPoint(), null)
+                    val pb = mapView.projection.toPixels(b.toGeoPoint(), null)
+                    val tl = Offset(minOf(pa.x, pb.x).toFloat(), minOf(pa.y, pb.y).toFloat())
+                    val br = Offset(maxOf(pa.x, pb.x).toFloat(), maxOf(pa.y, pb.y).toFloat())
+                    val r = kotlin.math.abs(br.x - tl.x)
+                    val rect = androidx.compose.ui.geometry.Rect(tl, br)
+                    drawRect(
+                        color = boxColor.copy(alpha = 0.18f),
+                        topLeft = tl,
+                        size = androidx.compose.ui.geometry.Size(r, kotlin.math.abs(br.y - tl.y)),
+                    )
+                    drawRect(color = boxColor, topLeft = tl, size = rect.size, style = Stroke(2.dp.toPx()))
+                    // Corner handles make it obvious a rectangle (not a path) is being picked.
+                    listOf(tl, Offset(br.x, tl.y), br, Offset(tl.x, br.y)).forEach { c ->
+                        drawCircle(color = boxColor, radius = 5.dp.toPx(), center = c)
+                    }
+                }
+                Box(
+                    Modifier.fillMaxSize().pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = { off ->
+                                val p = mapView.projection.fromPixels(off.x.toInt(), off.y.toInt())
+                                dragStart = p
+                                dragEnd = p
+                            },
+                            onDrag = { change, _ ->
+                                change.consume()
+                                dragEnd = mapView.projection.fromPixels(
+                                    change.position.x.toInt(),
+                                    change.position.y.toInt(),
+                                )
+                            },
+                            onDragEnd = { dragStart?.let { dragEnd?.let { end -> pendingArea = dragToBoundingBox(it, end) } } },
+                            onDragCancel = { dragStart = null; dragEnd = null },
+                        )
+                    },
+                )
+            }
+
+            // Recenter the map on my current location.
+            if (me != null) {
+                SmallFloatingActionButton(
+                    onClick = { mapView.controller.animateTo(GeoPoint(me.latitude, me.longitude)) },
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(16.dp),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) { Text("⌖", style = MaterialTheme.typography.titleMedium) }
+            }
+
+            // Pick a rectangle to save for offline use, Google-Maps style.
+            if (tileSource != TileSource.OFFLINE && !selecting && downloadUi == null) {
+                SmallFloatingActionButton(
+                    onClick = {
+                        selecting = true
+                        dragStart = null
+                        dragEnd = null
+                    },
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp, bottom = 88.dp),
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                ) { Text("↓", style = MaterialTheme.typography.titleMedium) }
+            }
         }
+
         Card(Modifier.padding(12.dp).align(Alignment.TopStart)) {
             Text(
                 "${p?.name ?: "no session"} · members ${ps.size + 1} · located ${ps.values.count { it.lastPosition != null }}" +
@@ -106,16 +414,24 @@ fun MapScreen(
                 style = MaterialTheme.typography.labelMedium,
             )
         }
+
+        CompassHud(azimuth = azimuth.value, isDarkTheme = isDarkTheme, Modifier.padding(start = 12.dp, top = 84.dp).align(Alignment.TopStart))
+
         Card(Modifier.padding(12.dp).align(Alignment.BottomEnd)) {
             Text(
-                "© ${if (tileSource == TileSource.SATELLITE) "Esri, Maxar, Earthstar Geographics" else "OpenStreetMap contributors"}",
+                provider.attribution,
                 Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 style = MaterialTheme.typography.labelSmall,
             )
         }
+
         Card(Modifier.padding(12.dp).align(Alignment.TopEnd)) {
             Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Tiles", style = MaterialTheme.typography.labelSmall)
+                Text(
+                    if (tileSource == TileSource.OFFLINE) "showing $providerLabel from cache" else providerLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                )
                 TileSource.entries.forEach { src ->
                     if (src == tileSource) {
                         Button(onClick = { }) { Text(src.name, style = MaterialTheme.typography.labelSmall) }
@@ -126,6 +442,316 @@ fun MapScreen(
                     }
                 }
             }
+        }
+
+        if (follow != null && peer != null) {
+            Card(Modifier.padding(16.dp).align(Alignment.BottomCenter)) {
+                Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "→ ${peer.nickname ?: "member"}",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { follow = null }) { Text("✕") }
+                    }
+                    val pos = peer.lastPosition
+                    val fix0 = me
+                    if (pos != null && fix0 != null) {
+                        val (meters, bearing) = distanceBearing(fix0, pos.latE7, pos.lonE7)
+                        val dist = if (meters >= 1000) "%.1f km".format(meters / 1000) else "${meters.toInt()} m"
+                        Text(
+                            "$dist · ${bearing.toInt()}° ${compass(bearing)}" +
+                                if (peer.viaMemberId != null) " · relayed" else "",
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    } else {
+                        Text("waiting for first fix…", style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+        }
+
+        // Selection toolbar: instructions while dragging, confirm/cancel once a box exists.
+        if (selecting) {
+            val a = dragStart
+            val b = dragEnd
+            val area = pendingArea
+            Card(
+                Modifier.align(Alignment.BottomCenter).padding(16.dp),
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Save this area offline", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        if (a == null) "drag a rectangle over the map" else
+                            if (area == null) "drag a larger rectangle" else
+                                "%.4f°, %.4f°".format(area.centerLatitude, area.centerLongitude),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (area != null) {
+                        val preview = clampZoomRange(PROVIDER_MAX_ZOOM, mapZoom, MIN_ZOOM, mapZoom, area)
+                        Text(
+                            "zoom ${preview.first}–${preview.last} · ${estimateLabel(estimateTiles(area, preview.first, preview.last))}",
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { exitSelection() }) { Text("Cancel") }
+                        Button(
+                            onClick = { exitSelection() },
+                            enabled = area != null,
+                        ) { Text("Use this area") }
+                    }
+                }
+            }
+        }
+
+        // Confirm + name the offline area.
+        pendingArea?.let { area ->
+            OfflineAreaDialog(
+                bbox = area,
+                providerLabel = providerLabel,
+                currentZoom = mapZoom,
+                onDismiss = { pendingArea = null },
+                onConfirm = { name, zoomMin, zoomMax ->
+                    pendingArea = null
+                    selecting = false
+                    dragStart = null
+                    dragEnd = null
+                    startOfflineDownload(
+                        context = context,
+                        area = area,
+                        name = name,
+                        zoomMin = zoomMin,
+                        zoomMax = zoomMax,
+                        provider = provider,
+                        apiKey = tileApiKey,
+                        onProgress = { ui, cm ->
+                            downloadUi = ui
+                            if (cm != null) activeCacheManager.value = cm
+                        },
+                        onDone = { ui ->
+                            downloadUi = ui
+                            activeCacheManager.value = null
+                        },
+                    )
+                },
+            )
+        }
+
+        // Download progress with cancel.
+        downloadUi?.let { ui ->
+            Card(Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(ui.title, style = MaterialTheme.typography.titleSmall)
+                    val frac = if (ui.total > 0) ui.done.toFloat() / ui.total.toFloat() else 0f
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { frac.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        buildString {
+                            if (ui.total > 0) append("${ui.done} / ${ui.total} tiles") else append("preparing…")
+                            if (ui.zoom > 0) append(" · z${ui.zoom}")
+                            if (ui.errors > 0) append(" · ${ui.errors} error(s)")
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                    if (ui.finished) {
+                        Button(onClick = { downloadUi = null }) { Text("Done") }
+                    } else {
+                        TextButton(onClick = {
+                            activeCacheManager.value?.cancelAllJobs()
+                            downloadUi = ui.copy(title = "cancelling…", finished = true)
+                        }) { Text("Cancel") }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Progress of a running offline-area download. */
+data class DownloadUi(
+    val title: String,
+    val done: Int = 0,
+    val total: Int = 0,
+    val zoom: Int = 0,
+    val errors: Int = 0,
+    val finished: Boolean = false,
+)
+
+/**
+ * Runs a [CacheManager] download for [area] on a worker thread, reporting progress through
+ * [onProgress] and the final state through [onDone]. Kept out of the composable so the
+ * threading and region bookkeeping are testable and not buried in UI code.
+ */
+fun startOfflineDownload(
+    context: Context,
+    area: BoundingBox,
+    name: String,
+    zoomMin: Int,
+    zoomMax: Int,
+    provider: TileProvider,
+    apiKey: String = "",
+    onProgress: (DownloadUi, CacheManager?) -> Unit = { _, _ -> },
+    onDone: (DownloadUi) -> Unit = { },
+) {
+    val handler = Handler(Looper.getMainLooper())
+    fun post(fn: () -> Unit) = handler.post(fn)
+    val title = "Downloading \"$name\""
+    onProgress(DownloadUi(title), null)
+
+    Thread {
+        var ui = DownloadUi(title)
+        try {
+            val cfg = Configuration.getInstance()
+            cfg.userAgentValue = context.packageName
+            cfg.osmdroidBasePath = File(context.filesDir, "osmdroid")
+            cfg.osmdroidTileCache = File(cfg.osmdroidBasePath, "tiles")
+            // The key is part of the URL, never the source name, so it can't affect cache identity.
+            val cm = CacheManager(buildTileSource(provider, apiKey), SqlTileWriter(), zoomMin, zoomMax)
+            val total = cm.possibleTilesInArea(area, zoomMin, zoomMax)
+            post { ui = ui.copy(total = total); onProgress(ui, cm) }
+            val region = OfflineRegion(
+                id = OfflineRegions.newId(),
+                name = name,
+                latNorth = area.latNorth, lonEast = area.lonEast,
+                latSouth = area.latSouth, lonWest = area.lonWest,
+                zoomMin = zoomMin, zoomMax = zoomMax,
+                tileCount = total,
+                sizeBytes = 0L,
+                createdAt = System.currentTimeMillis(),
+                sourceName = provider.id,
+            )
+            cm.downloadAreaAsyncNoUI(
+                context, area, zoomMin, zoomMax,
+                object : CacheManager.CacheManagerCallback {
+                    override fun downloadStarted() = Unit
+                    override fun setPossibleTilesInArea(n: Int) {
+                        post { ui = ui.copy(total = n); onProgress(ui, cm) }
+                    }
+                    // osmdroid's signature is (progress, currentZoomLevel, zoomMin, zoomMax).
+                    override fun updateProgress(progress: Int, currentZoom: Int, zMin: Int, zMax: Int) {
+                        post {
+                            ui = ui.copy(done = progress, zoom = currentZoom)
+                            onProgress(ui, cm)
+                        }
+                    }
+                    override fun onTaskComplete() {
+                        post {
+                            val size = OfflineRegions.regionSizeBytes(context, region)
+                            OfflineRegions.add(context, region.copy(sizeBytes = size))
+                            val final = ui.copy(done = ui.total, finished = true)
+                            onDone(final)
+                        }
+                    }
+                    // osmdroid passes the number of failed tile downloads, not an error code.
+                    override fun onTaskFailed(errors: Int) {
+                        post {
+                            val size = OfflineRegions.regionSizeBytes(context, region)
+                            OfflineRegions.add(context, region.copy(sizeBytes = size))
+                            val final = ui.copy(
+                                title = "Download finished with $errors error(s)",
+                                done = ui.total,
+                                errors = errors,
+                                finished = true,
+                            )
+                            onDone(final)
+                        }
+                    }
+                },
+            )
+            // downloadAreaAsync returns immediately; keep the CacheManager reachable so the
+            // UI can cancel, and let the callbacks above drive completion.
+        } catch (e: Exception) {
+            post { onDone(ui.copy(title = "Download error: ${e.message}", finished = true)) }
+        }
+    }.apply { isDaemon = true }.start()
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDirectionArrow(
+    from: Offset,
+    to: Offset,
+    color: Color,
+    view: Size,
+) {
+    val margin = 12f
+    var dx = to.x - from.x
+    var dy = to.y - from.y
+    val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+    if (dist < 20f) return
+    dx /= dist
+    dy /= dist
+    val ts = mutableListOf<Float>()
+    if (dx > 0f) ts += (view.width - margin - from.x) / dx
+    if (dx < 0f) ts += (margin - from.x) / dx
+    if (dy > 0f) ts += (view.height - margin - from.y) / dy
+    if (dy < 0f) ts += (margin - from.y) / dy
+    val t = ts.filter { it > 0 }.minOrNull() ?: 1f
+    val end = Offset(from.x + dx * t * 0.98f, from.y + dy * t * 0.98f)
+    drawLine(color, from, end, strokeWidth = 5.dp.toPx(), cap = StrokeCap.Round)
+    val angle = atan2(dy, dx)
+    val wing = 16.dp.toPx()
+    listOf(-0.45f, 0.45f).forEach { da ->
+        drawLine(
+            color, end,
+            Offset(end.x - kotlin.math.cos(angle + da) * wing, end.y - kotlin.math.sin(angle + da) * wing),
+            strokeWidth = 5.dp.toPx(), cap = StrokeCap.Round,
+        )
+    }
+}
+
+@Composable
+private fun CompassHud(azimuth: Float?, isDarkTheme: Boolean, modifier: Modifier = Modifier) {
+    val errorColor = MaterialTheme.colorScheme.error
+    val needleColor = MaterialTheme.colorScheme.primary
+    val ringColor = if (isDarkTheme) Color(0xFF9A9A9A) else Color(0xFF555555)
+    val tickColor = if (isDarkTheme) Color(0xFFBBBBBB) else Color(0xFF444444)
+    val labelColor = if (isDarkTheme) Color(0xFFEEEEEE) else Color(0xFF222222)
+    val textMeasurer = rememberTextMeasurer()
+    Card(modifier) {
+        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Canvas(Modifier.size(68.dp)) {
+                val c = center
+                val r = size.minDimension / 2f - 2.dp.toPx()
+                drawCircle(color = ringColor, radius = r, style = Stroke(2.dp.toPx()))
+                val labelHop = 22.dp.toPx()
+                val labelStyle = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = labelColor)
+                for ((idx, name) in listOf("N", "E", "S", "W").withIndex()) {
+                    val ang = Math.toRadians(idx * 90.0)
+                    val sx = (c.x + sin(ang) * (r - 6.dp.toPx())).toFloat()
+                    val sy = (c.y - cos(ang) * (r - 6.dp.toPx())).toFloat()
+                    val tx = (c.x + sin(ang) * (r - labelHop)).toFloat()
+                    val ty = (c.y - cos(ang) * (r - labelHop)).toFloat()
+                    if (name == "N") {
+                        drawLine(errorColor, Offset(sx, sy), Offset(tx, ty), strokeWidth = 2.5.dp.toPx())
+                    } else {
+                        drawLine(tickColor, Offset(sx, sy), Offset(tx, ty), strokeWidth = 1.5.dp.toPx())
+                    }
+                    val layout = textMeasurer.measure(name, style = labelStyle)
+                    drawText(
+                        layout,
+                        topLeft = Offset(tx - layout.size.width / 2f, ty - layout.size.height / 2f),
+                    )
+                }
+                if (azimuth != null) {
+                    rotate(azimuth, pivot = c) {
+                        drawLine(
+                            needleColor,
+                            Offset(c.x, c.y - r + 18.dp.toPx()),
+                            c,
+                            strokeWidth = 3.dp.toPx(),
+                            cap = StrokeCap.Round,
+                        )
+                    }
+                }
+            }
+            Text(
+                if (azimuth == null) "--°" else "${azimuth.toInt()}°",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(start = 6.dp),
+            )
         }
     }
 }
@@ -167,7 +793,13 @@ private fun age(lastSeenMs: Long): String {
     return if (s < 60) "${s}s" else "${s / 60}m"
 }
 
-private fun createMapView(context: Context, source: TileSource): MapView {
+private fun createMapView(
+    context: Context,
+    source: TileSource,
+    isDarkTheme: Boolean,
+    provider: TileProvider,
+    apiKey: String,
+): MapView {
     val cfg = Configuration.getInstance()
     cfg.userAgentValue = context.packageName
     cfg.osmdroidBasePath = File(context.filesDir, "osmdroid")
@@ -176,44 +808,85 @@ private fun createMapView(context: Context, source: TileSource): MapView {
     val archive = context.getExternalFilesDir(null)?.let { File(it, "maps/offline.mbtiles") }
     val haveArchive = archive?.exists() == true
 
+    // Tile source shared by online download and the offline cache: cache reuse only
+    // works when the same provider id is used in both paths. In OFFLINE the caller
+    // passes the provider that was last used online, so saved areas are found.
+    val tiles = buildTileSource(provider, apiKey)
+
     val mv = MapView(context).apply {
-        // OFFLINE means "no network": render the MBTiles archive when one is present,
-        // otherwise keep a blank canvas instead of crashing on a missing database.
-        val offline = haveArchive && source == TileSource.OFFLINE
-        val mapnik = if (source == TileSource.SATELLITE) {
-            org.osmdroid.tileprovider.tilesource.TileSourceFactory.USGS_SAT
-        } else {
-            TileSourceFactory.MAPNIK
-        }
-        if (offline) {
-            val source = XYTileSource("mbtiles", 0, 19, 256, ".png", arrayOf())
-            val provider = MapTileFileArchiveProvider(
-                SimpleRegisterReceiver(context), source,
-                arrayOf(MBTilesFileArchive.getDatabaseFileArchive(archive!!)),
-            )
-            tileProvider = MapTileProviderArray(source, SimpleRegisterReceiver(context), arrayOf(provider))
+        if (source == TileSource.OFFLINE) {
+            val src = XYTileSource("mbtiles", 0, 19, 256, ".png", arrayOf())
+            val providers = mutableListOf<MapTileModuleProviderBase>()
+            // MBTiles archive takes priority, then the on-device tile cache so
+            // anything previously downloaded with the network is still usable
+            // while fully offline.
+            if (haveArchive) {
+                providers += MapTileFileArchiveProvider(
+                    SimpleRegisterReceiver(context), src,
+                    arrayOf(MBTilesFileArchive.getDatabaseFileArchive(archive!!)),
+                )
+            }
+            providers += MapTileFilesystemProvider(SimpleRegisterReceiver(context), tiles)
+            tileProvider = MapTileProviderArray(tiles, SimpleRegisterReceiver(context), providers.toTypedArray())
             setUseDataConnection(false)
         } else {
-            tileProvider = MapTileProviderBasic(context, mapnik)
+            tileProvider = MapTileProviderBasic(context, tiles)
             setUseDataConnection(true)
         }
+        setBackgroundColor(if (isDarkTheme) 0xFF1A1A1A.toInt() else android.graphics.Color.WHITE)
         setMultiTouchControls(true)
         setBuiltInZoomControls(false)
         controller.setZoom(15.0)
+        // Bottom-left scale bar (theme-aware colors).
+        val barText = if (isDarkTheme) 0xFFDDDDDD.toInt() else 0xFF222222.toInt()
+        overlays.add(
+            ScaleBarOverlay(this).apply {
+                setCentred(false)
+                setAlignBottom(true)
+                setAlignRight(false)
+                setScaleBarOffset(12, 12)
+                setUnitsOfMeasure(ScaleBarOverlay.UnitsOfMeasure.metric)
+                setLineWidth(3f * resources.displayMetrics.density)
+                setTextPaint(android.graphics.Paint().apply {
+                    color = barText
+                    textSize = 13f * resources.displayMetrics.scaledDensity
+                })
+                setBarPaint(android.graphics.Paint().apply {
+                    color = barText
+                    strokeWidth = 3f * resources.displayMetrics.density
+                })
+            },
+        )
     }
 
     return mv
 }
 
-/** FR-4.1/FR-6.2: my own position from GNSS + network fixes, last known first. */
+/** FR-4.1/FR-6.2: my own position + movement bearing from consecutive GNSS fixes. */
 @SuppressLint("MissingPermission")
 @Composable
-private fun rememberDeviceLocation(context: Context): Location? {
+private fun rememberDeviceFix(context: Context): DeviceFix? {
     var location by remember { mutableStateOf<Location?>(null) }
+    var heading by remember { mutableStateOf<Float?>(null) }
+    var lastFix by remember { mutableStateOf<Location?>(null) }
     DisposableEffect(Unit) {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val listener = object : LocationListener {
-            override fun onLocationChanged(loc: Location) { location = loc }
+            override fun onLocationChanged(loc: Location) {
+                val prev = lastFix
+                lastFix = loc
+                if (prev != null) {
+                    val results = FloatArray(2)
+                    Location.distanceBetween(prev.latitude, prev.longitude, loc.latitude, loc.longitude, results)
+                    val moved = results[0]
+                    val dt = loc.time - prev.time
+                    if (moved >= 3f && dt in 300L..30_000L) {
+                        val brg = (results[1] + 360) % 360
+                        heading = if (heading == null) brg else (heading!! * 0.6f + brg * 0.4f + 540f) % 360f
+                    }
+                }
+                location = loc
+            }
             override fun onProviderDisabled(provider: String) {}
             override fun onProviderEnabled(provider: String) {}
             @Suppress("DEPRECATION")
@@ -227,7 +900,10 @@ private fun rememberDeviceLocation(context: Context): Location? {
             )) {
                 if (!lm.isProviderEnabled(provider)) continue
                 val last = lm.getLastKnownLocation(provider)
-                if (last != null && (location == null || last.time > location!!.time)) location = last
+                if (last != null && (location == null || last.time > location!!.time)) {
+                    location = last
+                    lastFix = last
+                }
                 lm.requestLocationUpdates(provider, 2_000L, 0f, listener, Looper.getMainLooper())
             }
         } catch (_: SecurityException) {
@@ -237,14 +913,63 @@ private fun rememberDeviceLocation(context: Context): Location? {
         }
         onDispose { lm.removeUpdates(listener) }
     }
-    return location
+    return location?.let { DeviceFix(it, heading) }
 }
+
+/** Device azimuth (heading the top of the phone points to) from accel + magnetometer. */
+@Composable
+private fun rememberCompassAzimuth(context: Context): State<Float?> {
+    val azimuth = remember { mutableStateOf<Float?>(null) }
+    DisposableEffect(Unit) {
+        val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val accel = FloatArray(3)
+        val mag = FloatArray(3)
+        var haveAccel = false
+        var haveMag = false
+        val rot = FloatArray(9)
+        val ori = FloatArray(3)
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                when (event.sensor.type) {
+                    Sensor.TYPE_ACCELEROMETER -> {
+                        System.arraycopy(event.values, 0, accel, 0, 3)
+                        haveAccel = true
+                    }
+                    Sensor.TYPE_MAGNETIC_FIELD -> {
+                        System.arraycopy(event.values, 0, mag, 0, 3)
+                        haveMag = true
+                    }
+                }
+                if (haveAccel && haveMag && SensorManager.getRotationMatrix(rot, null, accel, mag)) {
+                    SensorManager.getOrientation(rot, ori)
+                    val deg = (Math.toDegrees(ori[0].toDouble()).toFloat() + 360f) % 360f
+                    val prev = azimuth.value
+                    if (prev == null || abs(prev - deg) > 1f) azimuth.value = deg
+                }
+            }
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+        val accelSensor = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        val magSensor = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+        if (accelSensor != null) sm.registerListener(listener, accelSensor, SensorManager.SENSOR_DELAY_UI)
+        if (magSensor != null) sm.registerListener(listener, magSensor, SensorManager.SENSOR_DELAY_UI)
+        onDispose { sm.unregisterListener(listener) }
+    }
+    return azimuth
+}
+
+// Maps recentered once per (re)created MapView so a fresh view with a default
+// center (0,0, mid-Atlantic) is brought onto the user instead of staying blank.
+private val centeredOnce: MutableSet<MapView> =
+    java.util.Collections.newSetFromMap(java.util.WeakHashMap<MapView, Boolean>())
 
 private fun renderMarkers(
     mv: MapView,
     profile: NetworkProfile?,
     peers: Map<MemberId, PeerState>,
     me: Location?,
+    follow: MemberId?,
+    onSelect: (MemberId?) -> Unit,
 ) {
     mv.overlays.removeAll { it is Marker }
     if (me != null) {
@@ -254,9 +979,11 @@ private fun renderMarkers(
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                 title = "You"
                 snippet = "±${me.accuracy.toInt()} m"
+                setOnMarkerClickListener { _, _ -> onSelect(null); true }
             },
         )
-        if (mv.zoomLevelDouble < 10.0 || !hasPeerPosition(peers)) {
+        if (!centeredOnce.contains(mv)) {
+            centeredOnce.add(mv)
             mv.controller.animateTo(GeoPoint(me.latitude, me.longitude))
         }
     }
@@ -266,8 +993,9 @@ private fun renderMarkers(
             Marker(mv).apply {
                 position = GeoPoint(pos.latE7 / 1e7, pos.lonE7 / 1e7)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                title = peer.nickname ?: "member"
+                title = (if (peer.memberId == follow) "→ " else "") + (peer.nickname ?: "member")
                 snippet = if (peer.viaMemberId != null) "relayed" else "direct"
+                setOnMarkerClickListener { _, _ -> onSelect(peer.memberId); true }
             },
         )
     }

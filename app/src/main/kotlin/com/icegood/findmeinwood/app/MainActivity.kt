@@ -7,7 +7,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.core.view.WindowCompat
+import com.icegood.findmeinwood.core.model.ThemeMode
+import com.icegood.findmeinwood.feature.map.OfflineRegion
+import com.icegood.findmeinwood.feature.map.OfflineRegions
+import com.icegood.findmeinwood.feature.map.ProviderStat
+import com.icegood.findmeinwood.feature.map.TileProvider
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.icegood.findmeinwood.core.auth.AuthManager
 import com.icegood.findmeinwood.core.auth.UserProfile
@@ -63,7 +72,29 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         permissionLauncher.launch(permissions.toTypedArray())
         setContent {
-            MaterialTheme {
+            var themeMode by remember { mutableStateOf(Prefs.themeMode(this@MainActivity)) }
+            val darkTheme = when (themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+            // The window chrome (status/nav bar icons + launch background) follows the
+            // explicit choice too, otherwise it would keep tracking the system setting.
+            LaunchedEffect(darkTheme) {
+                val w = window
+                w.setBackgroundDrawable(
+                    android.graphics.drawable.ColorDrawable(
+                        if (darkTheme) 0xFF1A1A1A.toInt() else android.graphics.Color.WHITE,
+                    ),
+                )
+                WindowCompat.getInsetsController(w, w.decorView).apply {
+                    isAppearanceLightStatusBars = !darkTheme
+                    isAppearanceLightNavigationBars = !darkTheme
+                }
+            }
+            MaterialTheme(
+                colorScheme = if (darkTheme) darkColorScheme() else lightColorScheme(),
+            ) {
                 var currentUser by remember { mutableStateOf<UserProfile?>(null) }
                 LaunchedEffect(Unit) {
                     authManager.setCurrentUserId(Prefs.currentUid(this@MainActivity))
@@ -78,23 +109,46 @@ class MainActivity : ComponentActivity() {
                         authManager = authManager,
                     )
                 } else {
-                    MainApp(user = currentUser!!, onLogout = {
-                        Prefs.setCurrentUid(this@MainActivity, null)
-                        currentUser = null
-                    })
+                    MainApp(
+                        user = currentUser!!,
+                        onLogout = {
+                            Prefs.setCurrentUid(this@MainActivity, null)
+                            currentUser = null
+                        },
+                        themeMode = themeMode,
+                        onThemeModeChange = {
+                            Prefs.setThemeMode(this@MainActivity, it)
+                            themeMode = it
+                        },
+                        darkTheme = darkTheme,
+                    )
                 }
             }
         }
     }
 
     @Composable
-    private fun MainApp(user: UserProfile, onLogout: () -> Unit) {
+    private fun MainApp(
+        user: UserProfile,
+        onLogout: () -> Unit,
+        themeMode: ThemeMode,
+        onThemeModeChange: (ThemeMode) -> Unit,
+        darkTheme: Boolean,
+    ) {
         var tab by remember { mutableStateOf("networks") }
         var mapTileSource by remember {
             mutableStateOf(
                 runCatching {
                     com.icegood.findmeinwood.feature.map.TileSource.valueOf(Prefs.tileSource(this@MainActivity))
                 }.getOrDefault(com.icegood.findmeinwood.feature.map.TileSource.OFFLINE),
+            )
+        }
+        // Tile API keys are per *provider* (not per TileSource): OSM resolves to Mapnik
+        // in light theme and CARTO dark in dark theme, which are different services.
+        var mapTileKeys by remember {
+            mutableStateOf(
+                com.icegood.findmeinwood.feature.map.TileProvider.online
+                    .associateWith { Prefs.mapTileApiKey(this@MainActivity, it.id) },
             )
         }
         var openChat by remember { mutableStateOf<String?>(null) }
@@ -104,7 +158,14 @@ class MainActivity : ComponentActivity() {
         val chatRepo = remember { mutableStateOf<ChatRepository?>(null) }
 
         LaunchedEffect(profile) {
-            val p = profile ?: return@LaunchedEffect
+            val p = profile
+            if (p == null) {
+                // Session stopped: drop the repo bound to the dead manager so the
+                // next start wires chat against the fresh session instead of sending
+                // messages into a stopped manager.
+                chatRepo.value = null
+                return@LaunchedEffect
+            }
             // The service may still be starting: without retrying here the inbox is
             // never wired and every incoming chat message is dropped for the session.
             while (chatRepo.value == null) {
@@ -125,26 +186,30 @@ class MainActivity : ComponentActivity() {
 
         Scaffold(bottomBar = {
             NavigationBar {
-                NavigationBarItem(
-                    selected = tab == "map", onClick = { tab = "map" },
-                    icon = {}, label = { Text("Map") },
-                )
-                NavigationBarItem(
-                    selected = tab == "networks", onClick = { tab = "networks" },
-                    icon = {}, label = { Text("Networks") },
-                )
-                NavigationBarItem(
-                    selected = tab == "chat", onClick = { tab = "chat" },
-                    icon = {}, label = { Text("Chat") },
-                )
-                NavigationBarItem(
-                    selected = tab == "peers", onClick = { tab = "peers" },
-                    icon = {}, label = { Text("Peers") },
-                )
-                NavigationBarItem(
-                    selected = tab == "discover", onClick = { tab = "discover" },
-                    icon = {}, label = { Text("Discover") },
-                )
+                @Composable
+                fun navItem(label: String, selected: Boolean, onClick: () -> Unit) {
+                    NavigationBarItem(
+                        selected = selected, onClick = onClick,
+                        icon = {},
+                        // Six items on a narrow screen leave ~60dp each, which is not enough for
+                        // "Networks" at the default label size, so it used to wrap onto two lines.
+                        label = {
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Clip,
+                            )
+                        },
+                    )
+                }
+                navItem("Map", tab == "map") { tab = "map" }
+                navItem("Networks", tab == "networks") { tab = "networks" }
+                navItem("Chat", tab == "chat") { tab = "chat" }
+                navItem("Peers", tab == "peers") { tab = "peers" }
+                navItem("Discover", tab == "discover") { tab = "discover" }
+                navItem("Settings", tab == "settings") { tab = "settings" }
             }
         }) { pad ->
             Box(Modifier.padding(pad)) {
@@ -160,9 +225,9 @@ class MainActivity : ComponentActivity() {
                     tab == "map" -> MapScreen(
                         profile = SessionBus.profile,
                         peers = SessionBus.peers,
-                        tileSource = runCatching {
-                            com.icegood.findmeinwood.feature.map.TileSource.valueOf(Prefs.tileSource(this@MainActivity))
-                        }.getOrDefault(com.icegood.findmeinwood.feature.map.TileSource.OFFLINE),
+                        isDarkTheme = darkTheme,
+                        tileSource = mapTileSource,
+                        tileApiKeys = mapTileKeys,
                         onTileSourceChange = {
                             Prefs.setTileSource(this@MainActivity, it.name)
                             mapTileSource = it
@@ -172,6 +237,12 @@ class MainActivity : ComponentActivity() {
                     tab == "discover" -> DiscoverScreen(
                         context = this@MainActivity,
                         onJoin = { netId -> DiscoveryBridge.requestJoin(netId) },
+                    )
+                    tab == "settings" -> SettingsScreen(
+                        themeMode = themeMode,
+                        onThemeModeChange = onThemeModeChange,
+                        tileApiKeys = mapTileKeys,
+                        onTileApiKey = { source, key -> mapTileKeys = mapTileKeys + (source to key) },
                     )
                     else -> NetworksScreen()
                 }
@@ -206,19 +277,16 @@ class MainActivity : ComponentActivity() {
         var showCreate by remember { mutableStateOf(false) }
         var showJoin by remember { mutableStateOf(false) }
         var joinCode by remember { mutableStateOf<String?>(null) }
-        var showNodePicker by remember { mutableStateOf(false) }
         var createError by remember { mutableStateOf<String?>(null) }
-        var intervalMs by remember { mutableLongStateOf(Prefs.intervalMs(this@MainActivity)) }
-        var intervalInput by remember { mutableStateOf((Prefs.intervalMs(this@MainActivity) / 1000).toString()) }
-        var intervalError by remember { mutableStateOf<String?>(null) }
         val snackbar = remember { SnackbarHostState() }
-        val diag by SessionBus.diagnostics.collectAsState()
         val lastWire by SessionBus.lastWireFrame.collectAsState()
         val running by SessionBus.sessionRunning.collectAsState()
         val radios by SessionBus.radioStates.collectAsState()
-        var p2pOwner by remember { mutableStateOf(Prefs.p2pGroupOwner(this@MainActivity)) }
 
-        Scaffold(topBar = { TopAppBar(title = { Text("find me in wood") }) }, snackbarHost = { SnackbarHost(snackbar) }) { pad ->
+        Scaffold(
+            topBar = { TopAppBar(title = { Text("find me in wood") }) },
+            snackbarHost = { SnackbarHost(snackbar) },
+        ) { pad ->
             Column(
                 Modifier.padding(pad).padding(16.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -288,6 +356,236 @@ class MainActivity : ComponentActivity() {
                             .joinToString(" · ") { (t, st) -> "${t.name} ${st.name.lowercase()}" },
                         style = MaterialTheme.typography.bodySmall,
                     )
+                }
+            }
+        }
+
+        if (showCreate) {
+            CreateDialog(
+                onDismiss = { showCreate = false },
+                onCreate = { name, passphrase ->
+                    when (val r = ProfileStore.create(name, passphrase)) {
+                        is CreateResult.Ok -> {
+                            ProfileStore.add(this, r.profile)
+                            Prefs.setSecretFor(this, r.profile.networkIdHex, r.joinCode.split("#")[1])
+                            profiles = ProfileStore.load(this)
+                            showCreate = false
+                            createError = null
+                            joinCode = r.joinCode
+                        }
+                        is CreateResult.Error -> createError = r.message
+                    }
+                },
+            )
+        }
+        if (showJoin) {
+            JoinDialog(
+                onDismiss = { showJoin = false },
+                onJoin = { code ->
+                    when (val r = ProfileStore.join(code)) {
+                        is JoinResult.Ok -> {
+                            ProfileStore.add(this, r.profile)
+                            Prefs.setSecretFor(this, r.profile.networkIdHex, code.split("#")[1])
+                            profiles = ProfileStore.load(this)
+                            showJoin = false
+                            createError = null
+                        }
+                        is JoinResult.Error -> createError = r.message
+                    }
+                },
+            )
+        }
+        joinCode?.let { code ->
+            AlertDialog(
+                onDismissRequest = { joinCode = null },
+                confirmButton = { TextButton(onClick = { joinCode = null }) { Text("OK") } },
+                title = { Text("Share the join code") },
+                text = {
+                    Text("Give this to members in person:\n\n$code\n\nIt is shown once — the secret is not stored.")
+                },
+            )
+        }
+    }
+
+    private val scope2 = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
+
+    /** Dedicated settings screen: theme, tile API keys and device/beacon options. */
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun SettingsScreen(
+        themeMode: ThemeMode,
+        onThemeModeChange: (ThemeMode) -> Unit,
+        tileApiKeys: Map<com.icegood.findmeinwood.feature.map.TileProvider, String>,
+        onTileApiKey: (com.icegood.findmeinwood.feature.map.TileProvider, String) -> Unit,
+    ) {
+        var keys by remember(tileApiKeys) { mutableStateOf(tileApiKeys) }
+        var showNodePicker by remember { mutableStateOf(false) }
+        var intervalMs by remember { mutableLongStateOf(Prefs.intervalMs(this@MainActivity)) }
+        var intervalInput by remember { mutableStateOf((Prefs.intervalMs(this@MainActivity) / 1000).toString()) }
+        var intervalError by remember { mutableStateOf<String?>(null) }
+        var p2pOwner by remember { mutableStateOf(Prefs.p2pGroupOwner(this@MainActivity)) }
+        val snackbar = remember { SnackbarHostState() }
+        val diag by SessionBus.diagnostics.collectAsState()
+        val providers = com.icegood.findmeinwood.feature.map.TileProvider.online
+
+        Scaffold(
+            topBar = { TopAppBar(title = { Text("Settings") }) },
+            snackbarHost = { SnackbarHost(snackbar) },
+        ) { pad ->
+            Column(
+                Modifier.padding(pad).padding(16.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Theme", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "explicit light / dark, or follow the system",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ThemeMode.entries.forEach { mode ->
+                                if (themeMode == mode) {
+                                    Button(onClick = { }) { Text(mode.name) }
+                                } else {
+                                    OutlinedButton(onClick = { onThemeModeChange(mode) }) { Text(mode.name) }
+                                }
+                            }
+                        }
+                    }
+                }
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Tile API keys", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "each provider has its own key; only providers that require one need it",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        providers.forEach { provider ->
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                OutlinedTextField(
+                                    value = keys[provider].orEmpty(),
+                                    onValueChange = { keys = keys + (provider to it) },
+                                    label = { Text(provider.label) },
+                                    placeholder = {
+                                        Text(if (provider.needsApiKey) "API key required" else "not needed")
+                                    },
+                                    supportingText = {
+                                        Text(
+                                            if (provider.needsApiKey) {
+                                                "sent as ?token=… to ${provider.id}"
+                                            } else {
+                                                "no key required for ${provider.id}"
+                                            },
+                                        )
+                                    },
+                                    enabled = provider.needsApiKey,
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                        Button(onClick = {
+                            providers.forEach { provider ->
+                                Prefs.setMapTileApiKey(this@MainActivity, provider.id, keys[provider])
+                                onTileApiKey(provider, keys[provider].orEmpty())
+                            }
+                            scope2.launch { snackbar.showSnackbar("Tile API keys saved") }
+                        }) { Text("Save tile keys") }
+                    }
+                }
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Offline maps", style = MaterialTheme.typography.titleSmall)
+                        var regions by remember { mutableStateOf<List<OfflineRegion>>(emptyList()) }
+                        var totalBytes by remember { mutableLongStateOf(0L) }
+                        var stats by remember { mutableStateOf<List<ProviderStat>>(emptyList()) }
+                        fun refreshRegions() {
+                            regions = OfflineRegions.load(this@MainActivity).map {
+                                it.copy(sizeBytes = OfflineRegions.regionSizeBytes(this@MainActivity, it))
+                            }
+                            totalBytes = OfflineRegions.cacheSizeBytes(this@MainActivity)
+                            stats = OfflineRegions.providerStats(this@MainActivity)
+                        }
+                        LaunchedEffect(Unit) { refreshRegions() }
+                        Text(
+                            "saved areas: ${regions.size} · cache ${"%.1f".format(totalBytes / (1024.0 * 1024.0))} MB",
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                        if (stats.isNotEmpty()) {
+                            Text("cached by provider", style = MaterialTheme.typography.labelMedium)
+                            stats.forEach { s ->
+                                val label = TileProvider.byId(s.providerId)?.label ?: s.providerId
+                                Text(
+                                    "$label · ${s.tileCount} tiles · ${"%.1f".format(s.sizeBytes / (1024.0 * 1024.0))} MB",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                )
+                            }
+                        }
+                        Text(
+                            "on the map, frame an area and press ↓ to save it for offline use, then switch to OFFLINE.",
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                        )
+                        regions.forEach { r ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(r.name, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        "${TileProvider.byId(r.sourceName)?.label ?: r.sourceName} · " +
+                                            "zoom ${r.zoomMin}–${r.zoomMax} · ${r.tileCount} tiles · " +
+                                            "${"%.1f".format(r.sizeBytes / (1024.0 * 1024.0))} MB",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                    )
+                                }
+                                VerticalDivider(
+                                    modifier = Modifier.height(32.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                )
+                                TextButton(onClick = {
+                                    OfflineRegions.deleteTiles(this@MainActivity, r) { ok ->
+                                        refreshRegions()
+                                        scope2.launch {
+                                            snackbar.showSnackbar(
+                                                if (ok) "offline area deleted" else "offline area delete failed",
+                                            )
+                                        }
+                                    }
+                                }) { Text("Delete", maxLines = 1, softWrap = false) }
+                            }
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    OfflineRegions.clear(this@MainActivity)
+                                    refreshRegions()
+                                    scope2.launch { snackbar.showSnackbar("all offline maps cleared") }
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Clear all", maxLines = 1, softWrap = false) }
+                            Button(
+                                onClick = { refreshRegions() },
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Refresh", maxLines = 1, softWrap = false) }
+                        }
+                    }
                 }
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -374,64 +672,17 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        if (showCreate) {
-            CreateDialog(
-                onDismiss = { showCreate = false },
-                onCreate = { name, passphrase ->
-                    when (val r = ProfileStore.create(name, passphrase)) {
-                        is CreateResult.Ok -> {
-                            ProfileStore.add(this, r.profile)
-                            Prefs.setSecretFor(this, r.profile.networkIdHex, r.joinCode.split("#")[1])
-                            profiles = ProfileStore.load(this)
-                            showCreate = false
-                            createError = null
-                            joinCode = r.joinCode
-                        }
-                        is CreateResult.Error -> createError = r.message
-                    }
-                },
-            )
-        }
-        if (showJoin) {
-            JoinDialog(
-                onDismiss = { showJoin = false },
-                onJoin = { code ->
-                    when (val r = ProfileStore.join(code)) {
-                        is JoinResult.Ok -> {
-                            ProfileStore.add(this, r.profile)
-                            Prefs.setSecretFor(this, r.profile.networkIdHex, code.split("#")[1])
-                            profiles = ProfileStore.load(this)
-                            showJoin = false
-                            createError = null
-                        }
-                        is JoinResult.Error -> createError = r.message
-                    }
-                },
-            )
-        }
         if (showNodePicker) {
             NodePickerDialog(
                 onDismiss = { showNodePicker = false },
                 onPick = { addr ->
                     Prefs.setLoraNode(this@MainActivity, addr)
                     showNodePicker = false
-                    profiles = profiles // no-op refresh
-                },
-            )
-        }
-        joinCode?.let { code ->
-            AlertDialog(
-                onDismissRequest = { joinCode = null },
-                confirmButton = { TextButton(onClick = { joinCode = null }) { Text("OK") } },
-                title = { Text("Share the join code") },
-                text = {
-                    Text("Give this to members in person:\n\n$code\n\nIt is shown once — the secret is not stored.")
                 },
             )
         }
     }
 
-    private val scope2 = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
     @Composable
     private fun NodePickerDialog(onDismiss: () -> Unit, onPick: (String) -> Unit) {
         val nodes = remember { mutableStateOf(listOf<BleNodeLink.ScannedNode>()) }

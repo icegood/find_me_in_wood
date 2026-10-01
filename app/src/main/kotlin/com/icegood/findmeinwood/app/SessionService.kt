@@ -39,7 +39,7 @@ import kotlinx.coroutines.runBlocking
  * GNSS source, share inbox. One session at a time (v1).
  */
 class SessionService : Service() {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var session: SessionManager? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -57,12 +57,18 @@ class SessionService : Service() {
     }
 
     private fun startSession(intent: Intent?) {
-        if (session != null) return
         // START_STICKY: after a process death Android restarts us with a null intent.
         // Without profile extras there is nothing to run, so stop instead of crashing.
         if (intent?.getStringExtra(EXTRA_NETWORK_ID) == null) {
             stopSelf()
             return
+        }
+        // "Start" while a session is live restarts it (and "Restart" in the UI is
+        // no longer a silent no-op). stopSession frees transports and cancels the
+        // old scope, so recreate the scope before wiring the new session.
+        if (session != null) {
+            stopSession()
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         }
         startForeground(NOTIFICATION_ID, buildNotification())
 
@@ -193,7 +199,10 @@ class SessionService : Service() {
         s?.let { runBlocking { it.stop() } }
         scope.cancel()
         isRunning = false
-        SessionBus.setSessionRunning(false)
+        // Wipe all session-scoped state: peers, the beacon buffer (lastWireFrame),
+        // diagnostics, radio states, discovery — otherwise the screens keep showing
+        // stale "data" text after the user turns everything off.
+        SessionBus.clear()
     }
 
     private fun clipboard(ctx: Context, envelope: String) {
