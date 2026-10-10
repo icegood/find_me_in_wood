@@ -17,13 +17,19 @@ object Identity {
     private const val ED25519 = "Ed25519"
     private const val EC_FALLBACK = "EC"
 
-    fun generate(): KeyPair = try {
-        KeyPairGenerator.getInstance(ED25519).generateKeyPair()
-    } catch (_: java.security.NoSuchAlgorithmException) {
-        KeyPairGenerator.getInstance(EC_FALLBACK).apply {
-            initialize(ECGenParameterSpec("secp256r1"))
-        }.generateKeyPair()
-    }
+    /**
+     * Some platforms generate Ed25519 keys but cannot sign with them; management frames
+     * must be signed, so such a key is replaced by EC P-256.
+     */
+    fun generate(): KeyPair =
+        runCatching { KeyPairGenerator.getInstance(ED25519).generateKeyPair() }.getOrNull()
+            ?.takeIf { canSign(it) }
+            ?: KeyPairGenerator.getInstance(EC_FALLBACK).apply {
+                initialize(ECGenParameterSpec("secp256r1"))
+            }.generateKeyPair()
+
+    /** true when this platform can produce a signature with [pair]. */
+    fun canSign(pair: KeyPair): Boolean = sign(pair, byteArrayOf(0)) != null
 
     fun memberIdOf(pair: KeyPair): ByteArray =
         MessageDigest.getInstance("SHA-256").digest(pair.public.encoded)

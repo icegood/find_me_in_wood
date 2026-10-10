@@ -24,18 +24,39 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Ensure debug keystore
+      # Same signing key as icegood/home_media_library (CN=find me in wood,
+      # SHA-256 f5ca39b5...). PKCS12, so the key password defaults to the store one.
+      - name: Decode release keystore
+        env:
+          KEYSTORE_JKS_BASE64: ${{ secrets.ANDROID_KEYSTORE_JKS_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.ANDROID_KEYSTORE_KEY_ALIAS }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_KEY_PASSWORD }}
+        shell: bash
         run: |
-          mkdir -p ~/.android
-          if [ ! -f ~/.android/debug.keystore ]; then
-            keytool -genkeypair -keystore ~/.android/debug.keystore \
-              -storepass android -keypass android -alias androiddebugkey \
-              -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 \
-              -validity 10000
-          fi
+          set -euo pipefail
+          : "${KEYSTORE_JKS_BASE64:?ANDROID_KEYSTORE_JKS_BASE64 secret is not set}"
+          : "${KEYSTORE_PASSWORD:?ANDROID_KEYSTORE_PASSWORD secret is not set}"
+          : "${KEYSTORE_KEY_ALIAS:?ANDROID_KEYSTORE_KEY_ALIAS secret is not set}"
+          mkdir -p "$RUNNER_TEMP/keystore"
+          printf '%s' "$KEYSTORE_JKS_BASE64" | base64 -d > "$RUNNER_TEMP/keystore/release.jks"
+          chmod 600 "$RUNNER_TEMP/keystore/release.jks"
+          {
+            printf 'KEYSTORE_FILE=%s\n' "$RUNNER_TEMP/keystore/release.jks"
+            printf 'KEYSTORE_PASSWORD=%s\n' "$KEYSTORE_PASSWORD"
+            printf 'KEYSTORE_KEY_ALIAS=%s\n' "$KEYSTORE_KEY_ALIAS"
+            [ -n "${KEYSTORE_KEY_PASSWORD:-}" ] && printf 'KEYSTORE_KEY_PASSWORD=%s\n' "$KEYSTORE_KEY_PASSWORD"
+            true
+          } >> "$GITHUB_ENV"
 
       - name: Build APKs & bundle
         run: ./gradlew assembleDebug bundleRelease assembleRelease --stacktrace
+
+      - name: Verify release signer
+        run: |
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$apksigner" verify --print-certs app/build/outputs/apk/release/*.apk \
+            | grep -qi 'SHA-256 digest: f5ca39b5fa78523bde89375cd9c3676c9c2ac2b872198369779b473c49df34ad'
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2

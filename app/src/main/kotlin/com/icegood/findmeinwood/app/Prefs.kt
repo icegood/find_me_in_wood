@@ -7,6 +7,7 @@ object Prefs {
     private const val FILE = "prefs"
     private const val KEY_LORA_NODE = "lora_node"
     private const val KEY_CURRENT_UID = "current_uid"
+    private const val KEY_CURRENT_NAME = "current_display_name"
     private const val KEY_INTERVAL_MS = "beacon_interval_ms"
     private const val KEY_SECRET_PREFIX = "secret_"
     private const val KEY_UNVERIFIED_PREFIX = "unverified_"
@@ -109,6 +110,16 @@ object Prefs {
     fun setCurrentUid(ctx: Context, uid: String?) {
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().apply {
             if (uid == null) remove(KEY_CURRENT_UID) else putString(KEY_CURRENT_UID, uid)
+        }.apply()
+    }
+
+    /** Display name of the signed-in user; the session service sends it as the join nick. */
+    fun currentDisplayName(ctx: Context): String? =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_CURRENT_NAME, null)
+
+    fun setCurrentDisplayName(ctx: Context, name: String?) {
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().apply {
+            if (name.isNullOrBlank()) remove(KEY_CURRENT_NAME) else putString(KEY_CURRENT_NAME, name)
         }.apply()
     }
 }

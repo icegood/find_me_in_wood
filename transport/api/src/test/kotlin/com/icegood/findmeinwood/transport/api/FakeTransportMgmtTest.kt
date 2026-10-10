@@ -16,7 +16,7 @@ class FakeTransportMgmtTest {
         val job = launch {
             t.start(SessionConfig(NetworkId(ByteArray(8)), emptySet())).collect { }
         }
-        val mgmt = byteArrayOf(0x46, 0x4D, 2, 1) + ByteArray(60)
+        val mgmt = byteArrayOf(0x46, 0x4D, 3, 1) + ByteArray(60)
         assertTrue(MgmtCodec.isMgmt(mgmt))
         t.deliverWire(mgmt)
         job.cancel()
@@ -24,7 +24,7 @@ class FakeTransportMgmtTest {
 
     @Test
     fun `mgmt frame event carries the raw wire`() {
-        val wire = byteArrayOf(0x46, 0x4D, 2, 1, 9)
+        val wire = byteArrayOf(0x46, 0x4D, 3, 1, 9)
         val ev = TransportEvent.MgmtFrameReceived(wire, TransportId.LORA)
         assertTrue(ev.wire.contentEquals(wire))
         assertEquals(TransportId.LORA, ev.source)

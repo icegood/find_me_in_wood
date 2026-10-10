@@ -27,12 +27,11 @@ import com.icegood.findmeinwood.transport.share.ShareTransport
 import com.icegood.findmeinwood.transport.wifidirect.WifiDirectTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 /**
  * Hosts one active network session (P7/T2.5): foreground notification, transports,
@@ -41,6 +40,9 @@ import kotlinx.coroutines.runBlocking
 class SessionService : Service() {
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var session: SessionManager? = null
+
+    /** Shutdown of the previous session's transports, still running in the background. */
+    private var stopping: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -64,11 +66,10 @@ class SessionService : Service() {
             return
         }
         // "Start" while a session is live restarts it (and "Restart" in the UI is
-        // no longer a silent no-op). stopSession frees transports and cancels the
-        // scope, so recreate it before wiring the new session. This also covers
-        // Stop -> Start on the same service instance, where session is already null.
+        // no longer a silent no-op). stopSession hands the old scope to its background
+        // shutdown and installs a fresh one, which also covers Stop -> Start on the
+        // same service instance, where session is already null.
         if (session != null) stopSession()
-        if (!scope.isActive) scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         startForeground(NOTIFICATION_ID, buildNotification())
 
         val name = intent.getStringExtra(EXTRA_NAME) ?: "network"
@@ -107,7 +108,7 @@ class SessionService : Service() {
         // Automatic handoff (FR-9.2): newest envelope goes to the clipboard every
         // delta, silently — the user pastes it into the messenger, no UI is raised.
         DiscoveryBridge.onRequestJoin = { netId ->
-            val wire = discovery.buildJoinRequest(netId, Prefs.currentUid(this@SessionService))
+            val wire = discovery.buildJoinRequest(netId, Prefs.currentDisplayName(this@SessionService))
             scope.launch { manager.sendMgmt(wire) }
         }
         DiscoveryBridge.onApprove = { joiner ->
@@ -128,7 +129,7 @@ class SessionService : Service() {
         }
         activeDiscovery = discovery
         manager.onMgmtFrame = { wire, source ->
-            runCatching { discovery.onMgmtFrame(MgmtCodec.decode(wire), null) }
+            runCatching { discovery.onMgmtFrame(MgmtCodec.decode(wire)) }
             SessionBus.publishPending(discovery.pendingJoins.value)
             SessionBus.publishDiscovered(discovery.discovered.value)
             val outcome = discovery.outcome.value
@@ -170,7 +171,14 @@ class SessionService : Service() {
         scope.launch {
             manager.diagnostics.collect { SessionBus.publishDiagnostics(it) }
         }
-        manager.start()
+        // On Restart the old transports may still be releasing their radios; starting
+        // the new ones before that finishes would fight over the same GATT server/link.
+        val previous = stopping
+        if (previous == null || previous.isCompleted) {
+            manager.start()
+        } else {
+            scope.launch(Dispatchers.Main) { previous.join(); manager.start() }
+        }
         session = manager
         activeManager = manager
         activeDiscovery = discovery
@@ -188,8 +196,17 @@ class SessionService : Service() {
         DiscoveryBridge.onApprove = null
         DiscoveryBridge.onReject = null
         ShareInbox.sink = null
-        s?.let { runBlocking { it.stop() } }
+        // Cancel the session's collectors now so nothing republishes after the
+        // SessionBus.clear() below, and install a fresh scope for the next Start.
         scope.cancel()
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        // Transport shutdown can block (GATT close, socket teardown): keep it off the
+        // main thread. Shutdowns are chained so a restart never overlaps two of them.
+        val previous = stopping
+        stopping = CoroutineScope(Dispatchers.IO).launch {
+            previous?.join()
+            runCatching { s?.stop() }
+        }
         isRunning = false
         // Wipe all session-scoped state: peers, the beacon buffer (lastWireFrame),
         // diagnostics, radio states, discovery — otherwise the screens keep showing

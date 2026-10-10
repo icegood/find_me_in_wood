@@ -766,6 +766,16 @@ private fun CompassHud(azimuth: Float?, isDarkTheme: Boolean, modifier: Modifier
     }
 }
 
+/** FR-6.4: [PeerList] measured from this device's own live GNSS fix. */
+@Composable
+fun PeerList(
+    peers: StateFlow<Map<MemberId, PeerState>>,
+    modifier: Modifier = Modifier,
+) {
+    val me = rememberDeviceFix(LocalContext.current)?.location
+    PeerList(peers, me, modifier)
+}
+
 /** FR-6.4: mapless alternative — distance and bearing to each peer. */
 @Composable
 fun PeerList(

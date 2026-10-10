@@ -27,7 +27,8 @@ enum class TileProvider(
 ) {
     MAPNIK("Mapnik", "OpenStreetMap (street)", needsApiKey = false, attribution = "© OpenStreetMap contributors"),
     CARTO_DARK("CartoDB-DarkMatter", "CARTO dark (street)", needsApiKey = false, attribution = "© OpenStreetMap contributors © CARTO"),
-    USGS_SAT("USGS_SAT", "USGS satellite imagery", needsApiKey = true, attribution = "USGS The National Map");
+    // The National Map basemaps are public; no token is accepted or required.
+    USGS_SAT("USGS_SAT", "USGS satellite imagery", needsApiKey = false, attribution = "USGS The National Map");
 
     companion object {
         /** Every provider that can appear in Settings (OFFLINE has no online key). */

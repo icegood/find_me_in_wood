@@ -31,9 +31,10 @@ sealed interface JoinOutcome {
 /**
  * FR-8.1–FR-8.6: cleartext HELLO discovery plus the on-radio join handshake.
  *
- * Pure Kotlin. Frames are signed by the sender's device identity and verified
- * trust-on-first-use: the public key is pinned to a member id on first sight, and any
- * later frame from that id with a different key is dropped.
+ * Pure Kotlin. Every frame carries the sender's device public key and is signed with
+ * it; unsigned or badly signed frames are dropped. Keys are pinned to a member id on
+ * first sight (trust-on-first-use), and any later frame from that id under a different
+ * key is dropped. Join replies are only accepted from the owner the request targeted.
  *
  * Key exchange: the joiner sends an ephemeral public key in JOIN_REQ; the owner answers
  * with its own ephemeral public key in JOIN_ACCEPT, so both sides derive the same ECDH
@@ -73,6 +74,8 @@ class DiscoveryManager(
     private var myEphemeral: KeyPair? = null
     /** Network our outstanding JOIN_REQ targets: answers for any other network are ignored. */
     private var requestedNetworkId: NetworkId? = null
+    /** Owner advertised for [requestedNetworkId]; only it may accept or reject the request. */
+    private var requestedOwnerId: MemberId? = null
 
     private class JoinRequest(
         val joinerPub: ByteArray,
@@ -105,6 +108,7 @@ class DiscoveryManager(
     fun buildJoinRequest(peerNetworkId: NetworkId, joinerNick: String?): ByteArray {
         val ephemeral = JoinCrypto.ephemeralKeyPair().also { myEphemeral = it }
         requestedNetworkId = peerNetworkId
+        requestedOwnerId = _discovered.value.firstOrNull { it.networkId == peerNetworkId }?.ownerMemberId
         val payload = JoinRequestPayload(joinerPubkey = ephemeral.public.encoded, joinerNick = joinerNick)
         return send(MgmtType.JOIN_REQ, peerNetworkId, PayloadCodec.encodeJoinRequest(payload))
     }
@@ -152,14 +156,12 @@ class DiscoveryManager(
     // ----------------------------------------------------------------- incoming
 
     @Synchronized
-    fun onMgmtFrame(frame: MgmtFrame, senderKey: java.security.PublicKey?) {
+    fun onMgmtFrame(frame: MgmtFrame) {
         if (frame.senderId.bytes.contentEquals(myId.bytes)) return
-        val pinned = pinnedKeys[frame.senderId]
-        if (pinned != null) {
-            if (!MgmtCodec.verify(frame, pinned)) return // key changed: drop
-        } else if (senderKey != null && MgmtCodec.verify(frame, senderKey)) {
-            pinnedKeys[frame.senderId] = senderKey
-        }
+        // A pinned key wins over whatever the frame claims, so a changed key never verifies.
+        val key = pinnedKeys[frame.senderId] ?: MgmtCodec.senderKeyOf(frame) ?: return
+        if (!MgmtCodec.verify(frame, key)) return // unsigned, forged or key changed: drop
+        pinnedKeys.putIfAbsent(frame.senderId, key)
         when (frame.type) {
             MgmtType.HELLO -> onHello(frame)
             MgmtType.JOIN_REQ -> onJoinRequest(frame)
@@ -202,7 +204,7 @@ class DiscoveryManager(
     private fun onJoinAccept(frame: MgmtFrame) {
         // JOIN_ACCEPT is cleartext: without this anyone in range could push a network of
         // their choosing onto a device that merely asked to join a different one.
-        if (frame.networkId != requestedNetworkId) return
+        if (!isAnswerToMyRequest(frame)) return
         val payload = runCatching { PayloadCodec.decodeJoinAccept(frame.payload) }.getOrNull() ?: return
         var sas = "------"
         val secret: String = payload.secret ?: run {
@@ -217,16 +219,24 @@ class DiscoveryManager(
             plain.decodeToString()
         }
         requestedNetworkId = null
+        requestedOwnerId = null
         myEphemeral = null
         _outcome.value = JoinOutcome.Joined(payload.name, secret, sas)
     }
 
     private fun onJoinReject(frame: MgmtFrame) {
-        if (frame.networkId != requestedNetworkId) return
+        if (!isAnswerToMyRequest(frame)) return
         requestedNetworkId = null
+        requestedOwnerId = null
         myEphemeral = null
         val payload = runCatching { PayloadCodec.decodeJoinReject(frame.payload) }.getOrNull()
         _outcome.value = JoinOutcome.Rejected(payload?.reason ?: "rejected by owner")
+    }
+
+    private fun isAnswerToMyRequest(frame: MgmtFrame): Boolean {
+        if (frame.networkId != requestedNetworkId) return false
+        val owner = requestedOwnerId ?: return true // network was never advertised to us
+        return frame.senderId == owner
     }
 
     @Synchronized

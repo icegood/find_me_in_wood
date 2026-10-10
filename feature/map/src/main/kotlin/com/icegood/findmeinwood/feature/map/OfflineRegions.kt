@@ -70,18 +70,7 @@ object OfflineRegions {
     fun regionSizeBytes(ctx: Context, region: OfflineRegion): Long {
         val dbFile = File(cacheDir(ctx), "cache.db")
         if (!dbFile.exists()) return 0L
-        // CacheManager.getTilesCoverage yields MapTileIndex values, but cache.db is keyed by
-        // SqlTileWriter.getIndex(x, y, z) — different formulas, so convert before querying.
-        val keys = mutableListOf<Long>()
-        for (z in region.zoomMin..region.zoomMax) {
-            for (k in CacheManager.getTilesCoverage(region.boundingBox(), z)) {
-                keys += SqlTileWriter.getIndex(
-                    MapTileIndex.getX(k).toLong(),
-                    MapTileIndex.getY(k).toLong(),
-                    MapTileIndex.getZoom(k).toLong(),
-                )
-            }
-        }
+        val keys = cacheKeys(region).toList()
         if (keys.isEmpty()) return 0L
         return runCatching { queryChunked(dbFile, keys, region.sourceName, "SUM(length(tile))") }
             .getOrDefault(0L)
@@ -113,11 +102,42 @@ object OfflineRegions {
     }
 
     /**
-     * Remove the tiles covered by [region] from the cache and drop its metadata.
+     * cache.db keys of every tile [region] covers. CacheManager.getTilesCoverage yields
+     * MapTileIndex values, but cache.db is keyed by SqlTileWriter.getIndex(x, y, z) —
+     * different formulas, so convert.
+     */
+    internal fun cacheKeys(region: OfflineRegion): Set<Long> = buildSet {
+        for (z in region.zoomMin..region.zoomMax) {
+            for (k in CacheManager.getTilesCoverage(region.boundingBox(), z)) {
+                add(
+                    SqlTileWriter.getIndex(
+                        MapTileIndex.getX(k).toLong(),
+                        MapTileIndex.getY(k).toLong(),
+                        MapTileIndex.getZoom(k).toLong(),
+                    ),
+                )
+            }
+        }
+    }
+
+    /**
+     * Tiles of [region] that no other saved area of the same provider still covers.
+     * Overlapping areas share cache rows, so deleting the whole coverage would punch
+     * holes into the areas the user kept.
+     */
+    internal fun exclusiveKeys(region: OfflineRegion, others: List<OfflineRegion>): Set<Long> {
+        val keep = others
+            .filter { it.id != region.id && it.sourceName == region.sourceName }
+            .flatMapTo(HashSet()) { cacheKeys(it) }
+        return cacheKeys(region) - keep
+    }
+
+    /**
+     * Remove the tiles only [region] uses from the cache and drop its metadata.
      *
-     * The delete runs on a worker thread without osmdroid's own progress dialog (the async variants
-     * block on a native window); [onFinished] is invoked on the main thread once the rows are gone,
-     * so the caller can refresh the statistics only after the cache has actually changed.
+     * The delete runs on a worker thread; [onFinished] is invoked on the main thread once
+     * the rows are gone, so the caller can refresh the statistics only after the cache
+     * has actually changed.
      */
     fun deleteTiles(
         ctx: Context,
@@ -125,19 +145,35 @@ object OfflineRegions {
         onFinished: (Boolean) -> Unit = { },
     ) {
         remove(ctx, region.id)
+        val others = load(ctx)
+        val dbFile = File(cacheDir(ctx), "cache.db")
         Thread {
             val ok = runCatching {
-                val src = tileSourceById(region.sourceName)
-                val cm = CacheManager(src, SqlTileWriter(), region.zoomMin, region.zoomMax)
-                val task = CacheManager.CacheManagerTask(
-                    cm, cm.cleaningAction, region.boundingBox(), region.zoomMin, region.zoomMax,
-                )
-                cm.execute(task)
-                task.get()
+                if (dbFile.exists()) deleteKeys(dbFile, exclusiveKeys(region, others).toList(), region.sourceName)
                 true
             }.getOrDefault(false)
             Handler(Looper.getMainLooper()).post { onFinished(ok) }
         }.apply { isDaemon = true }.start()
+    }
+
+    /** Deletes [provider]'s rows for [keys], chunked like [queryChunked]. */
+    internal fun deleteKeys(dbFile: File, keys: List<Long>, provider: String) {
+        val db = SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READWRITE)
+        try {
+            db.beginTransaction()
+            try {
+                keys.chunked(400).forEach { chunk ->
+                    val placeholders = chunk.joinToString(",") { "?" }
+                    val args: Array<Any> = (listOf<Any>(provider) + chunk.map { it.toString() }).toTypedArray()
+                    db.execSQL("DELETE FROM tiles WHERE provider=? AND key IN ($placeholders)", args)
+                }
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+        } finally {
+            db.close()
+        }
     }
 
     /** Per-provider tile counts and bytes currently held in the osmdroid cache. */

@@ -101,11 +101,13 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     authManager.setCurrentUserId(Prefs.currentUid(this@MainActivity))
                     currentUser = authManager.getCurrentUser()
+                    Prefs.setCurrentDisplayName(this@MainActivity, currentUser?.displayName)
                 }
                 if (currentUser == null) {
                     AuthScreen(
                         onAuthenticated = {
                             Prefs.setCurrentUid(this@MainActivity, it.uid)
+                            Prefs.setCurrentDisplayName(this@MainActivity, it.displayName)
                             currentUser = it
                         },
                         authManager = authManager,
@@ -115,6 +117,7 @@ class MainActivity : ComponentActivity() {
                         user = currentUser!!,
                         onLogout = {
                             Prefs.setCurrentUid(this@MainActivity, null)
+                            Prefs.setCurrentDisplayName(this@MainActivity, null)
                             currentUser = null
                         },
                         themeMode = themeMode,
@@ -230,7 +233,7 @@ class MainActivity : ComponentActivity() {
                             mapTileSource = it
                         },
                     )
-                    tab == "peers" -> com.icegood.findmeinwood.feature.map.PeerList(SessionBus.peers, null)
+                    tab == "peers" -> com.icegood.findmeinwood.feature.map.PeerList(SessionBus.peers)
                     tab == "discover" -> DiscoverScreen(
                         context = this@MainActivity,
                         onJoin = { netId -> DiscoveryBridge.requestJoin(netId) },
@@ -451,45 +454,48 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Tile API keys", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "each provider has its own key; only providers that require one need it",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        providers.forEach { provider ->
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                OutlinedTextField(
-                                    value = keys[provider].orEmpty(),
-                                    onValueChange = { keys = keys + (provider to it) },
-                                    label = { Text(provider.label) },
-                                    placeholder = {
-                                        Text(if (provider.needsApiKey) "API key required" else "not needed")
-                                    },
-                                    supportingText = {
-                                        Text(
-                                            if (provider.needsApiKey) {
-                                                "sent as ?token=… to ${provider.id}"
-                                            } else {
-                                                "no key required for ${provider.id}"
-                                            },
-                                        )
-                                    },
-                                    enabled = provider.needsApiKey,
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                        }
-                        Button(onClick = {
+                // Hidden while no provider takes a key; the plumbing stays for keyed providers.
+                if (providers.any { it.needsApiKey }) {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Tile API keys", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "each provider has its own key; only providers that require one need it",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                             providers.forEach { provider ->
-                                val key = keys[provider].orEmpty().trim()
-                                Prefs.setMapTileApiKey(this@MainActivity, provider.id, key)
-                                onTileApiKey(provider, key)
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    OutlinedTextField(
+                                        value = keys[provider].orEmpty(),
+                                        onValueChange = { keys = keys + (provider to it) },
+                                        label = { Text(provider.label) },
+                                        placeholder = {
+                                            Text(if (provider.needsApiKey) "API key required" else "not needed")
+                                        },
+                                        supportingText = {
+                                            Text(
+                                                if (provider.needsApiKey) {
+                                                    "sent as ?token=… to ${provider.id}"
+                                                } else {
+                                                    "no key required for ${provider.id}"
+                                                },
+                                            )
+                                        },
+                                        enabled = provider.needsApiKey,
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
                             }
-                            uiScope.launch { snackbar.showSnackbar("Tile API keys saved") }
-                        }) { Text("Save tile keys") }
+                            Button(onClick = {
+                                providers.forEach { provider ->
+                                    val key = keys[provider].orEmpty().trim()
+                                    Prefs.setMapTileApiKey(this@MainActivity, provider.id, key)
+                                    onTileApiKey(provider, key)
+                                }
+                                uiScope.launch { snackbar.showSnackbar("Tile API keys saved") }
+                            }) { Text("Save tile keys") }
+                        }
                     }
                 }
                 Card(Modifier.fillMaxWidth()) {

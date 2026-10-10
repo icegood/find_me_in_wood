@@ -28,7 +28,8 @@ object IdentityHolder {
 
     /** Reads the key pair from [file], or generates and stores a new one if it is missing or unreadable. */
     internal fun loadOrCreate(file: File): KeyPair {
-        runCatching { read(file) }.getOrNull()?.let { return it }
+        // A stored key this platform cannot sign with is useless: peers drop unsigned frames.
+        runCatching { read(file) }.getOrNull()?.takeIf { Identity.canSign(it) }?.let { return it }
         val pair = Identity.generate()
         runCatching { write(file, pair) }
         return pair

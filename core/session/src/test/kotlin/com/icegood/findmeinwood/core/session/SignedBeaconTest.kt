@@ -102,7 +102,7 @@ class SignedBeaconTest {
         val m = manager(mePair)
         m.start()
         try {
-            m.sendMgmt(byteArrayOf(0x46, 0x4D, 2, 1))
+            m.sendMgmt(byteArrayOf(0x46, 0x4D, 3, 1))
             delay(100)
             assertTrue(tx.sentHistory.any { it.size == 4 && it[0] == 0x46.toByte() })
         } finally { m.stop() }

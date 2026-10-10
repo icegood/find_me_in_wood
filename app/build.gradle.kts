@@ -23,25 +23,35 @@ android {
             ?: properties["google.webClientId"] as String? ?: ""
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleClientId\"")
     }
+    // Release signing: fmiw.* in ~/.gradle/gradle.properties locally, KEYSTORE_* env in
+    // CI (release.yml decodes the ANDROID_KEYSTORE_* secrets). Without either, release
+    // outputs stay unsigned rather than silently carrying the debug key.
+    val releaseSigning = Properties().apply {
+        val userFile = File(System.getProperty("user.home"), ".gradle/gradle.properties")
+        userFile.takeIf { it.exists() }?.inputStream()?.use { load(it) }
+    }.let { props ->
+        fun pick(prop: String, env: String) = props.getProperty(prop) ?: System.getenv(env)?.ifBlank { null }
+        val storeFile = pick("fmiw.storeFile", "KEYSTORE_FILE")
+        val storePassword = pick("fmiw.storePassword", "KEYSTORE_PASSWORD")
+        if (storeFile == null || storePassword == null) {
+            null
+        } else {
+            mapOf(
+                "storeFile" to storeFile,
+                "storePassword" to storePassword,
+                "keyAlias" to (pick("fmiw.keyAlias", "KEYSTORE_KEY_ALIAS") ?: "fmiw"),
+                // PKCS12 stores (fmiw-release.jks) use the store password for the key.
+                "keyPassword" to (pick("fmiw.keyPassword", "KEYSTORE_KEY_PASSWORD") ?: storePassword),
+            )
+        }
+    }
     signingConfigs {
-        create("release") {
-            val props = Properties().apply {
-                val userFile = File(System.getProperty("user.home"), ".gradle/gradle.properties")
-                userFile.takeIf { it.exists() }?.inputStream()?.use { load(it) }
-            }
-            val configured = props.getProperty("fmiw.storeFile") != null
-            if (configured) {
-                storeFile = file(props.getProperty("fmiw.storeFile"))
-                storePassword = props.getProperty("fmiw.storePassword")
-                keyAlias = props.getProperty("fmiw.keyAlias")
-                keyPassword = props.getProperty("fmiw.keyPassword")
-            } else {
-                // CI fallback: sign release builds with the debug key when no
-                // fmiw.* credentials are available on the machine.
-                storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
+        if (releaseSigning != null) {
+            create("release") {
+                storeFile = file(releaseSigning.getValue("storeFile"))
+                storePassword = releaseSigning.getValue("storePassword")
+                keyAlias = releaseSigning.getValue("keyAlias")
+                keyPassword = releaseSigning.getValue("keyPassword")
             }
         }
     }
@@ -49,7 +59,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.findByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

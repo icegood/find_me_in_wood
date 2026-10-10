@@ -32,24 +32,15 @@ class TileProviderTest {
     }
 
     @Test
-    fun `a key is only ever appended to the provider that needs one`() {
+    fun `a stored key never reaches a keyless provider`() {
         // The bug this guards: a single "OSM" key used to be appended to both Mapnik and
-        // CartoDB, breaking both. Keys must never leak between providers.
-        assertEquals(
-            "?token=SECRET",
-            buildTileSource(TileProvider.USGS_SAT, "SECRET").imageFilenameEnding(),
-            "satellite should carry its key",
-        )
-        assertEquals(
-            ".png",
-            buildTileSource(TileProvider.MAPNIK, "SECRET").imageFilenameEnding(),
-            "mapnik must never receive a key",
-        )
-        assertEquals(
-            ".png",
-            buildTileSource(TileProvider.CARTO_DARK, "SECRET").imageFilenameEnding(),
-            "carto must never receive a key",
-        )
+        // CartoDB, breaking both. USGS is public too, so none of the current providers
+        // may carry a token.
+        TileProvider.entries.forEach { p ->
+            assertFalse(p.needsApiKey, "${p.id} is a public service")
+            assertFalse(buildTileSource(p, "SECRET").imageFilenameEnding().contains("token"), p.id)
+        }
+        assertEquals("", buildTileSource(TileProvider.USGS_SAT, "SECRET").imageFilenameEnding())
     }
 
     @Test
@@ -57,7 +48,7 @@ class TileProviderTest {
         val noKey = TileProvider.entries.filter { !it.needsApiKey }
         assertTrue(noKey.isNotEmpty(), "some providers should need no key")
         noKey.forEach { p ->
-            assertEquals(".png", buildTileSource(p, "SECRET").imageFilenameEnding(), "${p.id} must ignore keys")
+            assertFalse(buildTileSource(p, "SECRET").imageFilenameEnding().contains("SECRET"), "${p.id} must ignore keys")
         }
     }
 
@@ -88,15 +79,11 @@ class TileProviderTest {
     }
 
     @Test
-    fun `generated tile url carries the token only for the keyed provider`() {
-        val sat = buildTileSource(TileProvider.USGS_SAT, "SECRET").getTileURLString(0L)
-        assertTrue(sat.contains("token=SECRET"), "satellite url should carry the key: $sat")
-
-        val mapnik = buildTileSource(TileProvider.MAPNIK, "SECRET").getTileURLString(0L)
-        assertFalse(mapnik.contains("token"), "mapnik url must not carry a key: $mapnik")
-
-        val carto = buildTileSource(TileProvider.CARTO_DARK, "SECRET").getTileURLString(0L)
-        assertFalse(carto.contains("token"), "carto url must not carry a key: $carto")
+    fun `generated tile urls never carry a stored key`() {
+        TileProvider.entries.forEach { p ->
+            val url = buildTileSource(p, "SECRET").getTileURLString(0L)
+            assertFalse(url.contains("token"), "${p.id} url must not carry a key: $url")
+        }
     }
 
     @Test

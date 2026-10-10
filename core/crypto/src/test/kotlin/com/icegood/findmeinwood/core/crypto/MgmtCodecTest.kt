@@ -57,4 +57,28 @@ class MgmtCodecTest {
         val bytes = frame(MgmtType.HELLO)
         assertFalse(runCatching { MgmtCodec.decode(bytes.copyOfRange(0, 20)) }.isSuccess)
     }
+
+    @Test
+    fun `frame carries the signer key`() {
+        val f = MgmtCodec.decode(frame(MgmtType.HELLO))
+        assertTrue(f.senderKey.contentEquals(pair.public.encoded))
+        assertEquals(pair.public.encoded.toList(), MgmtCodec.senderKeyOf(f)!!.encoded.toList())
+    }
+
+    @Test
+    fun `unsigned or rekeyed frames never verify`() {
+        val f = MgmtCodec.decode(frame(MgmtType.JOIN_REJECT))
+        assertFalse(MgmtCodec.verify(f.copy(signature = ByteArray(0)), pair.public))
+        // The signature covers the carried key, so swapping it in is detected.
+        val other = Identity.generate()
+        assertFalse(MgmtCodec.verify(f.copy(senderKey = other.public.encoded), other.public))
+        assertFalse(MgmtCodec.verify(f.copy(senderKey = other.public.encoded), pair.public))
+    }
+
+    @Test
+    fun `version 2 frames are no longer management frames`() {
+        val v2 = frame(MgmtType.HELLO).also { it[2] = 2 }
+        assertFalse(MgmtCodec.isMgmt(v2))
+        assertFalse(runCatching { MgmtCodec.decode(v2) }.isSuccess)
+    }
 }
