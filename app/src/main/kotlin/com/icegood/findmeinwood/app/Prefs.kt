@@ -2,6 +2,7 @@ package com.icegood.findmeinwood.app
 
 import android.content.Context
 import com.icegood.findmeinwood.core.model.ThemeMode
+import java.util.Base64
 
 object Prefs {
     private const val FILE = "prefs"
@@ -42,14 +43,24 @@ object Prefs {
     /**
      * FR-8.3: the owner needs the network secret to seal it for approved joiners. Kept in
      * app-private storage so a fresh session can answer join requests without the user
-     * re-entering the code.
+     * re-entering the code, sealed by [SecureStorage.box] (Android Keystore). A plain value
+     * from an older build is returned once and rewritten sealed.
      */
-    fun secretFor(ctx: Context, networkIdHex: String): String? =
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_SECRET_PREFIX + networkIdHex, null)
+    fun secretFor(ctx: Context, networkIdHex: String): String? {
+        val stored = ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getString(KEY_SECRET_PREFIX + networkIdHex, null) ?: return null
+        val raw = runCatching { Base64.getDecoder().decode(stored) }.getOrNull()
+        if (raw != null && SecretBox.isSealed(raw)) {
+            return runCatching { SecureStorage.box.open(raw).decodeToString() }.getOrNull()
+        }
+        setSecretFor(ctx, networkIdHex, stored)
+        return stored
+    }
 
     fun setSecretFor(ctx: Context, networkIdHex: String, secret: String?) {
+        val sealed = secret?.let { Base64.getEncoder().encodeToString(SecureStorage.box.seal(it.toByteArray())) }
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().apply {
-            if (secret == null) remove(KEY_SECRET_PREFIX + networkIdHex) else putString(KEY_SECRET_PREFIX + networkIdHex, secret)
+            if (sealed == null) remove(KEY_SECRET_PREFIX + networkIdHex) else putString(KEY_SECRET_PREFIX + networkIdHex, sealed)
         }.apply()
     }
 

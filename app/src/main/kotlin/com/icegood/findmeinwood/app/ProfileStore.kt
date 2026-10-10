@@ -33,7 +33,11 @@ sealed interface JoinResult {
     data class Error(val message: String) : JoinResult
 }
 
-/** JSON-file persistence (v0.1; T3.5 Room migration tracked in tasks). */
+/**
+ * JSON-file persistence (v0.1; T3.5 Room migration tracked in tasks). The file holds every
+ * network's traffic key, so it is sealed by [SecureStorage.box] (Android Keystore); a plain
+ * file from an older build is read once and rewritten sealed.
+ */
 object ProfileStore {
     private val json = Json { prettyPrint = true }
     private fun file(ctx: Context) = dir(ctx).resolve("profiles.json")
@@ -41,17 +45,18 @@ object ProfileStore {
 
     // Dir-based core ops (pure JVM-testable); ctx overloads are thin delegates.
     internal fun load(dir: File): List<StoredProfile> = try {
-        json.decodeFromString(
-            ListSerializer(StoredProfile.serializer()), dir.resolve("profiles.json").readText(),
-        )
+        val raw = dir.resolve("profiles.json").readBytes()
+        val sealed = SecretBox.isSealed(raw)
+        val text = (if (sealed) SecureStorage.box.open(raw) else raw).decodeToString()
+        json.decodeFromString(ListSerializer(StoredProfile.serializer()), text)
+            .also { if (!sealed) save(dir, it) }
     } catch (_: Exception) {
         emptyList()
     }
 
     internal fun save(dir: File, profiles: List<StoredProfile>) {
-        dir.resolve("profiles.json").writeText(
-            json.encodeToString(ListSerializer(StoredProfile.serializer()), profiles),
-        )
+        val text = json.encodeToString(ListSerializer(StoredProfile.serializer()), profiles)
+        dir.resolve("profiles.json").writeBytes(SecureStorage.box.seal(text.toByteArray()))
     }
 
     internal fun add(dir: File, p: StoredProfile) =

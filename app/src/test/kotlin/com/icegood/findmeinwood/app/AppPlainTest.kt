@@ -95,6 +95,8 @@ class SessionBusTest {
 }
 
 class ProfileStoreDirTest {
+    init { SecureStorage.box = TestBox }
+
     private fun dir() = Files.createTempDirectory("fmiw").toFile()
 
     /** Border mock: only filesDir is answered; nothing platform-specific executes. */
@@ -206,6 +208,39 @@ class ProfileStoreDirTest {
         assertEquals(32, p.trafficKey.size)
         assertEquals(JoinPolicy.CODE, p.policy)
     }
+
+    @Test
+    fun `profiles are sealed on disk`() {
+        val d = dir()
+        ProfileStore.add(d, stored())
+        val raw = d.resolve("profiles.json").readBytes()
+        assertTrue(SecretBox.isSealed(raw))
+        assertTrue(!raw.decodeToString().contains(stored().trafficKeyHex), "traffic key must not be readable")
+    }
+
+    @Test
+    fun `plain profiles from an older build are migrated`() {
+        val d = dir()
+        val plain = kotlinx.serialization.json.Json.encodeToString(
+            kotlinx.serialization.builtins.ListSerializer(StoredProfile.serializer()), listOf(stored()),
+        )
+        d.resolve("profiles.json").writeText(plain)
+        assertEquals(listOf(stored()), ProfileStore.load(d))
+        assertTrue(SecretBox.isSealed(d.resolve("profiles.json").readBytes()))
+        assertEquals(listOf(stored()), ProfileStore.load(d))
+    }
+
+    @Test
+    fun `profiles sealed under another key read as empty`() {
+        val d = dir()
+        ProfileStore.add(d, stored())
+        SecureStorage.box = TestBox.other()
+        try {
+            assertEquals(0, ProfileStore.load(d).size)
+        } finally {
+            SecureStorage.box = TestBox
+        }
+    }
 }
 
 class JoinCodeSeparatorTest {
@@ -219,6 +254,8 @@ class JoinCodeSeparatorTest {
 }
 
 class IdentityHolderTest {
+    init { SecureStorage.box = TestBox }
+
     @Test
     fun `identity survives a restart`() {
         val file = Files.createTempDirectory("id").toFile().resolve("device_identity.key")
@@ -258,5 +295,59 @@ class IdTokenClaimTest {
     @Test
     fun `malformed token returns null`() {
         assertNull(idTokenClaim("not-a-jwt", "sub"))
+    }
+}
+
+/** Software stand-in for [KeystoreBox]: same sealed format, key held in memory. */
+internal object TestBox : SecretBox() {
+    private val k = newKey()
+    override fun key(): javax.crypto.SecretKey = k
+
+    /** A box with a different key, like a restore onto another device. */
+    fun other(): SecretBox = object : SecretBox() {
+        private val k = newKey()
+        override fun key(): javax.crypto.SecretKey = k
+    }
+
+    private fun newKey() = javax.crypto.KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
+}
+
+class SecretBoxTest {
+    @Test
+    fun `seal and open round trip with a fresh iv each time`() {
+        val a = TestBox.seal("secret".toByteArray())
+        val b = TestBox.seal("secret".toByteArray())
+        assertTrue(SecretBox.isSealed(a))
+        assertTrue(!a.contentEquals(b))
+        assertEquals("secret", TestBox.open(a).decodeToString())
+    }
+
+    @Test
+    fun `tampering or another key fails to open`() {
+        val sealed = TestBox.seal("secret".toByteArray())
+        val tampered = sealed.copyOf().also { it[it.size - 1] = (it[it.size - 1] + 1).toByte() }
+        assertTrue(runCatching { TestBox.open(tampered) }.isFailure)
+        assertTrue(runCatching { TestBox.other().open(sealed) }.isFailure)
+        assertTrue(!SecretBox.isSealed("{\"plain\":true}".toByteArray()))
+    }
+}
+
+class IdentityHolderSealingTest {
+    init { SecureStorage.box = TestBox }
+
+    @Test
+    fun `identity file is sealed and a plain one is migrated`() {
+        val file = Files.createTempDirectory("id").toFile().resolve("device_identity.key")
+        val pair = IdentityHolder.loadOrCreate(file)
+        assertTrue(SecretBox.isSealed(file.readBytes()))
+
+        val enc = java.util.Base64.getEncoder()
+        file.writeText(
+            listOf(pair.private.algorithm, enc.encodeToString(pair.private.encoded), enc.encodeToString(pair.public.encoded))
+                .joinToString("\n"),
+        )
+        val migrated = IdentityHolder.loadOrCreate(file)
+        assertTrue(migrated.public.encoded.contentEquals(pair.public.encoded), "legacy key must be kept")
+        assertTrue(SecretBox.isSealed(file.readBytes()))
     }
 }
