@@ -37,7 +37,8 @@ fun ChatListScreen(
     chatRepo: ChatRepository,
     onSelectChannel: (String) -> Unit,
 ) {
-    val channels by chatRepo.observeChannelIds().collectAsState(initial = emptyList())
+    val channelsFlow = remember(chatRepo) { chatRepo.observeChannelIds() }
+    val channels by channelsFlow.collectAsState(initial = emptyList())
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Chats") }) },
@@ -110,7 +111,9 @@ fun ChatScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var inputText by remember { mutableStateOf("") }
-    val messages = chatRepo.observeMessages(channelId).collectAsState(initial = emptyList())
+    // remember: a fresh Flow on every recomposition restarts collection (and the DB query).
+    val messagesFlow = remember(chatRepo, channelId) { chatRepo.observeMessages(channelId) }
+    val messages = messagesFlow.collectAsState(initial = emptyList())
     val listState = rememberLazyListState()
 
     val photoLauncher = rememberLauncherForActivityResult(
@@ -122,7 +125,7 @@ fun ChatScreen(
             val fileName = "chat_${System.currentTimeMillis()}.jpg"
             val file = File(context.filesDir, "chat_photos").apply { mkdirs() }
                 .resolve(fileName)
-            file.outputStream().use { out -> inputStream.copyTo(out) }
+            inputStream.use { input -> file.outputStream().use { out -> input.copyTo(out) } }
             scope.launch {
                 chatRepo.sendPhoto("file://${file.absolutePath}", channelId)
             }

@@ -44,6 +44,7 @@ class ShareTransport(private val context: Context) : Transport {
         val envelope = encodeEnvelope(wireFrame)
         return runCatching {
             beaconFile(context, System.currentTimeMillis()).writeText(envelope)
+            pruneBeacons(context)
             SendResult.HandedToUser
         }.getOrDefault(SendResult.Failed("cannot buffer envelope"))
     }
@@ -52,6 +53,7 @@ class ShareTransport(private val context: Context) : Transport {
     fun shareBeacon(wireFrame: ByteArray): SendResult {
         val envelope = encodeEnvelope(wireFrame)
         val file = beaconFile(context, System.currentTimeMillis()).apply { writeText(envelope) }
+        pruneBeacons(context)
         val uri = runCatching {
             FileProvider.getUriForFile(context, context.packageName + BEACON_AUTHORITY_SUFFIX, file)
         }.getOrNull()
@@ -90,8 +92,23 @@ class ShareTransport(private val context: Context) : Transport {
     }
 
     companion object {
-        fun beaconDir(context: Context): File =
-            File(context.filesDir, "beacons").apply { mkdirs() }
+        /** Only the newest envelopes matter; older ones are superseded positions. */
+        const val MAX_BEACON_FILES = 10
+
+        fun beaconDir(context: Context): File {
+            // Never fall back to a relative path (the process cwd) when there is no files dir.
+            val base = context.filesDir ?: error("no files dir")
+            return File(base, "beacons").apply { mkdirs() }
+        }
+
+        /**
+         * [send] runs every beacon interval (down to 5 s): without pruning the directory
+         * grows by thousands of files a day. Names embed a sortable timestamp.
+         */
+        fun pruneBeacons(context: Context, keep: Int = MAX_BEACON_FILES) {
+            val files = beaconDir(context).listFiles { f -> f.isFile && f.name.endsWith(".fmiw1") } ?: return
+            files.sortedByDescending { it.name }.drop(keep).forEach { it.delete() }
+        }
 
         /** Human-meaningful name: what it is, which session, when. */
         fun beaconFileName(epochMs: Long): String {

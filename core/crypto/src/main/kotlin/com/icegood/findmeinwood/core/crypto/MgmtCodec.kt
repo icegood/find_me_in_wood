@@ -53,7 +53,9 @@ object MgmtCodec {
         require(magic == FrameCodec.MAGIC) { "bad magic" }; o += 2
         val ver = bytes[o++].toInt() and 0xFF
         require(ver == MGMT_VERSION) { "not a management frame ($ver)" }
-        val type = MgmtType.entries[(bytes[o++].toInt() and 0xFF) - 1]
+        val typeCode = bytes[o++].toInt() and 0xFF
+        require(typeCode in 1..MgmtType.entries.size) { "unknown mgmt type $typeCode" }
+        val type = MgmtType.entries[typeCode - 1]
         val netId = bytes.copyOfRange(o, o + 8); o += 8
         val senderId = bytes.copyOfRange(o, o + 32); o += 32
         val nonce = FrameCodec.readU64(bytes, o); o += 8

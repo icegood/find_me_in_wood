@@ -120,6 +120,11 @@ class BluetoothGattFlowTest {
         }
         assertEquals(5u, got.frame.seq)
 
+        // A malformed frame from an unpaired device is dropped, never thrown from the callback.
+        FrameFramer.frameToChunks(ByteArray(80) { 0x55 }, 20).forEachIndexed { i, chunk ->
+            serverCb.onCharacteristicWriteRequest(device, 100 + i, writeChar, false, true, 0, chunk)
+        }
+
         // send(): fans out to connected server clients via notifications
         val sent = t.send(wire0)
         assertTrue(sent is SendResult.Sent || sent.toString().contains("Sent"), "was $sent")

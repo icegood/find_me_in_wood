@@ -115,6 +115,16 @@ internal fun distanceBearing(from: Location, toLatE7: Int, toLonE7: Int): Pair<D
     return results[0].toDouble() to bearing
 }
 
+/**
+ * Exponential smoothing of a compass heading along the shortest arc, so 350° and 10°
+ * blend to ~0° rather than ~180°.
+ */
+internal fun blendHeading(prev: Float?, bearing: Float, weight: Float = 0.4f): Float {
+    if (prev == null) return (bearing + 360f) % 360f
+    val diff = ((bearing - prev + 540f) % 360f) - 180f
+    return (prev + weight * diff + 360f) % 360f
+}
+
 private fun compass(bearing: Double): String {
     val dirs = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
     return dirs[((bearing + 22.5) / 45).toInt() % 8]
@@ -190,6 +200,7 @@ private fun OfflineAreaDialog(
 }
 
 private const val MIN_ZOOM = 8
+private const val INITIAL_ZOOM = 15.0
 private const val PROVIDER_MAX_ZOOM = 19
 
 @Composable
@@ -231,7 +242,7 @@ fun MapScreen(
     var downloadUi by remember { mutableStateOf<DownloadUi?>(null) }
     val activeCacheManager = remember { mutableStateOf<CacheManager?>(null) }
     // Current map zoom, so the offline-area dialog can default to the level actually in view.
-    var mapZoom by remember { mutableIntStateOf(17) }
+    var mapZoom by remember { mutableIntStateOf(INITIAL_ZOOM.toInt()) }
 
     fun exitSelection() {
         selecting = false
@@ -248,7 +259,9 @@ fun MapScreen(
     val peer = follow?.let { ps[it] }
 
     Box(modifier.fillMaxSize()) {
-        key(provider, tileApiKey) {
+        // tileSource is part of the key: OSM -> OFFLINE keeps the same provider, and without
+        // it the online view (with data connection) was reused in OFFLINE mode.
+        key(tileSource, provider, tileApiKey) {
             val mapView = remember { createMapView(context, tileSource, isDarkTheme, provider, tileApiKey) }
 
             DisposableEffect(mapView) {
@@ -638,27 +651,24 @@ fun startOfflineDownload(
                             onProgress(ui, cm)
                         }
                     }
-                    override fun onTaskComplete() {
-                        post {
-                            val size = OfflineRegions.regionSizeBytes(context, region)
-                            OfflineRegions.add(context, region.copy(sizeBytes = size))
-                            val final = ui.copy(done = ui.total, finished = true)
-                            onDone(final)
-                        }
-                    }
+                    override fun onTaskComplete() = saveRegion { ui.copy(done = ui.total, finished = true) }
                     // osmdroid passes the number of failed tile downloads, not an error code.
-                    override fun onTaskFailed(errors: Int) {
-                        post {
+                    override fun onTaskFailed(errors: Int) = saveRegion {
+                        ui.copy(
+                            title = "Download finished with $errors error(s)",
+                            done = ui.total,
+                            errors = errors,
+                            finished = true,
+                        )
+                    }
+
+                    // Sizing walks every tile key and queries cache.db: keep it off the main thread.
+                    private fun saveRegion(final: () -> DownloadUi) {
+                        Thread {
                             val size = OfflineRegions.regionSizeBytes(context, region)
                             OfflineRegions.add(context, region.copy(sizeBytes = size))
-                            val final = ui.copy(
-                                title = "Download finished with $errors error(s)",
-                                done = ui.total,
-                                errors = errors,
-                                finished = true,
-                            )
-                            onDone(final)
-                        }
+                            post { onDone(final()) }
+                        }.apply { isDaemon = true }.start()
                     }
                 },
             )
@@ -836,7 +846,7 @@ private fun createMapView(
         setBackgroundColor(if (isDarkTheme) 0xFF1A1A1A.toInt() else android.graphics.Color.WHITE)
         setMultiTouchControls(true)
         setBuiltInZoomControls(false)
-        controller.setZoom(15.0)
+        controller.setZoom(INITIAL_ZOOM)
         // Bottom-left scale bar (theme-aware colors).
         val barText = if (isDarkTheme) 0xFFDDDDDD.toInt() else 0xFF222222.toInt()
         overlays.add(
@@ -882,7 +892,7 @@ private fun rememberDeviceFix(context: Context): DeviceFix? {
                     val dt = loc.time - prev.time
                     if (moved >= 3f && dt in 300L..30_000L) {
                         val brg = (results[1] + 360) % 360
-                        heading = if (heading == null) brg else (heading!! * 0.6f + brg * 0.4f + 540f) % 360f
+                        heading = blendHeading(heading, brg)
                     }
                 }
                 location = loc

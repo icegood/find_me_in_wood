@@ -79,7 +79,10 @@ object ProfileStore {
         if (name.length !in 1..64) {
             return CreateResult.Error("Name must be 1–64 characters")
         }
+        // '#' separates the join code fields (name#secret#vtag): it would make the code unjoinable.
+        if ('#' in name) return CreateResult.Error("Name must not contain '#'")
         val supplied = passphrase?.takeIf { it.isNotEmpty() }
+        if (supplied != null && '#' in supplied) return CreateResult.Error("Passphrase must not contain '#'")
         // FR-2.3: user passphrases must be strong; generated ones are >=128-bit.
         if (supplied != null && !strongEnough(supplied)) {
             return CreateResult.Error("Passphrase too weak: use 16+ characters or 6+ words")

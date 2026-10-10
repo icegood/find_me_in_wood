@@ -72,4 +72,11 @@ class ReplayWindowTest {
         assertFalse(window.accept(ByteArray(32) { 2 }, 1u, now - 11 * 60 * 1000))
         assertTrue(window.accept(ByteArray(32) { 2 }, 1u, now - 5 * 60 * 1000))
     }
+
+    @Test
+    fun `replay is detected for a fresh copy of the sender id`() {
+        // Decoded frames carry a new ByteArray each time: identity hashing would miss this.
+        assertTrue(window.accept(ByteArray(32) { 9 }, 7u, now))
+        assertFalse(window.accept(ByteArray(32) { 9 }, 7u, now))
+    }
 }

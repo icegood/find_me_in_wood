@@ -114,6 +114,54 @@ class SessionManagerBranchTest {
     }
 
     @Test
+    fun `forged frame cannot lock out the real sender`(): Unit = runBlocking {
+        val m = manager()
+        m.start()
+        try {
+            // Wrong key, max seq: must fail auth without poisoning the replay window.
+            t.deliver(frame(seq = UInt.MAX_VALUE, payload = validBeacon(), tamperCt = true))
+            t.deliver(frame(seq = 10u, payload = validBeacon()))
+            delay(100)
+            assertEquals(1, m.diagnostics.value.authFailed)
+            assertEquals(1, m.diagnostics.value.received)
+        } finally { m.stop() }
+    }
+
+    @Test
+    fun `replayed frame is dropped`(): Unit = runBlocking {
+        val m = manager()
+        m.start()
+        try {
+            val f = frame(seq = 11u, payload = validBeacon())
+            t.deliver(f)
+            t.deliver(f.copy(senderId = MemberId(other.bytes.copyOf())))
+            delay(100)
+            assertEquals(1, m.diagnostics.value.received)
+            assertEquals(1, m.diagnostics.value.dropped)
+        } finally { m.stop() }
+    }
+
+    @Test
+    fun `chat frames are relayed like beacons`(): Unit = runBlocking {
+        val extra = FakeTransport(TransportId.WIFI_DIRECT)
+        val m = manager(transports = listOf(t, extra))
+        extra.start(com.icegood.findmeinwood.transport.api.SessionConfig(profile.networkId, emptySet()))
+        m.start()
+        try {
+            val chat = com.icegood.findmeinwood.core.model.ChatPayloadCodec.encode(
+                com.icegood.findmeinwood.core.model.ChatPayload(
+                    id = "c1", senderName = "bob", text = "hi", timestamp = now,
+                ),
+            )
+            t.deliver(frame(seq = 12u, payload = chat))
+            delay(100)
+            assertEquals(1, m.diagnostics.value.received)
+            assertEquals(1, m.diagnostics.value.relayed)
+            assertTrue(extra.sentHistory.map { FrameCodec.decode(it) }.any { it.senderId == other })
+        } finally { m.stop() }
+    }
+
+    @Test
     fun `relay disabled keeps frames local`() = runBlocking {
         val extra = FakeTransport(TransportId.BLUETOOTH)
         val m = manager(transports = listOf(t, extra), relayEnabled = false)

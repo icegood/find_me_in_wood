@@ -82,7 +82,7 @@ class OfflineSelectionTest {
     @Test
     fun `total is capped so a huge request cannot be silently accepted`() {
         val wide = BoundingBox(85.0, 179.9, -85.0, -179.9)
-        assertEquals(MAX_TILES_PER_AREA, estimateTiles(wide, 0, 19))
+        assertTrue(estimateTiles(wide, 0, 19) > MAX_TILES_PER_AREA)
     }
 
     @Test
@@ -107,7 +107,9 @@ class OfflineSelectionTest {
         val r = clampZoomRange(
             providerMaxZoom = 19, currentZoom = 19, requestedMin = 8, requestedMax = 19, bbox = wide,
         )
-        assertTrue(estimateTiles(wide, r.first, r.last) <= MAX_TILES_PER_AREA, "got $r")
+        val exact = (r.first..r.last).sumOf { estimateTilesAtZoom(wide, it) }
+        assertTrue(exact <= MAX_TILES_PER_AREA, "got $r with $exact tiles")
+        assertTrue(r.last < 19, "deep levels must be dropped, got $r")
     }
 
     @Test
@@ -119,7 +121,8 @@ class OfflineSelectionTest {
 
     @Test
     fun `estimate label mentions a reduction when capped`() {
-        assertTrue(estimateLabel(MAX_TILES_PER_AREA).contains("reduced"), estimateLabel(MAX_TILES_PER_AREA))
+        assertTrue(estimateLabel(MAX_TILES_PER_AREA + 1).contains("reduced"), estimateLabel(MAX_TILES_PER_AREA + 1))
+        assertTrue(!estimateLabel(MAX_TILES_PER_AREA).contains("reduced"), estimateLabel(MAX_TILES_PER_AREA))
         assertTrue(estimateLabel(500L).contains("MB"), estimateLabel(500L))
     }
 
@@ -132,5 +135,17 @@ class OfflineSelectionTest {
 
     private companion object {
         const val MIN_ZOOM_FLOOR = 8
+    }
+
+    @Test
+    fun `region names containing the separator still roundtrip`() {
+        val r = OfflineRegion(
+            id = "id1", name = "camp | lake", latNorth = 1.0, lonEast = 2.0, latSouth = 0.5,
+            lonWest = 1.5, zoomMin = 8, zoomMax = 12, tileCount = 3, sizeBytes = 4L,
+            createdAt = 5L, sourceName = "Mapnik",
+        )
+        val back = OfflineRegions.decode(OfflineRegions.encode(r))
+        assertEquals("Mapnik", back.sourceName)
+        assertEquals("camp / lake", back.name)
     }
 }

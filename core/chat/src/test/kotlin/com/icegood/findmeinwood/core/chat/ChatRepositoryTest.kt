@@ -121,6 +121,20 @@ class ChatRepositoryTest {
         assertTrue(!messages[0].isOwn)
     }
 
+    @Test
+    fun `remote photoRef without image bytes is not trusted`() = runTest {
+        val payload = com.icegood.findmeinwood.core.model.ChatPayload(
+            id = "remote-2",
+            senderName = "Mallory",
+            text = "look",
+            photoRef = "file:///data/data/com.icegood.findmeinwoods/shared_prefs/prefs.xml",
+            timestamp = 1000L,
+        )
+        repo.handleIncomingChatPayload(payload, testMemberId)
+        val messages = waitForMessages(repo.groupChannelId, 1)
+        assertEquals(null, messages[0].photoRef)
+    }
+
     /** Store happens on the repository scope: wait for it instead of sleeping. */
     private suspend fun waitForMessages(channelId: String, expected: Int): List<ChatMessage> {
         var out: List<ChatMessage> = emptyList()

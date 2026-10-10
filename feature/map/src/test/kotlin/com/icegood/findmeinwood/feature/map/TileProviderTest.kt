@@ -36,7 +36,7 @@ class TileProviderTest {
         // The bug this guards: a single "OSM" key used to be appended to both Mapnik and
         // CartoDB, breaking both. Keys must never leak between providers.
         assertEquals(
-            ".png?token=SECRET",
+            "?token=SECRET",
             buildTileSource(TileProvider.USGS_SAT, "SECRET").imageFilenameEnding(),
             "satellite should carry its key",
         )
@@ -64,8 +64,17 @@ class TileProviderTest {
     @Test
     fun `blank key produces no token query`() {
         TileProvider.entries.forEach { p ->
-            assertEquals(".png", buildTileSource(p, "   ").imageFilenameEnding(), "${p.id} with blank key")
+            assertFalse(buildTileSource(p, "   ").imageFilenameEnding().contains("token"), "${p.id} with blank key")
         }
+    }
+
+    @Test
+    fun `usgs tiles use arcgis z-y-x addressing`() {
+        val index = org.osmdroid.util.MapTileIndex.getTileIndex(5, 17, 11)
+        val url = buildTileSource(TileProvider.USGS_SAT, "").getTileURLString(index)
+        assertTrue(url.endsWith("/MapServer/tile/5/11/17"), url)
+        val osm = buildTileSource(TileProvider.MAPNIK, "").getTileURLString(index)
+        assertTrue(osm.endsWith("/5/17/11.png"), osm)
     }
 
     @Test

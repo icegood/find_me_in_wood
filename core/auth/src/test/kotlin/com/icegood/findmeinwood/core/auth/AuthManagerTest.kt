@@ -113,10 +113,19 @@ class AuthManagerTest {
     fun `password is stored as hash not plaintext`() = runTest {
         val hash1 = SQLiteAuthStore.hashPassword("password123")
         val hash2 = SQLiteAuthStore.hashPassword("password123")
-        val hash3 = SQLiteAuthStore.hashPassword("different")
-        assertEquals(hash1, hash2)
-        assertTrue(hash1 != hash3)
+        // salted: equal passwords must not produce equal hashes
+        assertTrue(hash1 != hash2)
+        assertTrue(SQLiteAuthStore.matches("password123", hash1))
+        assertTrue(SQLiteAuthStore.matches("password123", hash2))
+        assertTrue(!SQLiteAuthStore.matches("different", hash1))
         assertTrue(!hash1.contains("password"))
+    }
+
+    @Test
+    fun `legacy sha256 hashes still verify`() = runTest {
+        val legacy = SQLiteAuthStore.legacyHash("password123")
+        assertTrue(SQLiteAuthStore.matches("password123", legacy))
+        assertTrue(!SQLiteAuthStore.matches("password124", legacy))
     }
 
     @Test

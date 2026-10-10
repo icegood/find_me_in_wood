@@ -78,7 +78,8 @@ class BluetoothTransport internal constructor(
     private val serverMtu = ConcurrentHashMap<String, Int>()
     private val serverDevices = ConcurrentHashMap.newKeySet<BluetoothDevice>()
     private val serverFramers = ConcurrentHashMap<String, FrameFramer.Reassembler>()
-    private val clientFramer = FrameFramer.Reassembler()
+    /** One reassembler per central link: chunks from different peers must never mix. */
+    private val clientFramers = ConcurrentHashMap<String, FrameFramer.Reassembler>()
 
     /** One outgoing chunk queue per peer link (a mesh has several links at once). */
     private val clientQueues = ConcurrentHashMap<String, ArrayDeque<ByteArray>>()
@@ -121,7 +122,7 @@ class BluetoothTransport internal constructor(
         gattServer = null
         synchronized(lock) { clientQueues.clear(); clientWriting.clear() }
         serverFramers.clear(); serverDevices.clear(); serverMtu.clear()
-        clientFramer.reset()
+        clientFramers.clear()
         emit(RadioState.STOPPED)
     }
 
@@ -158,6 +159,7 @@ class BluetoothTransport internal constructor(
         // Reclaims the slot if a peer connects but never finishes discovery/subscription.
         scheduleDelayed(CONNECT_TIMEOUT_MS) {
             if (!clientReady.contains(address)) {
+                synchronized(lock) { clientWriting.remove(address); clientQueues.remove(address) }
                 clients.remove(address)?.let { g ->
                     try { g.disconnect() } catch (_: Exception) {}
                     try { g.close() } catch (_: Exception) {}
@@ -178,7 +180,7 @@ class BluetoothTransport internal constructor(
                 try { g.disconnect() } catch (_: Exception) {}
                 try { g.close() } catch (_: Exception) {}
                 clientMtu.remove(key); clientReady.remove(key); clientQueues.remove(key)
-                clientWriting.remove(key)
+                clientWriting.remove(key); clientFramers.remove(key)
             }
             dead
         }
@@ -239,8 +241,7 @@ class BluetoothTransport internal constructor(
             val frame = serverFramers
                 .getOrPut(device.address) { FrameFramer.Reassembler() }
                 .offer(value) ?: return
-            if (MgmtCodec.isMgmt(frame)) events.tryEmit(TransportEvent.MgmtFrameReceived(frame, id))
-            else events.tryEmit(TransportEvent.FrameReceived(decodeOrThrow(frame), id))
+            emitFrame(frame)
             events.tryEmit(TransportEvent.PeerRadioVisible(device.address, id))
         }
 
@@ -316,6 +317,10 @@ class BluetoothTransport internal constructor(
                 clients.remove(address)
                 clientMtu.remove(address)
                 clientReady.remove(address)
+                clientFramers.remove(address)
+                // A stale "write in flight" flag would stall this peer's queue forever
+                // once it reconnects (no onCharacteristicWrite ever comes for it).
+                synchronized(lock) { clientWriting.remove(address); clientQueues.remove(address) }
                 try { g.close() } catch (_: Exception) {}
                 ready = running || serverDevices.isNotEmpty()
             }
@@ -372,11 +377,9 @@ class BluetoothTransport internal constructor(
         ) {
             if (characteristic?.uuid != CHAR_NOTIFY_UUID) return
             val value = characteristic.value ?: return
-            gatt?.let { lastInbound[it.key()] = clock() }
-            clientFramer.offer(value)?.let { frame ->
-                if (MgmtCodec.isMgmt(frame)) events.tryEmit(TransportEvent.MgmtFrameReceived(frame, id))
-                else events.tryEmit(TransportEvent.FrameReceived(decodeOrThrow(frame), id))
-            }
+            val key = gatt?.key() ?: return
+            lastInbound[key] = clock()
+            clientFramers.getOrPut(key) { FrameFramer.Reassembler() }.offer(value)?.let(::emitFrame)
         }
     }
 
@@ -419,7 +422,18 @@ class BluetoothTransport internal constructor(
         }
     }
 
-    private fun decodeOrThrow(frame: ByteArray) = FrameCodec.decode(frame)
+    /**
+     * The GATT server accepts writes from any nearby device (no pairing), so a malformed
+     * frame must be dropped here: throwing from a binder callback crashes the app.
+     */
+    private fun emitFrame(frame: ByteArray) {
+        if (MgmtCodec.isMgmt(frame)) {
+            events.tryEmit(TransportEvent.MgmtFrameReceived(frame, id))
+            return
+        }
+        val decoded = runCatching { FrameCodec.decode(frame) }.getOrNull() ?: return
+        events.tryEmit(TransportEvent.FrameReceived(decoded, id))
+    }
 
     companion object {
         val SERVICE_UUID: UUID = UUID.fromString("f11d0a01-5c1e-4a9b-9d3f-2a7b8c6d5e4f")

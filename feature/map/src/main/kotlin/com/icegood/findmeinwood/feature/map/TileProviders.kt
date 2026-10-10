@@ -1,6 +1,7 @@
 package com.icegood.findmeinwood.feature.map
 
 import org.osmdroid.tileprovider.tilesource.XYTileSource
+import org.osmdroid.util.MapTileIndex
 
 /**
  * The map layer the user picks in [TileSource] (OFFLINE / OSM / SATELLITE).
@@ -26,7 +27,7 @@ enum class TileProvider(
 ) {
     MAPNIK("Mapnik", "OpenStreetMap (street)", needsApiKey = false, attribution = "© OpenStreetMap contributors"),
     CARTO_DARK("CartoDB-DarkMatter", "CARTO dark (street)", needsApiKey = false, attribution = "© OpenStreetMap contributors © CARTO"),
-    USGS_SAT("USGS_SAT", "USGS satellite imagery", needsApiKey = true, attribution = "Esri, Maxar, Earthstar Geographics");
+    USGS_SAT("USGS_SAT", "USGS satellite imagery", needsApiKey = true, attribution = "USGS The National Map");
 
     companion object {
         /** Every provider that can appear in Settings (OFFLINE has no online key). */
@@ -62,13 +63,24 @@ private val MAPNIK_URL = arrayOf("https://tile.openstreetmap.org/")
  */
 internal fun buildTileSource(provider: TileProvider, apiKey: String): XYTileSource {
     val useKey = provider.needsApiKey && apiKey.isNotBlank()
-    val ext = if (useKey) ".png?token=$apiKey" else ".png"
-    val urls = when (provider) {
-        TileProvider.MAPNIK -> MAPNIK_URL
-        TileProvider.CARTO_DARK -> CARTO_DARK_URLS
-        TileProvider.USGS_SAT -> USGS_SAT_URL
+    val token = if (useKey) "?token=$apiKey" else ""
+    return when (provider) {
+        TileProvider.MAPNIK -> XYTileSource(provider.id, 0, 19, 256, ".png$token", MAPNIK_URL)
+        TileProvider.CARTO_DARK -> XYTileSource(provider.id, 0, 19, 256, ".png$token", CARTO_DARK_URLS)
+        TileProvider.USGS_SAT -> ArcGisTileSource(provider.id, token, USGS_SAT_URL)
     }
-    return XYTileSource(provider.id, 0, 19, 256, ext, urls)
+}
+
+/**
+ * ArcGIS MapServer tiles are addressed `tile/{z}/{y}/{x}` with no file extension, unlike
+ * the slippy-map `{z}/{x}/{y}.png` that [XYTileSource] builds (same as osmdroid's own
+ * `TileSourceFactory.USGS_SAT`).
+ */
+private class ArcGisTileSource(name: String, suffix: String, urls: Array<String>) :
+    XYTileSource(name, 0, 19, 256, suffix, urls) {
+    override fun getTileURLString(pMapTileIndex: Long): String =
+        baseUrl + MapTileIndex.getZoom(pMapTileIndex) + "/" + MapTileIndex.getY(pMapTileIndex) + "/" +
+            MapTileIndex.getX(pMapTileIndex) + imageFilenameEnding()
 }
 
 /** Rebuild a source from its cached provider id so offline cleanup matches the cache rows. */

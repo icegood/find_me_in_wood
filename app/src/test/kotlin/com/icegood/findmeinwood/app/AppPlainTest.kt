@@ -208,10 +208,33 @@ class ProfileStoreDirTest {
     }
 }
 
+class JoinCodeSeparatorTest {
+    @Test
+    fun `hash in name or passphrase is rejected so join codes stay parseable`() {
+        assertTrue(ProfileStore.create("camp#1", null) is CreateResult.Error)
+        assertTrue(ProfileStore.create("camp", "a#very#long#passphrase#here") is CreateResult.Error)
+        val ok = ProfileStore.create("camp", null) as CreateResult.Ok
+        assertTrue(ProfileStore.join(ok.joinCode) is JoinResult.Ok)
+    }
+}
+
 class IdentityHolderTest {
     @Test
-    fun `member id is 32 bytes`() {
-        assertEquals(32, IdentityHolder.memberId.size)
+    fun `identity survives a restart`() {
+        val file = Files.createTempDirectory("id").toFile().resolve("device_identity.key")
+        val first = IdentityHolder.loadOrCreate(file)
+        val again = IdentityHolder.loadOrCreate(file)
+        assertTrue(first.public.encoded.contentEquals(again.public.encoded))
+        assertTrue(first.private.encoded.contentEquals(again.private.encoded))
+        assertEquals(32, com.icegood.findmeinwood.core.crypto.Identity.memberIdOf(again).size)
+    }
+
+    @Test
+    fun `corrupt identity file is replaced`() {
+        val file = Files.createTempDirectory("id").toFile().resolve("device_identity.key")
+        file.writeText("garbage")
+        val pair = IdentityHolder.loadOrCreate(file)
+        assertTrue(IdentityHolder.loadOrCreate(file).public.encoded.contentEquals(pair.public.encoded))
     }
 }
 

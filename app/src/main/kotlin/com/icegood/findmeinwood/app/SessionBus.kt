@@ -63,7 +63,7 @@ object SessionBus {
     fun publishJoinOutcome(outcome: JoinOutcome?) { _joinOutcome.value = outcome }
 
     /** Decrypted incoming payloads (chat etc.), replayed to late collectors. */
-    private var _incomingPayloads = MutableSharedFlow<Pair<ByteArray, MemberId>>(replay = 64)
+    @Volatile private var _incomingPayloads = MutableSharedFlow<Pair<ByteArray, MemberId>>(replay = 64)
     val incomingPayloads: SharedFlow<Pair<ByteArray, MemberId>> get() = _incomingPayloads
 
     fun publish(profile: NetworkProfile?, peers: Map<MemberId, PeerState>, lastWire: ByteArray?) {

@@ -52,6 +52,19 @@ class ShareSendAndInboxTest {
     }
 
     @Test
+    fun `old beacon files are pruned`() = runBlocking<Unit> {
+        val dir = ShareTransport.beaconDir(appCtx)
+        repeat(ShareTransport.MAX_BEACON_FILES + 5) { i ->
+            ShareTransport.beaconFile(appCtx, 1_700_000_000_000L + i * 1000L).writeText("old")
+        }
+        ShareTransport(appCtx).send(byteArrayOf(4, 5, 6))
+        val left = dir.listFiles()!!.filter { it.name.endsWith(".fmiw1") }
+        assertEquals(ShareTransport.MAX_BEACON_FILES, left.size)
+        // the newest (just sent) envelope survives
+        assertTrue(left.any { ShareTransport.parseEnvelope(it.readText())?.contentEquals(byteArrayOf(4, 5, 6)) == true })
+    }
+
+    @Test
     fun `shareBeacon hands the file to viber`() = runBlocking<Unit> {
         val t = ShareTransport(appCtx)
         assertIs<SendResult.HandedToUser>(t.shareBeacon(byteArrayOf(1, 2, 3)))

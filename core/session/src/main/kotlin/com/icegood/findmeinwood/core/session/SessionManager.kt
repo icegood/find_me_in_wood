@@ -55,7 +55,9 @@ class SessionManager(
     private val verifier = IdentityVerifier()
     private val tracker = PeerTracker(keepAliveMs = KEEP_ALIVE_MS, nowMs = clock)
     private val replay = ReplayWindow(clock)
-    private val seq = AtomicLong(0)
+    // Seeded from wall-clock seconds so a restarted sender keeps increasing seqs: peers
+    // (replay window, peer tracker) drop anything at or below the last seq they saw.
+    private val seq = AtomicLong(clock() / 1000)
     private val jobs = mutableListOf<Job>()
     private val running = MutableStateFlow(false)
     val runningFlow: StateFlow<Boolean> = running
@@ -91,12 +93,8 @@ class SessionManager(
 
     /** Sends an already-encoded management frame on every transport (no AEAD). */
     suspend fun sendMgmt(wire: ByteArray) {
-        transports.forEach { t ->
-            val r = runCatching { t.send(wire) }.getOrNull()
-        }
+        transports.forEach { t -> runCatching { t.send(wire) } }
     }
-
-    /** Optional sink used by the app layer for diagnostics. */
 
     fun transportIds(): List<TransportId> = transports.map { it.id }
 
@@ -221,46 +219,34 @@ class SessionManager(
             return
         }
         if (f.senderId.bytes.contentEquals(profile.myMemberId.bytes)) return
-        if (!replay.accept(f.senderId.bytes, f.seq, f.sentAtMs)) {
-            bump { it.copy(dropped = it.dropped + 1) }
-            return
-        }
         val plain = try {
             aead.open(profile.trafficKey, f.ciphertext, FrameCodec.aad(f.networkId, f.senderId, f.seq, f.sentAtMs))
         } catch (_: Exception) {
             bump { it.copy(authFailed = it.authFailed + 1) }
             return // auth fail: drop silently (FR-8.6 / T5.5)
         }
-        // Chat messages are not beacons: route them to the app instead of dropping
-        // them as an "undecodable beacon" (which silently killed all chat traffic).
-        if (PayloadCodec.tryDecodeChat(plain) != null) {
-            bump { it.copy(received = it.received + 1) }
-            onFrameReceived?.invoke(plain, f.senderId)
-            return
-        }
-        val payload = try {
-            PayloadCodec.decode(plain)
-        } catch (_: Exception) {
+        // Replay check only after authentication: the window records the seq, so checking
+        // first would let a forged frame with a huge seq lock the real sender out.
+        if (!replay.accept(f.senderId.bytes, f.seq, f.sentAtMs)) {
             bump { it.copy(dropped = it.dropped + 1) }
             return
         }
-        // NFR-3: origin authentication — pin the sender key once, then verify every frame.
-        val sig: ByteArray? = payload.sig
-        if (sig != null) {
-            val pub: ByteArray? = payload.pub
-            if (pub != null && verifier.keyFor(f.senderId) == null) {
-                if (!verifier.pin(f.senderId, pub)) {
-                    bump { it.copy(authFailed = it.authFailed + 1) }
-                    return
-                }
+        // Chat messages are not beacons: route them to the app instead of dropping
+        // them as an "undecodable beacon". They still take part in relaying below.
+        if (PayloadCodec.tryDecodeChat(plain) == null) {
+            val payload = try {
+                PayloadCodec.decode(plain)
+            } catch (_: Exception) {
+                bump { it.copy(dropped = it.dropped + 1) }
+                return
             }
-            if (!verifier.verify(f.senderId, signedBeaconBytes(f.seq, f.sentAtMs, payload), sig)) {
+            if (!verifyOrigin(f, payload)) {
                 bump { it.copy(authFailed = it.authFailed + 1) }
                 return
             }
+            tracker.onBeacon(DecryptedBeacon(f.senderId, f.seq, f.sentAtMs, payload))
         }
         bump { it.copy(received = it.received + 1) }
-        tracker.onBeacon(DecryptedBeacon(f.senderId, f.seq, f.sentAtMs, payload))
         onFrameReceived?.invoke(plain, f.senderId)
         edgeManager?.onFrameFrom(f.senderId, ev.source)
         if (relayEnabled && f.ttl > 1u) {
@@ -269,5 +255,17 @@ class SessionManager(
             transports.filter { it.id != ev.source }.forEach { it.send(wire) }
             bump { it.copy(relayed = it.relayed + 1) }
         }
+    }
+
+    /**
+     * NFR-3: origin authentication — pin the sender key once, then verify every frame.
+     * Once a key is pinned, unsigned beacons from that member are refused, otherwise
+     * stripping the signature would bypass the check.
+     */
+    private fun verifyOrigin(f: EncryptedFrame, payload: BeaconPayload): Boolean {
+        val sig = payload.sig ?: return verifier.keyFor(f.senderId) == null
+        val pub = payload.pub
+        if (pub != null && verifier.keyFor(f.senderId) == null && !verifier.pin(f.senderId, pub)) return false
+        return verifier.verify(f.senderId, signedBeaconBytes(f.seq, f.sentAtMs, payload), sig)
     }
 }

@@ -37,9 +37,11 @@ import com.icegood.findmeinwood.core.session.GnssSource
 import com.icegood.findmeinwood.transport.api.SendResult
 import com.icegood.findmeinwood.feature.map.MapScreen
 import com.icegood.findmeinwood.transport.share.ShareTransport
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     /**
@@ -158,29 +160,24 @@ class MainActivity : ComponentActivity() {
         val chatRepo = remember { mutableStateOf<ChatRepository?>(null) }
 
         LaunchedEffect(profile) {
-            val p = profile
-            if (p == null) {
-                // Session stopped: drop the repo bound to the dead manager so the
-                // next start wires chat against the fresh session instead of sending
-                // messages into a stopped manager.
-                chatRepo.value = null
-                return@LaunchedEffect
-            }
+            // Always drop the repo bound to the previous manager first: on Restart the
+            // profile can go old -> new without an observed null, and the old repo would
+            // keep sending into a stopped session.
+            chatRepo.value = null
+            val p = profile ?: return@LaunchedEffect
             // The service may still be starting: without retrying here the inbox is
             // never wired and every incoming chat message is dropped for the session.
-            while (chatRepo.value == null) {
-                val manager = SessionService.activeManager
-                if (manager != null) {
-                    val repo = ChatRepository(this@MainActivity, manager, p.myMemberId, scope)
-                    chatRepo.value = repo
-                    scope.launch {
-                        SessionBus.incomingPayloads.collect { (payload, sender) ->
-                            repo.handleIncomingPayload(payload, sender)
-                        }
-                    }
-                } else {
-                    delay(500)
-                }
+            var manager = SessionService.activeManager
+            while (manager == null) {
+                delay(500)
+                manager = SessionService.activeManager
+            }
+            val repo = ChatRepository(this@MainActivity, manager, p.myMemberId, scope, user.displayName)
+            chatRepo.value = repo
+            // Collected inside the effect so it is cancelled with it; SessionBus.clear()
+            // swaps the flow, so a collector outliving the session would hear nothing.
+            SessionBus.incomingPayloads.collect { (payload, sender) ->
+                repo.handleIncomingPayload(payload, sender)
             }
         }
 
@@ -279,6 +276,7 @@ class MainActivity : ComponentActivity() {
         var joinCode by remember { mutableStateOf<String?>(null) }
         var createError by remember { mutableStateOf<String?>(null) }
         val snackbar = remember { SnackbarHostState() }
+        val uiScope = rememberCoroutineScope()
         val lastWire by SessionBus.lastWireFrame.collectAsState()
         val running by SessionBus.sessionRunning.collectAsState()
         val radios by SessionBus.radioStates.collectAsState()
@@ -332,7 +330,7 @@ class MainActivity : ComponentActivity() {
                 OutlinedButton(
                     onClick = {
                         val wire = SessionBus.lastWireFrame.value
-                        scope2.launch {
+                        uiScope.launch {
                             val r = wire?.let { shareTransport.shareBeacon(it) }
                             snackbar.showSnackbar(
                                 when (r) {
@@ -407,8 +405,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private val scope2 = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
-
     /** Dedicated settings screen: theme, tile API keys and device/beacon options. */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -425,6 +421,7 @@ class MainActivity : ComponentActivity() {
         var intervalError by remember { mutableStateOf<String?>(null) }
         var p2pOwner by remember { mutableStateOf(Prefs.p2pGroupOwner(this@MainActivity)) }
         val snackbar = remember { SnackbarHostState() }
+        val uiScope = rememberCoroutineScope()
         val diag by SessionBus.diagnostics.collectAsState()
         val providers = com.icegood.findmeinwood.feature.map.TileProvider.online
 
@@ -487,10 +484,11 @@ class MainActivity : ComponentActivity() {
                         }
                         Button(onClick = {
                             providers.forEach { provider ->
-                                Prefs.setMapTileApiKey(this@MainActivity, provider.id, keys[provider])
-                                onTileApiKey(provider, keys[provider].orEmpty())
+                                val key = keys[provider].orEmpty().trim()
+                                Prefs.setMapTileApiKey(this@MainActivity, provider.id, key)
+                                onTileApiKey(provider, key)
                             }
-                            scope2.launch { snackbar.showSnackbar("Tile API keys saved") }
+                            uiScope.launch { snackbar.showSnackbar("Tile API keys saved") }
                         }) { Text("Save tile keys") }
                     }
                 }
@@ -500,12 +498,23 @@ class MainActivity : ComponentActivity() {
                         var regions by remember { mutableStateOf<List<OfflineRegion>>(emptyList()) }
                         var totalBytes by remember { mutableLongStateOf(0L) }
                         var stats by remember { mutableStateOf<List<ProviderStat>>(emptyList()) }
+                        // Sizing walks the tile cache and queries cache.db: keep it off the main thread.
                         fun refreshRegions() {
-                            regions = OfflineRegions.load(this@MainActivity).map {
-                                it.copy(sizeBytes = OfflineRegions.regionSizeBytes(this@MainActivity, it))
+                            uiScope.launch {
+                                val ctx = this@MainActivity
+                                val (r, total, st) = withContext(Dispatchers.IO) {
+                                    Triple(
+                                        OfflineRegions.load(ctx).map {
+                                            it.copy(sizeBytes = OfflineRegions.regionSizeBytes(ctx, it))
+                                        },
+                                        OfflineRegions.cacheSizeBytes(ctx),
+                                        OfflineRegions.providerStats(ctx),
+                                    )
+                                }
+                                regions = r
+                                totalBytes = total
+                                stats = st
                             }
-                            totalBytes = OfflineRegions.cacheSizeBytes(this@MainActivity)
-                            stats = OfflineRegions.providerStats(this@MainActivity)
                         }
                         LaunchedEffect(Unit) { refreshRegions() }
                         Text(
@@ -558,7 +567,7 @@ class MainActivity : ComponentActivity() {
                                 TextButton(onClick = {
                                     OfflineRegions.deleteTiles(this@MainActivity, r) { ok ->
                                         refreshRegions()
-                                        scope2.launch {
+                                        uiScope.launch {
                                             snackbar.showSnackbar(
                                                 if (ok) "offline area deleted" else "offline area delete failed",
                                             )
@@ -576,7 +585,7 @@ class MainActivity : ComponentActivity() {
                                 onClick = {
                                     OfflineRegions.clear(this@MainActivity)
                                     refreshRegions()
-                                    scope2.launch { snackbar.showSnackbar("all offline maps cleared") }
+                                    uiScope.launch { snackbar.showSnackbar("all offline maps cleared") }
                                 },
                                 modifier = Modifier.weight(1f),
                             ) { Text("Clear all", maxLines = 1, softWrap = false) }
@@ -641,8 +650,8 @@ class MainActivity : ComponentActivity() {
                             )
                             Button(onClick = {
                                 val sec = intervalInput.trim().toLongOrNull()
-                                if (sec == null || sec <= 5L || sec > Prefs.MAX_INTERVAL_MS / 1000) {
-                                    intervalError = "enter seconds > 5 (max ${Prefs.MAX_INTERVAL_MS / 1000})"
+                                if (sec == null || sec * 1000 !in Prefs.MIN_INTERVAL_MS..Prefs.MAX_INTERVAL_MS) {
+                                    intervalError = "enter ${Prefs.MIN_INTERVAL_MS / 1000}–${Prefs.MAX_INTERVAL_MS / 1000} seconds"
                                 } else {
                                     Prefs.setIntervalMs(this@MainActivity, sec * 1000L)
                                     intervalMs = sec * 1000L

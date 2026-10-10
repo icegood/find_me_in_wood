@@ -46,6 +46,8 @@ class DiscoveryManager(
     private val helloIntervalMs: Long = 15_000,
     private val staleAfterMs: Long = 90_000,
 ) {
+    // Mutators are @Synchronized: the app calls them from every transport collector (IO)
+    // and from UI callbacks at the same time, and the state below is plain HashMaps.
     private val myId: MemberId = profile.myMemberId
     private var lastHelloAtMs = 0L
     private var nonceCounter = JoinCrypto.nonce()
@@ -69,6 +71,8 @@ class DiscoveryManager(
     private val pinnedKeys = HashMap<MemberId, java.security.PublicKey>()
     private val pending = HashMap<MemberId, JoinRequest>()
     private var myEphemeral: KeyPair? = null
+    /** Network our outstanding JOIN_REQ targets: answers for any other network are ignored. */
+    private var requestedNetworkId: NetworkId? = null
 
     private class JoinRequest(
         val joinerPub: ByteArray,
@@ -84,6 +88,7 @@ class DiscoveryManager(
 
     fun helloDue(now: Long = nowMs()): Boolean = now - lastHelloAtMs >= helloIntervalMs
 
+    @Synchronized
     fun buildHello(activeTransports: List<TransportId>): ByteArray {
         lastHelloAtMs = nowMs()
         val payload = HelloPayload(
@@ -96,12 +101,15 @@ class DiscoveryManager(
         return send(MgmtType.HELLO, profile.networkId, PayloadCodec.encodeHello(payload))
     }
 
+    @Synchronized
     fun buildJoinRequest(peerNetworkId: NetworkId, joinerNick: String?): ByteArray {
         val ephemeral = JoinCrypto.ephemeralKeyPair().also { myEphemeral = it }
+        requestedNetworkId = peerNetworkId
         val payload = JoinRequestPayload(joinerPubkey = ephemeral.public.encoded, joinerNick = joinerNick)
         return send(MgmtType.JOIN_REQ, peerNetworkId, PayloadCodec.encodeJoinRequest(payload))
     }
 
+    @Synchronized
     fun approve(joinerId: MemberId): ByteArray? {
         val req = pending[joinerId] ?: return null
         val secret = ownerSecret ?: return null
@@ -119,6 +127,7 @@ class DiscoveryManager(
             sealedSecret = sealed,
             nonce = aad,
         )
+        pending.remove(joinerId)
         _ownerSas.value = req.sas
         _pendingJoins.value = _pendingJoins.value.filterNot { it.joinerId == joinerId }
         return send(
@@ -129,6 +138,7 @@ class DiscoveryManager(
         )
     }
 
+    @Synchronized
     fun reject(joinerId: MemberId, reason: String = "rejected by owner"): ByteArray {
         pending.remove(joinerId)
         _pendingJoins.value = _pendingJoins.value.filterNot { it.joinerId == joinerId }
@@ -141,6 +151,7 @@ class DiscoveryManager(
 
     // ----------------------------------------------------------------- incoming
 
+    @Synchronized
     fun onMgmtFrame(frame: MgmtFrame, senderKey: java.security.PublicKey?) {
         if (frame.senderId.bytes.contentEquals(myId.bytes)) return
         val pinned = pinnedKeys[frame.senderId]
@@ -189,6 +200,9 @@ class DiscoveryManager(
     }
 
     private fun onJoinAccept(frame: MgmtFrame) {
+        // JOIN_ACCEPT is cleartext: without this anyone in range could push a network of
+        // their choosing onto a device that merely asked to join a different one.
+        if (frame.networkId != requestedNetworkId) return
         val payload = runCatching { PayloadCodec.decodeJoinAccept(frame.payload) }.getOrNull() ?: return
         var sas = "------"
         val secret: String = payload.secret ?: run {
@@ -202,18 +216,25 @@ class DiscoveryManager(
             sas = JoinCrypto.sas(shared)
             plain.decodeToString()
         }
+        requestedNetworkId = null
+        myEphemeral = null
         _outcome.value = JoinOutcome.Joined(payload.name, secret, sas)
     }
 
     private fun onJoinReject(frame: MgmtFrame) {
+        if (frame.networkId != requestedNetworkId) return
+        requestedNetworkId = null
+        myEphemeral = null
         val payload = runCatching { PayloadCodec.decodeJoinReject(frame.payload) }.getOrNull()
         _outcome.value = JoinOutcome.Rejected(payload?.reason ?: "rejected by owner")
     }
 
+    @Synchronized
     fun pruneStale(now: Long = nowMs()) {
         _discovered.value = _discovered.value.filter { now - it.lastSeenMs < staleAfterMs }
     }
 
+    @Synchronized
     fun pinKey(member: MemberId, key: java.security.PublicKey) { pinnedKeys[member] = key }
 
     private fun send(type: MgmtType, netId: NetworkId, payload: ByteArray, nonce: Long = nextNonce()): ByteArray =

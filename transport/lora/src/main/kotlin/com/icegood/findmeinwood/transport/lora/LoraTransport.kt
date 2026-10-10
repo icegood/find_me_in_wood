@@ -56,7 +56,6 @@ class LoraTransport(
                 }
             }
             scope.launch { watchdogLoop() }
-            scope.launch { link.connect() }
         }
         return events
     }
@@ -124,8 +123,14 @@ class LoraTransport(
     private fun onLinkBytes(data: ByteArray) {
         lastRxMs = System.currentTimeMillis()
         framer.offer(data).forEach { frame ->
-            if (MgmtCodec.isMgmt(frame)) events.tryEmit(TransportEvent.MgmtFrameReceived(frame, id))
-            else events.tryEmit(TransportEvent.FrameReceived(FrameCodec.decode(frame), id))
+            if (MgmtCodec.isMgmt(frame)) {
+                events.tryEmit(TransportEvent.MgmtFrameReceived(frame, id))
+            } else {
+                // A resync on a false magic yields garbage: drop it instead of letting the
+                // exception kill the link collector (and with it all LoRa reception).
+                runCatching { FrameCodec.decode(frame) }.getOrNull()
+                    ?.let { events.tryEmit(TransportEvent.FrameReceived(it, id)) }
+            }
         }
     }
 

@@ -72,7 +72,8 @@ class AuthManager(private val context: Context) : AuthService {
             currentUserId = existing.uid
             return@withContext AuthResult.Success(store.queryById(existing.uid)!!)
         }
-        val hash = SQLiteAuthStore.hashPassword("google-${googleId}-${System.currentTimeMillis()}")
+        // Google-only account: the password must not be guessable from the Google id.
+        val hash = SQLiteAuthStore.randomPasswordHash()
         val id = store.insertUser(mail, hash, displayName?.ifBlank { null } ?: mail.substringBefore("@"))
         store.updateGoogleId(id.toString(), googleId)
         val profile = store.queryById(id.toString())

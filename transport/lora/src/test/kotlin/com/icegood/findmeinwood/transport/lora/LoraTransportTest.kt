@@ -92,6 +92,22 @@ class LoraTransportTest {
     }
 
     @Test
+    fun `garbage frame does not stop reception`() = runBlocking<Unit> {
+        val link = FakeNodeLink()
+        val t = LoraTransport(dummyContext(), link)
+        val events = t.start(cfg)
+        link.emit(NodeLinkState.READY)
+        // framed but not a valid wire frame, then a good one
+        link.events.tryEmit(LoraNodeLink.NodeLinkEvent.Bytes(StreamFramer.packet(ByteArray(10) { 0x11 })))
+        link.events.tryEmit(LoraNodeLink.NodeLinkEvent.Bytes(StreamFramer.packet(wire(9u))))
+        val got = withTimeout(5_000) {
+            events.first { it is TransportEvent.FrameReceived } as TransportEvent.FrameReceived
+        }
+        assertEquals(9u, got.frame.seq)
+        t.stop()
+    }
+
+    @Test
     fun `tx queue keeps only last five while down`() = runBlocking<Unit> {
         val link = FakeNodeLink()
         val t = LoraTransport(dummyContext(), link)

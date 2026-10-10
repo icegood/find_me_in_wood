@@ -13,6 +13,8 @@ object FrameCodec {
     fun encode(f: EncryptedFrame): ByteArray {
         require(f.networkId.bytes.size == 8) { "networkId must be 8 bytes" }
         require(f.senderId.bytes.size == 32) { "senderId must be 32 bytes" }
+        // The length field is u16: a larger payload would be silently truncated on the wire.
+        require(f.ciphertext.size <= 0xFFFF) { "ciphertext too large (${f.ciphertext.size} B)" }
         val out = ByteArray(HEADER_LEN + f.ciphertext.size)
         var o = 0
         out[o++] = (MAGIC ushr 8).toByte(); out[o++] = MAGIC.toByte()

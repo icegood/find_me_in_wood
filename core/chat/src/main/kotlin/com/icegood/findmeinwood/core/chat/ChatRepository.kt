@@ -21,6 +21,8 @@ class ChatRepository(
     private val sessionManager: SessionManager,
     private val myMemberId: MemberId,
     private val scope: CoroutineScope,
+    /** Name peers see on our messages. */
+    private val myName: String = "me",
 ) {
     private val store by lazy { ChatStore(context) }
 
@@ -49,7 +51,7 @@ class ChatRepository(
             id = UUID.randomUUID().toString(),
             channelId = channelId,
             senderId = myMemberId.bytes.joinToString("") { "%02x".format(it) },
-            senderName = "me",
+            senderName = myName,
             text = text,
             timestamp = System.currentTimeMillis(),
             isOwn = true,
@@ -72,7 +74,7 @@ class ChatRepository(
             id = UUID.randomUUID().toString(),
             channelId = channelId,
             senderId = myMemberId.bytes.joinToString("") { "%02x".format(it) },
-            senderName = "me",
+            senderName = myName,
             text = "",
             photoRef = photoUri,
             timestamp = System.currentTimeMillis(),
@@ -80,11 +82,13 @@ class ChatRepository(
         )
         store.insert(msg)
 
+        // The photo could not be encoded small enough: peers would only get an empty bubble.
+        if (bytes == null) return
+        // photoRef is a path on this device only; the image travels as photoBytes.
         val payload = ChatPayload(
             id = msg.id,
             senderName = msg.senderName,
             text = msg.text,
-            photoRef = msg.photoRef,
             photoBytes = bytes,
             timestamp = msg.timestamp,
         )
@@ -92,7 +96,9 @@ class ChatRepository(
     }
 
     fun handleIncomingChatPayload(payload: ChatPayload, senderId: MemberId) {
-        val ref = payload.photoBytes?.let { saveIncomingPhoto(payload.id, it) } ?: payload.photoRef
+        // Never fall back to the sender's photoRef: it is attacker-controlled and would make
+        // us open an arbitrary local file / content URI when the bubble renders.
+        val ref = payload.photoBytes?.let { saveIncomingPhoto(payload.id, it) }
         val msg = ChatMessage(
             id = payload.id,
             channelId = groupChannelId,

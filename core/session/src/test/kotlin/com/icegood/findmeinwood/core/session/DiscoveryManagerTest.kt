@@ -187,6 +187,34 @@ class DiscoveryManagerTest {
     }
 
     @Test
+    fun `join accept for a network we did not ask for is ignored`() {
+        val (ownerId, ownerPair) = member()
+        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair)
+        owner.ownerSecret = "attacker-network-secret"
+        val (joinerId, joinerPair) = member()
+        val joiner = manager(JoinPolicy.OPEN, joinerId, joinerPair)
+
+        // Owner answers a request; the joiner, however, asked to join a different network.
+        owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)), joinerPair.public)
+        val accept = owner.approve(joinerId)!!
+        joiner.buildJoinRequest(NetworkId(ByteArray(8) { 9 }), null)
+        joiner.onMgmtFrame(MgmtCodec.decode(accept), ownerPair.public)
+        assertEquals(null, joiner.outcome.value)
+    }
+
+    @Test
+    fun `approved request cannot be approved twice`() {
+        val (ownerId, ownerPair) = member()
+        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair)
+        owner.ownerSecret = "open-secret-123456"
+        val (joinerId, joinerPair) = member()
+        val joiner = manager(JoinPolicy.OPEN, joinerId, joinerPair)
+        owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)), joinerPair.public)
+        assertNotNull(owner.approve(joinerId))
+        assertEquals(null, owner.approve(joinerId))
+    }
+
+    @Test
     fun `ecdh is symmetric and sas is stable for both sides`() {
         val a = JoinCrypto.ephemeralKeyPair()
         val b = JoinCrypto.ephemeralKeyPair()

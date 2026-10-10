@@ -30,7 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -65,11 +65,10 @@ class SessionService : Service() {
         }
         // "Start" while a session is live restarts it (and "Restart" in the UI is
         // no longer a silent no-op). stopSession frees transports and cancels the
-        // old scope, so recreate the scope before wiring the new session.
-        if (session != null) {
-            stopSession()
-            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        }
+        // scope, so recreate it before wiring the new session. This also covers
+        // Stop -> Start on the same service instance, where session is already null.
+        if (session != null) stopSession()
+        if (!scope.isActive) scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         startForeground(NOTIFICATION_ID, buildNotification())
 
         val name = intent.getStringExtra(EXTRA_NAME) ?: "network"
@@ -97,22 +96,19 @@ class SessionService : Service() {
             LoraTransport(this, BleNodeLink(this, Prefs.loraNode(this))),
             ShareTransport(this),
         )
-        val identityPair = IdentityHolder.keyPair
+        val identityPair = IdentityHolder.keyPair(this)
         val discovery = DiscoveryManager(profile, identityPair, { System.currentTimeMillis() })
         discovery.ownerSecret = Prefs.secretFor(this, profile.networkId.bytes.joinToString("") { "%02x".format(it) })
         val manager = SessionManager(
             profile, transports, gnss.fixes(),
             { System.currentTimeMillis() }, scope = scope, keepAliveMs = deltaMs,
-            signer = IdentityHolder.keyPair,
+            signer = identityPair,
         )
         // Automatic handoff (FR-9.2): newest envelope goes to the clipboard every
         // delta, silently — the user pastes it into the messenger, no UI is raised.
         DiscoveryBridge.onRequestJoin = { netId ->
             val wire = discovery.buildJoinRequest(netId, Prefs.currentUid(this@SessionService))
-            scope.launch {
-                manager.transportIds().forEach { }
-                manager.sendMgmt(wire)
-            }
+            scope.launch { manager.sendMgmt(wire) }
         }
         DiscoveryBridge.onApprove = { joiner ->
             val wire = discovery.approve(joiner)
@@ -132,11 +128,7 @@ class SessionService : Service() {
         }
         activeDiscovery = discovery
         manager.onMgmtFrame = { wire, source ->
-            runCatching {
-                val f = MgmtCodec.decode(wire)
-                val before = discovery.pendingJoins.value.size
-                discovery.onMgmtFrame(f, null)
-            }
+            runCatching { discovery.onMgmtFrame(MgmtCodec.decode(wire), null) }
             SessionBus.publishPending(discovery.pendingJoins.value)
             SessionBus.publishDiscovered(discovery.discovered.value)
             val outcome = discovery.outcome.value

@@ -12,6 +12,7 @@ import java.security.PublicKey
 class IdentityVerifier {
     private val pinned = HashMap<MemberId, PublicKey>()
 
+    @Synchronized
     fun pin(member: MemberId, encodedKey: ByteArray): Boolean {
         val key = runCatching { publicKeyOf(encodedKey) }.getOrNull() ?: return false
         val previous = pinned[member]
@@ -23,14 +24,17 @@ class IdentityVerifier {
         }
     }
 
+    @Synchronized
     fun keyFor(member: MemberId): PublicKey? = pinned[member]
 
     /** true when the signature verifies against the pinned key of [member]. */
+    @Synchronized
     fun verify(member: MemberId, signedBytes: ByteArray, signature: ByteArray): Boolean {
         val key = pinned[member] ?: return false
         return Identity.verify(key, signedBytes, signature)
     }
 
+    @Synchronized
     fun reset() = pinned.clear()
 
     companion object {

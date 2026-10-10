@@ -40,3 +40,6 @@ Thumbs.db
 !design/**
 !specs/**
 !docker/**
+
+# Beacon envelopes written by tests/devices — never commit
+*.fmiw1

@@ -75,12 +75,18 @@ private fun mercatorFraction(lat: Double): Double {
     return (1.0 - ln(tan(rad) + 1.0 / cos(rad)) / PI) / 2.0
 }
 
-/** Total tiles for [bbox] over the inclusive zoom range [zoomMin]..[zoomMax]. */
+/**
+ * Total tiles for [bbox] over the inclusive zoom range [zoomMin]..[zoomMax].
+ *
+ * Stops summing once the total exceeds [MAX_TILES_PER_AREA], but still returns a value
+ * *above* the cap: returning the cap itself made `estimateTiles(..) > cap` checks
+ * impossible, so oversized requests were never narrowed.
+ */
 fun estimateTiles(bbox: BoundingBox, zoomMin: Int, zoomMax: Int): Long {
     var total = 0L
     for (z in zoomMin..zoomMax) {
         total += estimateTilesAtZoom(bbox, z)
-        if (total > MAX_TILES_PER_AREA) return MAX_TILES_PER_AREA
+        if (total > MAX_TILES_PER_AREA) return total
     }
     return total
 }
@@ -113,7 +119,7 @@ fun clampZoomRange(
 
 /** Human-readable estimate for the confirmation dialog. */
 fun estimateLabel(tiles: Long): String = when {
-    tiles >= MAX_TILES_PER_AREA -> ">$MAX_TILES_PER_AREA tiles (will be reduced)"
+    tiles > MAX_TILES_PER_AREA -> ">$MAX_TILES_PER_AREA tiles (will be reduced)"
     tiles >= 1000 -> "%.1f k tiles · ~%.0f MB".format(tiles / 1000.0, tiles * ESTIMATED_TILE_BYTES / 1048576.0)
     else -> "$tiles tiles · ~%.1f MB".format(tiles * ESTIMATED_TILE_BYTES / 1048576.0)
 }

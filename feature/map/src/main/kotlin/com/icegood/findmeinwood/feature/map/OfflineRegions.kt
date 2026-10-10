@@ -13,7 +13,6 @@ import java.io.File
 import java.util.UUID
 
 /** One saved offline map area (Google-Maps-style "offline map"). */
-/** One saved offline map area (Google-Maps-style "offline map"). */
 data class OfflineRegion(
     val id: String,
     val name: String,
@@ -174,12 +173,14 @@ object OfflineRegions {
         return cfg.osmdroidTileCache
     }
 
-    private fun encode(r: OfflineRegion): String = listOf(
-        r.id, r.name, r.latNorth, r.lonEast, r.latSouth, r.lonWest, r.zoomMin, r.zoomMax,
+    // '|' is the field separator: a user-typed name containing it made the record
+    // undecodable, and load() then silently dropped the area.
+    internal fun encode(r: OfflineRegion): String = listOf(
+        r.id, r.name.replace('|', '/'), r.latNorth, r.lonEast, r.latSouth, r.lonWest, r.zoomMin, r.zoomMax,
         r.tileCount, r.sizeBytes, r.createdAt, r.sourceName,
     ).joinToString("|")
 
-    private fun decode(s: String): OfflineRegion {
+    internal fun decode(s: String): OfflineRegion {
         val p = s.split("|")
         fun d(i: Int) = p[i].toDouble()
         fun l(i: Int) = p[i].toLong()

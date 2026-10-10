@@ -26,4 +26,13 @@ class MapMathTest {
         val (_, bearing) = distanceBearing(me, 0, (0.01 * 1e7).toInt())
         assertTrue(bearing in 85.0..95.0, "expected ~90 deg, got $bearing")
     }
+
+    @Test
+    fun `heading smoothing takes the short way round`() {
+        val wrap = blendHeading(350f, 10f)
+        assertTrue(wrap > 350f || wrap < 10f, "expected near north, got $wrap")
+        val same = blendHeading(90f, 90f)
+        assertTrue(same in 89.9f..90.1f, "expected 90, got $same")
+        assertTrue(blendHeading(null, 370f) in 9.9f..10.1f)
+    }
 }

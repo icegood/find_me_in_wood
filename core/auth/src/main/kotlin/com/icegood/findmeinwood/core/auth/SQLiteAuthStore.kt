@@ -6,6 +6,9 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import java.security.MessageDigest
+import java.security.SecureRandom
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 
 internal class SQLiteAuthStore(context: Context) :
     SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
@@ -75,15 +78,21 @@ internal class SQLiteAuthStore(context: Context) :
     }
 
     fun verifyPassword(email: String, password: String): UserProfile? {
-        val hash = hashPassword(password)
         val c = readableDatabase.query(
-            TABLE, null, "$COL_EMAIL=? AND $COL_PASSWORD_HASH=?",
-            arrayOf(email.lowercase().trim(), hash),
+            TABLE, null, "$COL_EMAIL=?", arrayOf(email.lowercase().trim()),
             null, null, null,
         )
-        return c.use {
-            if (it.moveToFirst()) cursorToProfile(it) else null
+        val (profile, stored) = c.use {
+            if (!it.moveToFirst()) return null
+            cursorToProfile(it) to it.getString(it.getColumnIndexOrThrow(COL_PASSWORD_HASH))
         }
+        if (!matches(password, stored)) return null
+        // Upgrade rows written by the old unsalted SHA-256 scheme on successful login.
+        if (!stored.startsWith(PBKDF2_PREFIX)) {
+            val cv = ContentValues().apply { put(COL_PASSWORD_HASH, hashPassword(password)) }
+            writableDatabase.update(TABLE, cv, "$COL_ID=?", arrayOf(profile.uid))
+        }
+        return profile
     }
 
     private fun cursorToProfile(c: Cursor): UserProfile = UserProfile(
@@ -107,10 +116,55 @@ internal class SQLiteAuthStore(context: Context) :
         const val COL_PHOTO_URL = "photo_url"
         const val COL_CREATED_AT = "created_at"
 
+        private const val PBKDF2_PREFIX = "pbkdf2$"
+        private const val PBKDF2_ITERATIONS = 120_000
+        private const val SALT_BYTES = 16
+        private const val KEY_BITS = 256
+        private val random = SecureRandom()
+
+        /** Salted PBKDF2-HMAC-SHA256, stored as `pbkdf2$<iterations>$<saltHex>$<hashHex>`. */
         fun hashPassword(password: String): String {
+            val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
+            return encode(PBKDF2_ITERATIONS, salt, pbkdf2(password, salt, PBKDF2_ITERATIONS))
+        }
+
+        /** Constant-time check against a stored hash (current or legacy format). */
+        fun matches(password: String, stored: String): Boolean {
+            if (!stored.startsWith(PBKDF2_PREFIX)) {
+                return MessageDigest.isEqual(legacyHash(password).toByteArray(), stored.toByteArray())
+            }
+            val parts = stored.removePrefix(PBKDF2_PREFIX).split("$")
+            if (parts.size != 3) return false
+            val iterations = parts[0].toIntOrNull() ?: return false
+            val salt = runCatching { parts[1].unhex() }.getOrNull() ?: return false
+            val expected = runCatching { parts[2].unhex() }.getOrNull() ?: return false
+            return MessageDigest.isEqual(pbkdf2(password, salt, iterations), expected)
+        }
+
+        /** Unusable random password for accounts that only sign in through Google. */
+        fun randomPasswordHash(): String =
+            hashPassword(ByteArray(32).also(random::nextBytes).joinToString("") { "%02x".format(it) })
+
+        /** Pre-PBKDF2 scheme (static salt, single SHA-256); kept only to verify old rows. */
+        internal fun legacyHash(password: String): String {
             val digest = MessageDigest.getInstance("SHA-256")
             val salted = "fmiw_$password-salt".toByteArray()
             return digest.digest(salted).joinToString("") { "%02x".format(it) }
         }
+
+        private fun pbkdf2(password: String, salt: ByteArray, iterations: Int): ByteArray {
+            val spec = PBEKeySpec(password.toCharArray(), salt, iterations, KEY_BITS)
+            return try {
+                SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+            } finally {
+                spec.clearPassword()
+            }
+        }
+
+        private fun encode(iterations: Int, salt: ByteArray, hash: ByteArray): String =
+            PBKDF2_PREFIX + iterations + "$" + salt.hex() + "$" + hash.hex()
+
+        private fun ByteArray.hex() = joinToString("") { "%02x".format(it) }
+        private fun String.unhex() = chunked(2).map { it.toInt(16).toByte() }.toByteArray()
     }
 }

@@ -57,8 +57,31 @@ class SessionManagerTest {
             withTimeout(5_000) { mB.peerFlow.first { it.containsKey(alice.memberId) } }
             val peer = mB.peerFlow.value[alice.memberId]!!
             assertEquals(515000000, peer.lastPosition!!.latE7)
-            assertEquals(0u, peer.lastSeq)
+            // seq is seeded from the clock (seconds) so restarts keep it increasing
+            assertEquals((now / 1000).toUInt(), peer.lastSeq)
         } finally { mA.stop(); mB.stop(); scope.cancel() }
+    }
+
+    @Test
+    fun `restarted sender is still accepted by a running peer`(): Unit = runBlocking {
+        val alice = Member("alice"); val bob = Member("bob")
+        val tA = FakeTransport(TransportId.BLUETOOTH)
+        val tB = FakeTransport(TransportId.BLUETOOTH)
+        pump(tA, tB)
+        val mB = SessionManager(bob.profile, listOf(tB), flowOf(), { now }, scope = scope)
+        mB.start()
+        val first = SessionManager(alice.profile, listOf(tA), flowOf(), { now }, scope = scope)
+        first.start()
+        try {
+            repeat(3) { first.sendBeacon(null) }
+            withTimeout(5_000) { mB.diagnostics.first { it.received == 3 } }
+            first.stop()
+            now += 60_000
+            val again = SessionManager(alice.profile, listOf(tA), flowOf(), { now }, scope = scope)
+            again.start()
+            again.sendBeacon(null)
+            withTimeout(5_000) { mB.diagnostics.first { it.received == 4 } }
+        } finally { mB.stop(); scope.cancel() }
     }
 
     @Test

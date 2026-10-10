@@ -41,15 +41,19 @@ class BleNodeLink(
     private val _mtu = MutableStateFlow(DEFAULT_MTU)
     @Volatile private var gatt: BluetoothGatt? = null
     @Volatile private var running = false
+    @Volatile private var scanning = false
 
     private val writeQueue = ArrayDeque<ByteArray>()
     private var writePending = false
     private val lock = Any()
 
     override fun connect(): Flow<LoraNodeLink.NodeLinkEvent> {
-        if (!running) {
+        // Also rescan when the link dropped while running: LoraTransport reconnects by
+        // calling connect() again, which used to be a no-op after the first call.
+        if (!running || (gatt == null && !scanning)) {
             running = true
             try { startScan() } catch (e: Exception) {
+                scanning = false
                 events.tryEmit(LoraNodeLink.NodeLinkEvent.State(NodeLinkState.DOWN))
             }
         }
@@ -78,6 +82,7 @@ class BleNodeLink(
             events.tryEmit(LoraNodeLink.NodeLinkEvent.State(NodeLinkState.DOWN)); return
         }
         events.tryEmit(LoraNodeLink.NodeLinkEvent.State(NodeLinkState.CONNECTING))
+        scanning = true
         val filter = if (pinnedAddress != null) {
             // pinned node may not advertise NUS; match by address
             ScanFilter.Builder().setDeviceAddress(pinnedAddress).build()
@@ -91,6 +96,7 @@ class BleNodeLink(
                 override fun onScanResult(callbackType: Int, result: android.bluetooth.le.ScanResult) {
                     if (!running || gatt != null) return
                     scanner.stopScan(this)
+                    scanning = false
                     try {
                         result.device.connectGatt(
                             context, false, gattCallback, android.bluetooth.BluetoothDevice.TRANSPORT_LE,

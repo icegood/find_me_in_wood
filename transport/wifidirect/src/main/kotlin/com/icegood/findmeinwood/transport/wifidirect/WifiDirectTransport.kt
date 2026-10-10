@@ -119,10 +119,14 @@ class WifiDirectTransport(
         if (sockets.isEmpty()) return SendResult.Failed("no p2p peer")
         sockets.values.forEach { s ->
             runCatching {
-                val out = DataOutputStream(s.getOutputStream())
-                out.writeInt(wireFrame.size)
-                out.write(wireFrame)
-                out.flush()
+                // Beacons, chat and relays send concurrently: without the lock two frames'
+                // length prefixes and bodies interleave and the peer's stream desyncs.
+                synchronized(s) {
+                    val out = DataOutputStream(s.getOutputStream())
+                    out.writeInt(wireFrame.size)
+                    out.write(wireFrame)
+                    out.flush()
+                }
             }.onFailure {
                 runCatching { s.close() }
                 sockets.remove(s.remoteSocketAddress.toString(), s)
