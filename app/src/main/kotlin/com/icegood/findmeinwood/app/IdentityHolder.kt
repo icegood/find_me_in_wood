@@ -30,27 +30,22 @@ object IdentityHolder {
     /** Reads the key pair from [file], or generates and stores a new one if it is missing or unreadable. */
     internal fun loadOrCreate(file: File): KeyPair {
         // A stored key this platform cannot sign with is useless: peers drop unsigned frames.
-        runCatching { read(file) }.getOrNull()?.takeIf { Identity.canSign(it.first) }?.let { (pair, sealed) ->
-            if (!sealed) runCatching { write(file, pair) }
-            return pair
-        }
+        runCatching { read(file) }.getOrNull()?.takeIf { Identity.canSign(it) }?.let { return it }
         val pair = Identity.generate()
         runCatching { write(file, pair) }
         return pair
     }
 
-    /** The stored pair, and whether the file was already sealed. */
-    private fun read(file: File): Pair<KeyPair, Boolean> {
-        val raw = file.readBytes()
-        val sealed = SecretBox.isSealed(raw)
-        val text = (if (sealed) SecureStorage.box.open(raw) else raw).decodeToString()
+    /** The stored pair; only Keystore-sealed files are accepted. */
+    private fun read(file: File): KeyPair {
+        val text = SecureStorage.box.open(file.readBytes()).decodeToString()
         val (algorithm, priv, pub) = text.lines().also { require(it.size >= 3) }
         val dec = Base64.getDecoder()
         val kf = KeyFactory.getInstance(algorithm)
         return KeyPair(
             kf.generatePublic(X509EncodedKeySpec(dec.decode(pub))),
             kf.generatePrivate(PKCS8EncodedKeySpec(dec.decode(priv))),
-        ) to sealed
+        )
     }
 
     private fun write(file: File, pair: KeyPair) {

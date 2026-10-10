@@ -43,24 +43,28 @@ object Prefs {
     /**
      * FR-8.3: the owner needs the network secret to seal it for approved joiners. Kept in
      * app-private storage so a fresh session can answer join requests without the user
-     * re-entering the code, sealed by [SecureStorage.box] (Android Keystore). A plain value
-     * from an older build is returned once and rewritten sealed.
+     * re-entering the code, sealed by [SecureStorage.box] (Android Keystore).
      */
-    fun secretFor(ctx: Context, networkIdHex: String): String? {
-        val stored = ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-            .getString(KEY_SECRET_PREFIX + networkIdHex, null) ?: return null
-        val raw = runCatching { Base64.getDecoder().decode(stored) }.getOrNull()
-        if (raw != null && SecretBox.isSealed(raw)) {
-            return runCatching { SecureStorage.box.open(raw).decodeToString() }.getOrNull()
-        }
-        setSecretFor(ctx, networkIdHex, stored)
-        return stored
+    fun secretFor(ctx: Context, networkIdHex: String): String? = sealedString(ctx, KEY_SECRET_PREFIX + networkIdHex)
+
+    fun setSecretFor(ctx: Context, networkIdHex: String, secret: String?) =
+        putSealedString(ctx, KEY_SECRET_PREFIX + networkIdHex, secret)
+
+    /**
+     * Secrets in prefs are stored only sealed by the Android Keystore key (Base64 of the
+     * [SecretBox] blob). Anything unsealed or undecryptable reads as absent.
+     */
+    private fun sealedString(ctx: Context, key: String): String? {
+        val stored = ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(key, null) ?: return null
+        val raw = runCatching { Base64.getDecoder().decode(stored) }.getOrNull() ?: return null
+        if (!SecretBox.isSealed(raw)) return null
+        return runCatching { SecureStorage.box.open(raw).decodeToString() }.getOrNull()
     }
 
-    fun setSecretFor(ctx: Context, networkIdHex: String, secret: String?) {
-        val sealed = secret?.let { Base64.getEncoder().encodeToString(SecureStorage.box.seal(it.toByteArray())) }
+    private fun putSealedString(ctx: Context, key: String, value: String?) {
+        val sealed = value?.let { Base64.getEncoder().encodeToString(SecureStorage.box.seal(it.toByteArray())) }
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().apply {
-            if (sealed == null) remove(KEY_SECRET_PREFIX + networkIdHex) else putString(KEY_SECRET_PREFIX + networkIdHex, sealed)
+            if (sealed == null) remove(key) else putString(key, sealed)
         }.apply()
     }
 
@@ -89,13 +93,11 @@ object Prefs {
      * download requests as `?token=<key>`; providers that need none never receive one.
      */
     fun mapTileApiKey(ctx: Context, providerId: String): String =
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_TILE_API_KEY_PREFIX + providerId, null) ?: ""
+        sealedString(ctx, KEY_TILE_API_KEY_PREFIX + providerId).orEmpty()
 
-    fun setMapTileApiKey(ctx: Context, providerId: String, key: String?) {
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().apply {
-            if (key.isNullOrBlank()) remove(KEY_TILE_API_KEY_PREFIX + providerId) else putString(KEY_TILE_API_KEY_PREFIX + providerId, key.trim())
-        }.apply()
-    }
+    /** Provider credentials are secrets too: sealed like the network secrets. */
+    fun setMapTileApiKey(ctx: Context, providerId: String, key: String?) =
+        putSealedString(ctx, KEY_TILE_API_KEY_PREFIX + providerId, key?.trim()?.ifBlank { null })
 
     /** Wi-Fi Direct role: host the P2P group (server) instead of letting the system pick. */
     fun p2pGroupOwner(ctx: Context): Boolean =

@@ -5,6 +5,7 @@ import com.icegood.findmeinwood.core.crypto.FrameCodec
 import com.icegood.findmeinwood.core.crypto.JoinCrypto
 import com.icegood.findmeinwood.core.crypto.MgmtCodec
 import com.icegood.findmeinwood.core.crypto.MgmtFrame
+import com.icegood.findmeinwood.core.crypto.NetworkKeysFactory
 import com.icegood.findmeinwood.core.model.DiscoveredNetwork
 import com.icegood.findmeinwood.core.model.HelloPayload
 import com.icegood.findmeinwood.core.model.JoinAcceptPayload
@@ -218,6 +219,9 @@ class DiscoveryManager(
             sas = JoinCrypto.sas(shared)
             plain.decodeToString()
         }
+        // The owner named in HELLO is self-declared, so also prove the secret: it must derive
+        // exactly the network we asked for, which nobody without the real secret can fake.
+        if (NetworkKeysFactory.derive(secret.toByteArray()).networkId != frame.networkId) return
         requestedNetworkId = null
         requestedOwnerId = null
         myEphemeral = null

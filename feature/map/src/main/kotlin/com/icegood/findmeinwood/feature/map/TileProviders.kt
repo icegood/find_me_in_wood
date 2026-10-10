@@ -31,8 +31,8 @@ enum class TileProvider(
     USGS_SAT("USGS_SAT", "USGS satellite imagery", needsApiKey = false, attribution = "USGS The National Map");
 
     companion object {
-        /** Every provider that can appear in Settings (OFFLINE has no online key). */
-        val online: List<TileProvider> get() = entries.toList()
+        /** Providers that take an API key: the only ones that get a key field in Settings. */
+        val keyed: List<TileProvider> get() = entries.filter { it.needsApiKey }
 
         /** Resolve the concrete provider for a [source] under [isDarkTheme]. */
         fun forSource(source: TileSource, isDarkTheme: Boolean): TileProvider = when (source) {

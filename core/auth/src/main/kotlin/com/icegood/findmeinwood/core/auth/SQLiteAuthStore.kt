@@ -86,13 +86,7 @@ internal class SQLiteAuthStore(context: Context) :
             if (!it.moveToFirst()) return null
             cursorToProfile(it) to it.getString(it.getColumnIndexOrThrow(COL_PASSWORD_HASH))
         }
-        if (!matches(password, stored)) return null
-        // Upgrade rows written by the old unsalted SHA-256 scheme on successful login.
-        if (!stored.startsWith(PBKDF2_PREFIX)) {
-            val cv = ContentValues().apply { put(COL_PASSWORD_HASH, hashPassword(password)) }
-            writableDatabase.update(TABLE, cv, "$COL_ID=?", arrayOf(profile.uid))
-        }
-        return profile
+        return if (matches(password, stored)) profile else null
     }
 
     private fun cursorToProfile(c: Cursor): UserProfile = UserProfile(
@@ -128,11 +122,9 @@ internal class SQLiteAuthStore(context: Context) :
             return encode(PBKDF2_ITERATIONS, salt, pbkdf2(password, salt, PBKDF2_ITERATIONS))
         }
 
-        /** Constant-time check against a stored hash (current or legacy format). */
+        /** Constant-time check against a stored PBKDF2 hash; any other format never matches. */
         fun matches(password: String, stored: String): Boolean {
-            if (!stored.startsWith(PBKDF2_PREFIX)) {
-                return MessageDigest.isEqual(legacyHash(password).toByteArray(), stored.toByteArray())
-            }
+            if (!stored.startsWith(PBKDF2_PREFIX)) return false
             val parts = stored.removePrefix(PBKDF2_PREFIX).split("$")
             if (parts.size != 3) return false
             val iterations = parts[0].toIntOrNull() ?: return false
@@ -144,13 +136,6 @@ internal class SQLiteAuthStore(context: Context) :
         /** Unusable random password for accounts that only sign in through Google. */
         fun randomPasswordHash(): String =
             hashPassword(ByteArray(32).also(random::nextBytes).joinToString("") { "%02x".format(it) })
-
-        /** Pre-PBKDF2 scheme (static salt, single SHA-256); kept only to verify old rows. */
-        internal fun legacyHash(password: String): String {
-            val digest = MessageDigest.getInstance("SHA-256")
-            val salted = "fmiw_$password-salt".toByteArray()
-            return digest.digest(salted).joinToString("") { "%02x".format(it) }
-        }
 
         private fun pbkdf2(password: String, salt: ByteArray, iterations: Int): ByteArray {
             val spec = PBEKeySpec(password.toCharArray(), salt, iterations, KEY_BITS)

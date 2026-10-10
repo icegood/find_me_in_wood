@@ -35,8 +35,8 @@ sealed interface JoinResult {
 
 /**
  * JSON-file persistence (v0.1; T3.5 Room migration tracked in tasks). The file holds every
- * network's traffic key, so it is sealed by [SecureStorage.box] (Android Keystore); a plain
- * file from an older build is read once and rewritten sealed.
+ * network's traffic key, so it is sealed by [SecureStorage.box] (Android Keystore); an
+ * unsealed or undecryptable file reads as empty.
  */
 object ProfileStore {
     private val json = Json { prettyPrint = true }
@@ -45,11 +45,8 @@ object ProfileStore {
 
     // Dir-based core ops (pure JVM-testable); ctx overloads are thin delegates.
     internal fun load(dir: File): List<StoredProfile> = try {
-        val raw = dir.resolve("profiles.json").readBytes()
-        val sealed = SecretBox.isSealed(raw)
-        val text = (if (sealed) SecureStorage.box.open(raw) else raw).decodeToString()
+        val text = SecureStorage.box.open(dir.resolve("profiles.json").readBytes()).decodeToString()
         json.decodeFromString(ListSerializer(StoredProfile.serializer()), text)
-            .also { if (!sealed) save(dir, it) }
     } catch (_: Exception) {
         emptyList()
     }

@@ -26,33 +26,29 @@ android {
     // Release signing: fmiw.* in ~/.gradle/gradle.properties locally, KEYSTORE_* env in
     // CI (release.yml decodes the ANDROID_KEYSTORE_* secrets). Without either, release
     // outputs stay unsigned rather than silently carrying the debug key.
-    val releaseSigning = Properties().apply {
-        val userFile = File(System.getProperty("user.home"), ".gradle/gradle.properties")
-        userFile.takeIf { it.exists() }?.inputStream()?.use { load(it) }
-    }.let { props ->
-        fun pick(prop: String, env: String) = props.getProperty(prop) ?: System.getenv(env)?.ifBlank { null }
-        val storeFile = pick("fmiw.storeFile", "KEYSTORE_FILE")
-        val storePassword = pick("fmiw.storePassword", "KEYSTORE_PASSWORD")
-        if (storeFile == null || storePassword == null) {
-            null
-        } else {
-            mapOf(
-                "storeFile" to storeFile,
-                "storePassword" to storePassword,
-                "keyAlias" to (pick("fmiw.keyAlias", "KEYSTORE_KEY_ALIAS") ?: "fmiw"),
-                // PKCS12 stores (fmiw-release.jks) use the store password for the key.
-                "keyPassword" to (pick("fmiw.keyPassword", "KEYSTORE_KEY_PASSWORD") ?: storePassword),
-            )
-        }
-    }
+    // Release signing, same scheme as home_media_library: credentials live in a gitignored
+    // keystore.properties at the repo root (storeFile/storePassword/keyAlias/keyPassword).
+    // CI renders it from the ANDROID_KEYSTORE_* secrets. Without it the release APK is
+    // unsigned — never silently debug-signed.
+    val keystorePropertiesFile = rootProject.file("keystore.properties")
     signingConfigs {
-        if (releaseSigning != null) {
-            create("release") {
-                storeFile = file(releaseSigning.getValue("storeFile"))
-                storePassword = releaseSigning.getValue("storePassword")
-                keyAlias = releaseSigning.getValue("keyAlias")
-                keyPassword = releaseSigning.getValue("keyPassword")
+        if (keystorePropertiesFile.exists()) {
+            val keystoreProperties = Properties().apply {
+                keystorePropertiesFile.inputStream().use { load(it) }
             }
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                // PKCS12 stores (fmiw-release.jks) use the store password for the key.
+                keyPassword = keystoreProperties.getProperty("keyPassword")?.ifBlank { null }
+                    ?: keystoreProperties.getProperty("storePassword")
+            }
+        } else {
+            logger.warn(
+                "keystore.properties not found: release APK will be unsigned " +
+                    "(unusable for distribution)",
+            )
         }
     }
     buildTypes {

@@ -91,4 +91,10 @@ class TileProviderTest {
         assertEquals(TileProvider.MAPNIK.id, tileSourceById("SomeRemovedProvider").name())
         assertEquals(null, TileProvider.byId("nope"))
     }
+
+    @Test
+    fun `only providers that need a key get a settings field`() {
+        assertTrue(TileProvider.keyed.all { it.needsApiKey })
+        assertEquals(TileProvider.entries.filter { it.needsApiKey }, TileProvider.keyed)
+    }
 }

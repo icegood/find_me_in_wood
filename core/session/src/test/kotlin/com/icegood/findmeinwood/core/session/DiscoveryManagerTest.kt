@@ -103,7 +103,7 @@ class DiscoveryManagerTest {
     fun `private join delivers the secret with a matching sas`() {
         val (ownerId, ownerPair) = member()
         val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair)
-        owner.ownerSecret = "correct horse battery staple"
+        owner.ownerSecret = "discovery-net"
         val (joinerId, joinerPair) = member()
         val joiner = manager(JoinPolicy.PRIVATE, joinerId, joinerPair)
 
@@ -123,7 +123,7 @@ class DiscoveryManagerTest {
 
         val outcome = joiner.outcome.value
         assertTrue(outcome is JoinOutcome.Joined)
-        assertEquals("correct horse battery staple", outcome.secret)
+        assertEquals("discovery-net", outcome.secret)
         assertEquals(ownerSas, outcome.sas)
     }
 
@@ -131,7 +131,7 @@ class DiscoveryManagerTest {
     fun `open join delivers the secret in clear`() {
         val (ownerId, ownerPair) = member()
         val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair)
-        owner.ownerSecret = "open-secret-123456"
+        owner.ownerSecret = "discovery-net"
         val (joinerId, joinerPair) = member()
         val joiner = manager(JoinPolicy.OPEN, joinerId, joinerPair)
 
@@ -142,7 +142,7 @@ class DiscoveryManagerTest {
         joiner.onMgmtFrame(MgmtCodec.decode(accept))
 
         val outcome = joiner.outcome.value as JoinOutcome.Joined
-        assertEquals("open-secret-123456", outcome.secret)
+        assertEquals("discovery-net", outcome.secret)
     }
 
     @Test
@@ -206,7 +206,7 @@ class DiscoveryManagerTest {
     fun `approved request cannot be approved twice`() {
         val (ownerId, ownerPair) = member()
         val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair)
-        owner.ownerSecret = "open-secret-123456"
+        owner.ownerSecret = "discovery-net"
         val (joinerId, joinerPair) = member()
         val joiner = manager(JoinPolicy.OPEN, joinerId, joinerPair)
         owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)))
@@ -244,7 +244,7 @@ class DiscoveryManagerTest {
     @Test
     fun `join answers are only accepted from the advertised owner`() {
         val (ownerId, ownerPair) = member()
-        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair).apply { ownerSecret = "real-secret" }
+        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair).apply { ownerSecret = "discovery-net" }
         val (rogueId, roguePair) = member()
         val rogue = DiscoveryManager(
             profile(JoinPolicy.OPEN, rogueId).copy(ownerMemberId = rogueId),
@@ -264,7 +264,19 @@ class DiscoveryManagerTest {
         assertNull(joiner.outcome.value, "a reject from a non-owner must be ignored")
 
         joiner.onMgmtFrame(MgmtCodec.decode(owner.approve(joinerId)!!))
-        assertEquals("real-secret", (joiner.outcome.value as JoinOutcome.Joined).secret)
+        assertEquals("discovery-net", (joiner.outcome.value as JoinOutcome.Joined).secret)
+    }
+
+    @Test
+    fun `accept carrying a secret for another network is refused`() {
+        val (ownerId, ownerPair) = member()
+        // Answers for keys.networkId but hands out a secret that derives a different network.
+        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair).apply { ownerSecret = "not-this-network" }
+        val (joinerId, joinerPair) = member()
+        val joiner = manager(JoinPolicy.OPEN, joinerId, joinerPair)
+        owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)))
+        joiner.onMgmtFrame(MgmtCodec.decode(owner.approve(joinerId)!!))
+        assertEquals(null, joiner.outcome.value)
     }
 
     @Test

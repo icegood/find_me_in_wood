@@ -219,15 +219,13 @@ class ProfileStoreDirTest {
     }
 
     @Test
-    fun `plain profiles from an older build are migrated`() {
+    fun `plain profiles are not trusted`() {
         val d = dir()
         val plain = kotlinx.serialization.json.Json.encodeToString(
             kotlinx.serialization.builtins.ListSerializer(StoredProfile.serializer()), listOf(stored()),
         )
         d.resolve("profiles.json").writeText(plain)
-        assertEquals(listOf(stored()), ProfileStore.load(d))
-        assertTrue(SecretBox.isSealed(d.resolve("profiles.json").readBytes()))
-        assertEquals(listOf(stored()), ProfileStore.load(d))
+        assertEquals(0, ProfileStore.load(d).size)
     }
 
     @Test
@@ -336,7 +334,7 @@ class IdentityHolderSealingTest {
     init { SecureStorage.box = TestBox }
 
     @Test
-    fun `identity file is sealed and a plain one is migrated`() {
+    fun `identity file is sealed and a plain one is replaced`() {
         val file = Files.createTempDirectory("id").toFile().resolve("device_identity.key")
         val pair = IdentityHolder.loadOrCreate(file)
         assertTrue(SecretBox.isSealed(file.readBytes()))
@@ -346,8 +344,8 @@ class IdentityHolderSealingTest {
             listOf(pair.private.algorithm, enc.encodeToString(pair.private.encoded), enc.encodeToString(pair.public.encoded))
                 .joinToString("\n"),
         )
-        val migrated = IdentityHolder.loadOrCreate(file)
-        assertTrue(migrated.public.encoded.contentEquals(pair.public.encoded), "legacy key must be kept")
+        val fresh = IdentityHolder.loadOrCreate(file)
+        assertTrue(!fresh.public.encoded.contentEquals(pair.public.encoded), "unsealed key must not be used")
         assertTrue(SecretBox.isSealed(file.readBytes()))
     }
 }

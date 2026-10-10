@@ -41,13 +41,15 @@ jobs:
           mkdir -p "$RUNNER_TEMP/keystore"
           printf '%s' "$KEYSTORE_JKS_BASE64" | base64 -d > "$RUNNER_TEMP/keystore/release.jks"
           chmod 600 "$RUNNER_TEMP/keystore/release.jks"
+          # Same mechanism as home_media_library: gradle reads a gitignored
+          # keystore.properties at the repo root.
+          umask 077
           {
-            printf 'KEYSTORE_FILE=%s\n' "$RUNNER_TEMP/keystore/release.jks"
-            printf 'KEYSTORE_PASSWORD=%s\n' "$KEYSTORE_PASSWORD"
-            printf 'KEYSTORE_KEY_ALIAS=%s\n' "$KEYSTORE_KEY_ALIAS"
-            [ -n "${KEYSTORE_KEY_PASSWORD:-}" ] && printf 'KEYSTORE_KEY_PASSWORD=%s\n' "$KEYSTORE_KEY_PASSWORD"
-            true
-          } >> "$GITHUB_ENV"
+            printf 'storeFile=%s\n' "$RUNNER_TEMP/keystore/release.jks"
+            printf 'storePassword=%s\n' "$KEYSTORE_PASSWORD"
+            printf 'keyAlias=%s\n' "$KEYSTORE_KEY_ALIAS"
+            printf 'keyPassword=%s\n' "${KEYSTORE_KEY_PASSWORD:-}"
+          } > keystore.properties
 
       - name: Build APKs & bundle
         run: ./gradlew assembleDebug bundleRelease assembleRelease --stacktrace

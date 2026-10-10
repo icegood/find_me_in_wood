@@ -122,10 +122,10 @@ class AuthManagerTest {
     }
 
     @Test
-    fun `legacy sha256 hashes still verify`() = runTest {
-        val legacy = SQLiteAuthStore.legacyHash("password123")
-        assertTrue(SQLiteAuthStore.matches("password123", legacy))
-        assertTrue(!SQLiteAuthStore.matches("password124", legacy))
+    fun `non pbkdf2 hashes never verify`() = runTest {
+        val unsalted = java.security.MessageDigest.getInstance("SHA-256")
+            .digest("fmiw_password123-salt".toByteArray()).joinToString("") { "%02x".format(it) }
+        assertTrue(!SQLiteAuthStore.matches("password123", unsalted))
     }
 
     @Test

@@ -152,7 +152,7 @@ class MainActivity : ComponentActivity() {
         // in light theme and CARTO dark in dark theme, which are different services.
         var mapTileKeys by remember {
             mutableStateOf(
-                com.icegood.findmeinwood.feature.map.TileProvider.online
+                com.icegood.findmeinwood.feature.map.TileProvider.keyed
                     .associateWith { Prefs.mapTileApiKey(this@MainActivity, it.id) },
             )
         }
@@ -426,7 +426,8 @@ class MainActivity : ComponentActivity() {
         val snackbar = remember { SnackbarHostState() }
         val uiScope = rememberCoroutineScope()
         val diag by SessionBus.diagnostics.collectAsState()
-        val providers = com.icegood.findmeinwood.feature.map.TileProvider.online
+        // Only providers that need a key get a field; keyless ones never appear here.
+        val providers = com.icegood.findmeinwood.feature.map.TileProvider.keyed
 
         Scaffold(
             topBar = { TopAppBar(title = { Text("Settings") }) },
@@ -454,34 +455,18 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-                // Hidden while no provider takes a key; the plumbing stays for keyed providers.
-                if (providers.any { it.needsApiKey }) {
+                if (providers.isNotEmpty()) {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Tile API keys", style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                "each provider has its own key; only providers that require one need it",
-                                style = MaterialTheme.typography.bodySmall,
-                            )
                             providers.forEach { provider ->
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     OutlinedTextField(
                                         value = keys[provider].orEmpty(),
                                         onValueChange = { keys = keys + (provider to it) },
                                         label = { Text(provider.label) },
-                                        placeholder = {
-                                            Text(if (provider.needsApiKey) "API key required" else "not needed")
-                                        },
-                                        supportingText = {
-                                            Text(
-                                                if (provider.needsApiKey) {
-                                                    "sent as ?token=… to ${provider.id}"
-                                                } else {
-                                                    "no key required for ${provider.id}"
-                                                },
-                                            )
-                                        },
-                                        enabled = provider.needsApiKey,
+                                        placeholder = { Text("API key required") },
+                                        supportingText = { Text("sent as ?token=… to ${provider.id}") },
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
                                     )
