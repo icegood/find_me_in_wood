@@ -67,12 +67,27 @@ class MainActivity : ComponentActivity() {
     }
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
+    /** SOS needs SMS (send + receive) and, for the satellite indicator, phone state. */
+    private val sosPermissions = arrayOf(
+        Manifest.permission.SEND_SMS,
+        Manifest.permission.RECEIVE_SMS,
+        Manifest.permission.READ_PHONE_STATE,
+    )
+    private val sosGranted = mutableStateOf(false)
+    private val sosPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            sosGranted.value = sosPermissionsGranted()
+        }
     private val shareTransport by lazy { ShareTransport(this) }
     private val authManager by lazy { AuthManager(this) }
+    /** Set when opened from an SOS notification: jump to the map. */
+    private val openSos = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         permissionLauncher.launch(permissions.toTypedArray())
+        SosAlerts.load(this)
+        openSos.value = intent?.getBooleanExtra(EXTRA_OPEN_SOS, false) == true
         setContent {
             var themeMode by remember { mutableStateOf(Prefs.themeMode(this@MainActivity)) }
             val darkTheme = when (themeMode) {
@@ -132,6 +147,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_OPEN_SOS, false)) openSos.value = true
+    }
+
+    private fun sosPermissionsGranted() = sosPermissions.take(2).all {
+        checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
+    }
+
     @Composable
     private fun MainApp(
         user: UserProfile,
@@ -141,6 +165,11 @@ class MainActivity : ComponentActivity() {
         darkTheme: Boolean,
     ) {
         var tab by remember { mutableStateOf("networks") }
+        LaunchedEffect(openSos.value) {
+            if (openSos.value) { tab = "map"; openSos.value = false }
+        }
+        val sosState by SessionBus.sos.collectAsState()
+        val sosAlerts by SosAlerts.alerts.collectAsState()
         var mapTileSource by remember {
             mutableStateOf(
                 runCatching {
@@ -240,6 +269,30 @@ class MainActivity : ComponentActivity() {
                         },
                         findTarget = findTarget,
                         onFindTargetChange = { findTarget = it },
+                        sos = com.icegood.findmeinwood.feature.map.SosUi(sosState.active, sosStatusText(sosState)),
+                        onSosStart = {
+                            if (!sosPermissionsGranted()) sosPermissionLauncher.launch(sosPermissions)
+                            val started = SessionService.startSos(
+                                this@MainActivity, ProfileStore.load(this@MainActivity).firstOrNull(),
+                            )
+                            if (!started) {
+                                android.widget.Toast.makeText(
+                                    this@MainActivity, "Create or join a network first", android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                            }
+                        },
+                        onSosStop = { SessionService.stopSos(this@MainActivity) },
+                        sosAlerts = sosAlerts.map { a ->
+                            com.icegood.findmeinwood.feature.map.SosMarker(
+                                id = a.senderHex,
+                                label = a.name ?: "member ${a.senderHex.take(8)}",
+                                latE7 = a.latE7, lonE7 = a.lonE7, accuracyM = a.accuracyM,
+                                ageText = ageText(a.sentAtMs) + " via ${a.via}" +
+                                    (a.batteryPct?.let { " · $it%" } ?: ""),
+                                active = a.active,
+                            )
+                        },
+                        onDismissSosAlert = { SosAlerts.dismiss(this@MainActivity, it) },
                     )
                     tab == "peers" -> com.icegood.findmeinwood.feature.map.PeerList(
                         SessionBus.peers,
@@ -602,6 +655,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                SosSettingsCard(snackbar, uiScope)
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("LoRa node", style = MaterialTheme.typography.titleSmall)
@@ -704,6 +758,92 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * SOS recipients. Member numbers get the encrypted one-SMS report (their app decodes
+     * it); emergency contacts get plain text with a maps link (readable by the carrier).
+     */
+    @Composable
+    private fun SosSettingsCard(snackbar: SnackbarHostState, uiScope: kotlinx.coroutines.CoroutineScope) {
+        var members by remember { mutableStateOf(Prefs.sosMemberNumbers(this@MainActivity)) }
+        var contacts by remember { mutableStateOf(Prefs.sosContactNumbers(this@MainActivity)) }
+        var interval by remember { mutableStateOf(Prefs.sosIntervalMin(this@MainActivity).toString()) }
+        LaunchedEffect(Unit) { sosGranted.value = sosPermissionsGranted() }
+        val granted = sosGranted.value
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("SOS", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "Hold the red SOS button on the map. Nearby members see it over the radio mesh; " +
+                        "the numbers below get an SMS right away and then every interval. SMS is what " +
+                        "reaches satellites (direct-to-cell / satellite SMS) when there is no network.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedTextField(
+                    value = members, onValueChange = { members = it },
+                    label = { Text("Members' phones (encrypted)") },
+                    placeholder = { Text("+380…, +380…") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = contacts, onValueChange = { contacts = it },
+                    label = { Text("Emergency contacts (plain text)") },
+                    supportingText = { Text("no app needed; the carrier can read the position") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = interval, onValueChange = { interval = it.filter(Char::isDigit) },
+                    label = { Text("Repeat every (minutes, ${Prefs.SOS_MIN_INTERVAL_MIN}–${Prefs.SOS_MAX_INTERVAL_MIN})") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.width(260.dp),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = {
+                        Prefs.setSosMemberNumbers(this@MainActivity, members)
+                        Prefs.setSosContactNumbers(this@MainActivity, contacts)
+                        interval.toIntOrNull()?.let { Prefs.setSosIntervalMin(this@MainActivity, it) }
+                        interval = Prefs.sosIntervalMin(this@MainActivity).toString()
+                        val n = SosLogic.parseNumbers(members).size + SosLogic.parseNumbers(contacts).size
+                        uiScope.launch { snackbar.showSnackbar("SOS settings saved · $n number(s)") }
+                    }) { Text("Save") }
+                    if (!granted) {
+                        OutlinedButton(onClick = { sosPermissionLauncher.launch(sosPermissions) }) {
+                            Text("Allow SMS")
+                        }
+                    }
+                }
+                if (!granted) {
+                    Text(
+                        "Without SMS permission SOS goes over the mesh only, and SOS texts from others are not decoded.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun sosStatusText(s: SessionBus.SosState): String? {
+        if (!s.active) return null
+        val fmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+        return buildList {
+            add("${s.roundsSent} SMS round(s)")
+            s.lastSentAtMs?.let { add("last ${fmt.format(java.util.Date(it))}") }
+            s.nextAtMs?.let { add("next ${fmt.format(java.util.Date(it))}") }
+            if (s.satellite == true) add("via satellite")
+            s.note?.let { add(it) }
+        }.joinToString(" · ")
+    }
+
+    private fun ageText(atMs: Long): String {
+        val s = ((System.currentTimeMillis() - atMs) / 1000).coerceAtLeast(0)
+        return when {
+            s < 90 -> "${s}s ago"
+            s < 5400 -> "${s / 60} min ago"
+            else -> "${s / 3600} h ago"
+        }
+    }
+
     @Composable
     private fun NodePickerDialog(onDismiss: () -> Unit, onPick: (String) -> Unit) {
         val nodes = remember { mutableStateOf(listOf<BleNodeLink.ScannedNode>()) }
@@ -781,6 +921,10 @@ class MainActivity : ComponentActivity() {
             },
             dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
         )
+    }
+
+    companion object {
+        const val EXTRA_OPEN_SOS = "open_sos"
     }
 
     private fun granted(): Boolean = permissions.all {

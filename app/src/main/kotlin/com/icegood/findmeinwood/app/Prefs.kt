@@ -18,6 +18,14 @@ object Prefs {
     private const val KEY_TILE_API_KEY_PREFIX = "tile_api_key_"
     private const val KEY_P2P_OWNER = "p2p_group_owner"
     private const val KEY_THEME_MODE = "theme_mode"
+    private const val KEY_SOS_MEMBERS = "sos_member_numbers"
+    private const val KEY_SOS_CONTACTS = "sos_contact_numbers"
+    private const val KEY_SOS_INTERVAL_MIN = "sos_interval_min"
+
+    /** SOS repeat cadence bounds; 6 SMS/hour per recipient at most. */
+    const val SOS_MIN_INTERVAL_MIN = 10
+    const val SOS_MAX_INTERVAL_MIN = 120
+    const val SOS_DEFAULT_INTERVAL_MIN = 15
 
     /** FR-4.2/FR-9.2: beacon + share cadence, 5–300 s, default 60 s. */
     const val MIN_INTERVAL_MS = 5_000L
@@ -100,6 +108,28 @@ object Prefs {
     /** Provider credentials are secrets too: sealed like the network secrets. */
     fun setMapTileApiKey(ctx: Context, providerId: String, key: String?) =
         putSealedString(ctx, KEY_TILE_API_KEY_PREFIX + providerId, key?.trim()?.ifBlank { null })
+
+    /**
+     * Phone numbers of network members: they get the encrypted SOS frame, which their app
+     * decodes. Sealed like other secrets (personal data).
+     */
+    fun sosMemberNumbers(ctx: Context): String = sealedString(ctx, KEY_SOS_MEMBERS).orEmpty()
+    fun setSosMemberNumbers(ctx: Context, text: String) =
+        putSealedString(ctx, KEY_SOS_MEMBERS, text.trim().ifBlank { null })
+
+    /** Emergency contacts without the app: they get a plain-text SOS with a maps link. */
+    fun sosContactNumbers(ctx: Context): String = sealedString(ctx, KEY_SOS_CONTACTS).orEmpty()
+    fun setSosContactNumbers(ctx: Context, text: String) =
+        putSealedString(ctx, KEY_SOS_CONTACTS, text.trim().ifBlank { null })
+
+    fun sosIntervalMin(ctx: Context): Int =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getInt(KEY_SOS_INTERVAL_MIN, SOS_DEFAULT_INTERVAL_MIN)
+            .coerceIn(SOS_MIN_INTERVAL_MIN, SOS_MAX_INTERVAL_MIN)
+
+    fun setSosIntervalMin(ctx: Context, minutes: Int) {
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit()
+            .putInt(KEY_SOS_INTERVAL_MIN, minutes.coerceIn(SOS_MIN_INTERVAL_MIN, SOS_MAX_INTERVAL_MIN)).apply()
+    }
 
     /** Wi-Fi Direct role: host the P2P group (server) instead of letting the system pick. */
     fun p2pGroupOwner(ctx: Context): Boolean =

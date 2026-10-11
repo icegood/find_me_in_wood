@@ -13,7 +13,9 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -259,6 +261,13 @@ fun MapScreen(
      */
     findTarget: MemberId? = null,
     onFindTargetChange: (MemberId?) -> Unit = {},
+    /** Our own SOS mode (null = SOS not available, e.g. no network). */
+    sos: SosUi? = null,
+    onSosStart: () -> Unit = {},
+    onSosStop: () -> Unit = {},
+    /** SOS heard from others (SMS or mesh), drawn as red markers. */
+    sosAlerts: List<SosMarker> = emptyList(),
+    onDismissSosAlert: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val p by profile.collectAsState()
@@ -339,7 +348,36 @@ fun MapScreen(
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { mapView },
-            ) { mv -> renderMarkers(mv, p, ps, me, follow, onFindTargetChange) }
+            ) { mv -> renderMarkers(mv, p, ps, me, follow, onFindTargetChange, sosAlerts) }
+
+            // Incoming SOS: one line per person, tap "show" to jump the map there.
+            val activeAlerts = sosAlerts.filter { it.active }
+            if (activeAlerts.isNotEmpty()) {
+                Card(
+                    Modifier.align(Alignment.TopCenter).padding(top = 132.dp, start = 12.dp, end = 12.dp),
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    ),
+                ) {
+                    Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                        activeAlerts.forEach { a ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val dist = me?.let { formatDistance(distanceBearing(it, a.latE7, a.lonE7).first) }
+                                Text(
+                                    "SOS ${a.label}" + (dist?.let { " · $it" } ?: "") + " · ${a.ageText}",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                TextButton(onClick = {
+                                    mapView.controller.animateTo(GeoPoint(a.latE7 / 1e7, a.lonE7 / 1e7))
+                                }) { Text("show") }
+                                TextButton(onClick = { onDismissSosAlert(a.id) }) { Text("✕") }
+                            }
+                        }
+                    }
+                }
+            }
 
             // HUD, two arrows: my own direction (movement heading or compass) at my position,
             // and the direction to the member being searched for, ending at that member when
@@ -501,6 +539,8 @@ fun MapScreen(
         }
 
         CompassHud(azimuth = azimuth.value, isDarkTheme = isDarkTheme, Modifier.padding(start = 12.dp, top = 84.dp).align(Alignment.TopStart))
+
+        if (sos != null) SosControls(sos, onSosStart, onSosStop, Modifier.align(Alignment.BottomStart))
 
         Card(Modifier.padding(12.dp).align(Alignment.BottomEnd)) {
             Text(
@@ -1066,6 +1106,7 @@ private fun renderMarkers(
     me: Location?,
     follow: MemberId?,
     onSelect: (MemberId?) -> Unit,
+    sosAlerts: List<SosMarker> = emptyList(),
 ) {
     mv.overlays.removeAll { it is Marker }
     if (me != null) {
@@ -1114,8 +1155,91 @@ private fun renderMarkers(
             }
         }
     }
+    sosAlerts.filter { it.active }.forEach { a ->
+        mv.overlays.add(
+            Marker(mv).apply {
+                position = GeoPoint(a.latE7 / 1e7, a.lonE7 / 1e7)
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                title = "SOS ${a.label}"
+                snippet = "±${a.accuracyM} m · ${a.ageText}"
+                icon = icon?.mutate()?.apply {
+                    colorFilter = android.graphics.PorterDuffColorFilter(
+                        android.graphics.Color.RED, android.graphics.PorterDuff.Mode.SRC_ATOP,
+                    )
+                }
+            },
+        )
+    }
     mv.invalidate()
 }
 
 private fun hasPeerPosition(peers: Map<MemberId, PeerState>): Boolean =
     peers.values.any { it.lastPosition != null }
+
+/** Our SOS mode as the map shows it. */
+data class SosUi(
+    val active: Boolean,
+    /** One-line status, e.g. "3 SMS rounds · last 14:05 · next 14:20 · via satellite". */
+    val status: String?,
+)
+
+/** An SOS heard from someone else. */
+data class SosMarker(
+    val id: String,
+    val label: String,
+    val latE7: Int,
+    val lonE7: Int,
+    val accuracyM: Int,
+    val ageText: String,
+    val active: Boolean,
+)
+
+/**
+ * The SOS button (hold to send — a tap only explains, so it cannot fire by accident) and,
+ * while SOS is on, a red banner with its status and an "I'm OK" that asks before cancelling.
+ */
+@Composable
+private fun SosControls(sos: SosUi, onStart: () -> Unit, onStop: () -> Unit, modifier: Modifier) {
+    val context = LocalContext.current
+    var confirmStop by remember { mutableStateOf(false) }
+    if (sos.active) {
+        Card(
+            modifier.padding(start = 12.dp, end = 12.dp, bottom = 64.dp).fillMaxWidth(),
+            colors = androidx.compose.material3.CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError,
+            ),
+        ) {
+            Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("SOS ACTIVE", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    sos.status?.let { Text(it, style = MaterialTheme.typography.labelSmall) }
+                }
+                Button(onClick = { confirmStop = true }) { Text("I'm OK") }
+            }
+        }
+    } else {
+        Box(
+            modifier
+                .padding(start = 12.dp, bottom = 64.dp)
+                .size(64.dp)
+                .background(Color(0xFFD32F2F), androidx.compose.foundation.shape.CircleShape)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { Toast.makeText(context, "Hold the SOS button to send SOS", Toast.LENGTH_SHORT).show() },
+                        onLongPress = { onStart() },
+                    )
+                },
+            contentAlignment = Alignment.Center,
+        ) { Text("SOS", color = Color.White, fontWeight = FontWeight.Bold) }
+    }
+    if (confirmStop) {
+        AlertDialog(
+            onDismissRequest = { confirmStop = false },
+            title = { Text("Cancel SOS?") },
+            text = { Text("Your contacts get an \"I'm OK\" message.") },
+            confirmButton = { Button(onClick = { confirmStop = false; onStop() }) { Text("Yes, I'm OK") } },
+            dismissButton = { TextButton(onClick = { confirmStop = false }) { Text("Keep SOS on") } },
+        )
+    }
+}

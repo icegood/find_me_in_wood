@@ -67,6 +67,11 @@ val gateScopeExcludes = coverageExcludes + listOf(
     "**/WifiDirectTransport\$requestConnectionInfo*",
     "**/WifiDirectWiring*",                       // WifiP2p stack calls (device-verified)
     "**/UsbSerialLink*",
+    // Android Keystore / SQLCipher native glue (no AndroidKeyStore or libsqlcipher on the
+    // JVM); SecureDb's key handling is exercised by SecureDbTest under Robolectric, which
+    // offline instrumentation does not see (same classloader mismatch as ChatStore).
+    "**/KeystoreBox*",
+    "**/SecureDb*",
 )
 
 subprojects {
@@ -163,6 +168,10 @@ val gateIncludes = listOf(
     "com/icegood/findmeinwood/app/SessionBus*",
     "com/icegood/findmeinwood/app/ProfileStore*",
     "com/icegood/findmeinwood/app/IdentityHolder*",
+    // Pure app logic (JVM-tested): link-loss detection and SOS rules.
+    "com/icegood/findmeinwood/app/LinkWatch*",
+    "com/icegood/findmeinwood/app/SosLogic*",
+    "com/icegood/findmeinwood/app/SmsBudget*",
     "com/icegood/findmeinwood/core/auth/**",
     "com/icegood/findmeinwood/core/chat/**",
     "com/icegood/findmeinwood/core/p2p/**",

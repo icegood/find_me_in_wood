@@ -80,6 +80,21 @@ object SessionBus {
         _incomingPayloads.emit(payload to sender)
     }
 
+    /** Our own SOS mode, for the map banner. */
+    data class SosState(
+        val active: Boolean = false,
+        val roundsSent: Int = 0,
+        val lastSentAtMs: Long? = null,
+        val nextAtMs: Long? = null,
+        val note: String? = null,
+        /** Phone on a satellite (non-terrestrial) network at the last send; null = unknown. */
+        val satellite: Boolean? = null,
+    )
+
+    private val _sos = MutableStateFlow(SosState())
+    val sos: StateFlow<SosState> = _sos
+    fun publishSos(state: SosState) { _sos.value = state }
+
     fun clear() {
         _profile.value = null
         _peers.value = emptyMap()
@@ -92,6 +107,7 @@ object SessionBus {
         _ownerNote.value = null
         _joinOutcome.value = null
         _radioStates.value = emptyMap()
+        _sos.value = SosState()
         // Swap out the chat replay buffer entirely: a stale session's payloads must
         // not replay into a fresh collector after Stop (same "buffer still shown"
         // class of bug, but for messages).

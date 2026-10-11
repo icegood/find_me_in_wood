@@ -18,6 +18,13 @@
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- SOS over SMS: the one channel apps can push through satellite (direct-to-cell /
+         carrier satellite SMS) or a single bar of 2G. Requested only from the SOS settings. -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <!-- Optional: Android 15+ tells whether the phone is on a satellite network. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <application
         android:label="find me in wood"
@@ -28,6 +35,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Incoming SOS SMS, decoded even when no session is running. -->
+        <receiver
+            android:name=".SmsSosReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
         <service
             android:name=".SessionService"
             android:exported="false"

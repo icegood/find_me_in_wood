@@ -53,6 +53,8 @@ data class BeaconPayload(
     val sig: ByteArray? = null,
     /** Sender's public key (SPKI) — pinned on first sight. */
     val pub: ByteArray? = null,
+    /** Sender is in SOS mode (needs help). Absent = false, so normal beacons stay small. */
+    val sos: Boolean? = null,
 )
 
 @kotlinx.serialization.Serializable

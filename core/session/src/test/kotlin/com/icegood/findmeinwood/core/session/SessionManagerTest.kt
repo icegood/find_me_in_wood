@@ -12,6 +12,7 @@ import com.icegood.findmeinwood.core.model.TransportId
 import com.icegood.findmeinwood.transport.api.FakeTransport
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -59,6 +60,24 @@ class SessionManagerTest {
             assertEquals(515000000, peer.lastPosition!!.latE7)
             // seq is seeded from the clock (seconds) so restarts keep it increasing
             assertEquals((now / 1000).toUInt(), peer.lastSeq)
+        } finally { mA.stop(); mB.stop(); scope.cancel() }
+    }
+
+    @Test
+    fun `sos flag reaches peers over the mesh`(): Unit = runBlocking {
+        val alice = Member("alice"); val bob = Member("bob")
+        val tA = FakeTransport(TransportId.BLUETOOTH)
+        val tB = FakeTransport(TransportId.BLUETOOTH)
+        pump(tA, tB)
+        val mA = SessionManager(alice.profile, listOf(tA), flowOf(), { now }, scope = scope)
+        val mB = SessionManager(bob.profile, listOf(tB), flowOf(), { now }, scope = scope)
+        mA.start(); mB.start()
+        try {
+            mA.sendBeaconSigned(com.icegood.findmeinwood.core.model.BeaconPayload(sos = true))
+            val peer = withTimeout(5_000) { mB.peerFlow.first { it[alice.memberId]?.sos == true } }
+            assertEquals(true, peer[alice.memberId]?.sos)
+            val first = mA.nextSeq()
+            assertTrue(mA.nextSeq() > first, "SMS reports draw from the same increasing counter")
         } finally { mA.stop(); mB.stop(); scope.cancel() }
     }
 

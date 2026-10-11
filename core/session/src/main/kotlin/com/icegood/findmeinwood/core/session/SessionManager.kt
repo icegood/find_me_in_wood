@@ -63,6 +63,15 @@ class SessionManager(
     val runningFlow: StateFlow<Boolean> = running
     val peerFlow: StateFlow<Map<MemberId, PeerState>> get() = tracker.peersFlow
 
+    /** SOS mode: every beacon carries the flag so nearby members see it over the mesh. */
+    @Volatile var sosActive: Boolean = false
+
+    /**
+     * Next sequence number from the same clock-seeded counter as radio frames. SMS SOS
+     * reports use it too, so (sender, seq) — their AEAD nonce — is never reused.
+     */
+    fun nextSeq(): UInt = seq.getAndIncrement().toUInt()
+
     /** Wire bytes of every beacon sent (used by carriers, e.g. Viber share — US-9). */
     var onFrameSent: ((ByteArray) -> Unit)? = null
 
@@ -124,7 +133,10 @@ class SessionManager(
         jobs += scope.launch {
             BeaconScheduler(keepAliveMs, clock)
                 .commands(fixes)
-                .collect { sendBeaconSigned(it.fix?.let { f -> PayloadCodec.fromFix(f) } ?: BeaconPayload()) }
+                .collect {
+                    val payload = it.fix?.let { f -> PayloadCodec.fromFix(f) } ?: BeaconPayload()
+                    sendBeaconSigned(if (sosActive) payload.copy(sos = true) else payload)
+                }
         }
         jobs += scope.launch {
             while (true) {

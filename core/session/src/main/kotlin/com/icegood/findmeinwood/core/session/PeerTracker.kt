@@ -13,6 +13,8 @@ data class PeerState(
     val lastSeq: UInt,
     val viaMemberId: MemberId? = null,
     val verified: Boolean = true,
+    /** The peer's latest beacon says it is in SOS mode. */
+    val sos: Boolean = false,
 )
 
 /** Pure-Kotlin peer table (FR-6.1/6.3): staleness + purge, injectable clock. */
@@ -37,6 +39,7 @@ class PeerTracker(
             lastSeq = b.seq,
             viaMemberId = cur?.viaMemberId,
             verified = cur?.verified ?: true,
+            sos = b.payload.sos == true,
         ))
     }
 
