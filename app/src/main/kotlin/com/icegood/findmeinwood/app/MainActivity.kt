@@ -505,7 +505,19 @@ class MainActivity : ComponentActivity() {
                 }
             },
             confirmButton = {
-                if (password != null) {
+                if (password != null) Row {
+                    TextButton(onClick = {
+                        val clip = android.content.ClipData.newPlainText("network password", password)
+                        // Android 13+: keep the password out of the clipboard preview.
+                        clip.description.extras = android.os.PersistableBundle().apply {
+                            putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+                        }
+                        getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(clip)
+                        // Android 13+ confirms a copy itself; older versions show nothing.
+                        if (Build.VERSION.SDK_INT < 33) {
+                            android.widget.Toast.makeText(this@MainActivity, "Password copied", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }) { Text("Copy") }
                     TextButton(onClick = {
                         val send = android.content.Intent(android.content.Intent.ACTION_SEND)
                             .setType("text/plain")
@@ -513,8 +525,8 @@ class MainActivity : ComponentActivity() {
                                 android.content.Intent.EXTRA_TEXT,
                                 "find me in wood — network “${p.name}”, password: $password",
                             )
-                        startActivity(android.content.Intent.createChooser(send, "Send password"))
-                    }) { Text("Send…") }
+                        startActivity(android.content.Intent.createChooser(send, "Send password with…"))
+                    }) { Text("Send via app…") }
                 }
             },
             dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
