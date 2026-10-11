@@ -17,6 +17,7 @@ import com.icegood.findmeinwood.core.model.TransportId
 import com.icegood.findmeinwood.core.session.GnssSource
 import com.icegood.findmeinwood.core.crypto.MgmtCodec
 import com.icegood.findmeinwood.core.session.DiscoveryManager
+import com.icegood.findmeinwood.core.session.EdgeManager
 import com.icegood.findmeinwood.core.session.SessionManager
 import com.icegood.findmeinwood.transport.api.Transport
 import com.icegood.findmeinwood.transport.bluetooth.BluetoothTransport
@@ -31,6 +32,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 /**
@@ -40,6 +42,8 @@ import kotlinx.coroutines.launch
 class SessionService : Service() {
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var session: SessionManager? = null
+    /** Debug builds: persistent link log of the running session (null in release). */
+    private var linkLog: LinkLog? = null
 
     /** Shutdown of the previous session's transports, still running in the background. */
     private var stopping: Job? = null
@@ -86,13 +90,17 @@ class SessionService : Service() {
 
         val deltaMs = Prefs.intervalMs(this)
         val gnss: GnssSource = AndroidGnssSource(this, deltaMs)
+        // Latest own fix, for the debug link log's distance-to-peer figures.
+        var lastFix: GnssFix? = null
+        val fixes = gnss.fixes().onEach { lastFix = it }
+        val bluetooth = BluetoothTransport(this, linkTimeoutMs = (deltaMs * 3).coerceAtLeast(120_000L))
         val wifiDirect = WifiDirectTransport(this).apply {
             setPreferGroupOwner(Prefs.p2pGroupOwner(this@SessionService))
         }
         activeWifiDirect = wifiDirect
         val transports = listOf<Transport>(
             // link timeout tracks the beacon cadence: 3 missed beacons = dead link
-            BluetoothTransport(this, linkTimeoutMs = (deltaMs * 3).coerceAtLeast(120_000L)),
+            bluetooth,
             wifiDirect,
             LoraTransport(this, BleNodeLink(this, Prefs.loraNode(this))),
             ShareTransport(this),
@@ -100,11 +108,20 @@ class SessionService : Service() {
         val identityPair = IdentityHolder.keyPair(this)
         val discovery = DiscoveryManager(profile, identityPair, { System.currentTimeMillis() })
         discovery.ownerSecret = Prefs.secretFor(this, profile.networkId.bytes.joinToString("") { "%02x".format(it) })
+        val clock = { System.currentTimeMillis() }
         val manager = SessionManager(
-            profile, transports, gnss.fixes(),
-            { System.currentTimeMillis() }, scope = scope, keepAliveMs = deltaMs,
+            profile, transports, fixes,
+            clock, scope = scope, keepAliveMs = deltaMs,
+            // Per-peer transport + up/down state: shown in the debug link log.
+            edgeManager = EdgeManager(profile.myMemberId, clock),
             signer = identityPair,
         )
+        linkLog = LinkLog.open(this)?.also { log ->
+            linkLogFile = "Download/${LinkLog.FOLDER}/${log.fileName}"
+            val sampler = LinkLogSampler(this, log, manager, bluetooth, wifiDirect, { lastFix }, deltaMs)
+            manager.onEdgeDown = sampler::onEdgeDown
+            sampler.start(scope, deltaMs)
+        }
         // Automatic handoff (FR-9.2): newest envelope goes to the clipboard every
         // delta, silently — the user pastes it into the messenger, no UI is raised.
         DiscoveryBridge.onRequestJoin = { netId ->
@@ -189,6 +206,11 @@ class SessionService : Service() {
     private fun stopSession() {
         val s = session
         session = null
+        linkLog?.let { log ->
+            log.write("session_stop")
+            log.close()
+        }
+        linkLog = null
         activeManager = null
         activeWifiDirect = null
         activeDiscovery = null
@@ -258,6 +280,10 @@ class SessionService : Service() {
         const val EXTRA_POLICY = "policy"
 
         @Volatile var isRunning: Boolean = false
+            private set
+
+        /** Debug builds: where the current session's link log is written (persists after stop). */
+        @Volatile var linkLogFile: String? = null
             private set
 
         @Volatile var activeManager: SessionManager? = null

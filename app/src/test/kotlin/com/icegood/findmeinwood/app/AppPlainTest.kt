@@ -351,3 +351,45 @@ class IdentityHolderSealingTest {
         assertTrue(SecretBox.isSealed(file.readBytes()))
     }
 }
+
+class LinkWatchTest {
+    private fun peer(silentMs: Long, dist: Double?, via: String? = "BLUETOOTH") =
+        LinkWatch.PeerSample("p1", silentMs, dist, via)
+
+    @Test
+    fun `loss reports the last distance and trend seen while the peer was heard`() {
+        val w = LinkWatch(lostAfterMs = 150_000)
+        var now = 0L
+        listOf(20.0, 60.0, 110.0).forEach { d ->
+            assertTrue(w.update(now, listOf(peer(5_000, d))).isEmpty())
+            now += 10_000
+        }
+        // Peer goes silent; its position stays stale so no new distance arrives.
+        assertTrue(w.update(now, listOf(peer(140_000, null))).isEmpty(), "not lost yet")
+        val lost = w.update(now + 10_000, listOf(peer(155_000, null))).single() as LinkWatch.Event.Lost
+        assertEquals(110.0, lost.lastDistanceM)
+        assertEquals(listOf(20.0, 60.0, 110.0), lost.distanceTrend)
+        assertEquals("BLUETOOTH", lost.lastTransport)
+        // Reported once, not on every sample while silent.
+        assertTrue(w.update(now + 20_000, listOf(peer(165_000, null))).isEmpty())
+
+        val back = w.update(now + 70_000, listOf(peer(3_000, 80.0, "WIFI_DIRECT"))).single() as LinkWatch.Event.Back
+        assertEquals(155_000L + 60_000L, back.gapMs)
+        assertEquals("WIFI_DIRECT", back.transport)
+    }
+
+    @Test
+    fun `trend keeps only the last minute`() {
+        val w = LinkWatch(lostAfterMs = 30_000)
+        (1..10).forEach { w.update(it * 10_000L, listOf(peer(1_000, it.toDouble()))) }
+        val lost = w.update(200_000, listOf(peer(40_000, null))).single() as LinkWatch.Event.Lost
+        assertEquals(listOf(5.0, 6.0, 7.0, 8.0, 9.0, 10.0), lost.distanceTrend)
+    }
+
+    @Test
+    fun `distance is the great-circle metres`() {
+        // 0.001 deg of latitude is about 111 m.
+        val d = LinkWatch.distanceM(49.0, 24.0, 49.001, 24.0)
+        assertTrue(d in 110.0..112.5, "got $d")
+    }
+}

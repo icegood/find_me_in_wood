@@ -91,6 +91,8 @@ class BluetoothTransport internal constructor(
     private val clientMtu = ConcurrentHashMap<String, Int>()
     private val clientReady = ConcurrentHashMap.newKeySet<String>()
     private val lastInbound = ConcurrentHashMap<String, Long>()
+    /** Last signal strength per peer address (scan results + periodic readRemoteRssi). */
+    private val rssi = ConcurrentHashMap<String, RssiSample>()
     private val lock = Any()
 
     override fun start(config: SessionConfig): Flow<TransportEvent> {
@@ -304,6 +306,7 @@ class BluetoothTransport internal constructor(
 
     private val scanConsumer: (android.bluetooth.le.ScanResult) -> Unit = { result ->
         val address = result.device.address
+        rssi[address] = RssiSample(result.rssi, clock())
         if (running && clients.size < MAX_PEERS && !clients.containsKey(address)) {
             events.tryEmit(TransportEvent.PeerRadioVisible(address, id))
             try {
@@ -331,6 +334,8 @@ class BluetoothTransport internal constructor(
                 // A freshly started scan needs no restart on the same tick.
                 if (wasUp && radiosUp) {
                     pruneStaleLinks()
+                    // Fresh signal strength for the link metrics (answered in onReadRemoteRssi).
+                    clients.values.forEach { g -> try { g.readRemoteRssi() } catch (_: Exception) {} }
                     if (clients.isEmpty() && serverDevices.isEmpty()) {
                         try {
                             adapter?.bluetoothLeScanner?.stopScan(scannerCallback)
@@ -366,6 +371,11 @@ class BluetoothTransport internal constructor(
                 try { g.close() } catch (_: Exception) {}
                 ready = running || serverDevices.isNotEmpty()
             }
+        }
+
+        override fun onReadRemoteRssi(gatt: BluetoothGatt?, rssiDbm: Int, status: Int) {
+            val g = gatt ?: return
+            if (status == BluetoothGatt.GATT_SUCCESS) rssi[g.key()] = RssiSample(rssiDbm, clock())
         }
 
         override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
@@ -476,6 +486,17 @@ class BluetoothTransport internal constructor(
         val decoded = runCatching { FrameCodec.decode(frame) }.getOrNull() ?: return
         events.tryEmit(TransportEvent.FrameReceived(decoded, id))
     }
+
+    /** Signal strength of one peer link and when it was measured. */
+    data class RssiSample(val dbm: Int, val atMs: Long)
+
+    /**
+     * Link metrics for diagnostics: last RSSI per peer address (kept after the link drops,
+     * so the value just before a loss stays visible) and the current link counts.
+     */
+    fun rssiByLink(): Map<String, RssiSample> = HashMap(rssi)
+    fun centralLinkCount(): Int = clients.size
+    fun peripheralLinkCount(): Int = serverDevices.size
 
     companion object {
         val SERVICE_UUID: UUID = UUID.fromString("f11d0a01-5c1e-4a9b-9d3f-2a7b8c6d5e4f")

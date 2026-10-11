@@ -682,6 +682,12 @@ class MainActivity : ComponentActivity() {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.tertiary,
                         )
+                        if (BuildConfig.DEBUG) {
+                            Text(
+                                "debug link log: " + (SessionService.linkLogFile ?: "starts with the session"),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                     }
                 }
             }

@@ -74,6 +74,9 @@ class WifiDirectTransport(
 
     fun isGroupOwner(): Boolean = preferOwner
 
+    /** Open peer sockets (diagnostics). */
+    fun peerLinkCount(): Int = sockets.size
+
     override fun start(config: SessionConfig): Flow<TransportEvent> {
         if (!running) {
             running = true
