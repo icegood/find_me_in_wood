@@ -53,8 +53,6 @@ data class BeaconPayload(
     val sig: ByteArray? = null,
     /** Sender's public key (SPKI) — pinned on first sight. */
     val pub: ByteArray? = null,
-    /** Sender is in SOS mode (needs help). Absent = false, so normal beacons stay small. */
-    val sos: Boolean? = null,
     /** LNP/1 link negotiation (FR-3.6–3.9); absent on most beacons to keep them small. */
     val link: LinkCtl? = null,
 )

@@ -64,24 +64,6 @@ class SessionManagerTest {
     }
 
     @Test
-    fun `sos flag reaches peers over the mesh`(): Unit = runBlocking {
-        val alice = Member("alice"); val bob = Member("bob")
-        val tA = FakeTransport(TransportId.BLUETOOTH)
-        val tB = FakeTransport(TransportId.BLUETOOTH)
-        pump(tA, tB)
-        val mA = SessionManager(alice.profile, listOf(tA), flowOf(), { now }, scope = scope)
-        val mB = SessionManager(bob.profile, listOf(tB), flowOf(), { now }, scope = scope)
-        mA.start(); mB.start()
-        try {
-            mA.sendBeaconSigned(com.icegood.findmeinwood.core.model.BeaconPayload(sos = true))
-            val peer = withTimeout(5_000) { mB.peerFlow.first { it[alice.memberId]?.sos == true } }
-            assertEquals(true, peer[alice.memberId]?.sos)
-            val first = mA.nextSeq()
-            assertTrue(mA.nextSeq() > first, "SMS reports draw from the same increasing counter")
-        } finally { mA.stop(); mB.stop(); scope.cancel() }
-    }
-
-    @Test
     fun `restarted sender is still accepted by a running peer`(): Unit = runBlocking {
         val alice = Member("alice"); val bob = Member("bob")
         val tA = FakeTransport(TransportId.BLUETOOTH)

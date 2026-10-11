@@ -18,22 +18,7 @@ object Prefs {
     private const val KEY_TILE_API_KEY_PREFIX = "tile_api_key_"
     private const val KEY_P2P_OWNER = "p2p_group_owner"
     private const val KEY_THEME_MODE = "theme_mode"
-    private const val KEY_SOS_MEMBERS = "sos_member_numbers"
-    private const val KEY_SOS_CONTACTS = "sos_contact_numbers"
-    private const val KEY_SOS_INTERVAL_MIN = "sos_interval_min"
-    private const val KEY_SMS_LINK = "sms_link_enabled"
     private const val KEY_MY_PHONE = "my_phone_number"
-    private const val KEY_SMS_LINK_INTERVAL_MIN = "sms_link_interval_min"
-
-    /** LNP/1 SMS rung (FR-3.9): one position SMS per peer per interval. */
-    const val SMS_LINK_MIN_INTERVAL_MIN = 10
-    const val SMS_LINK_MAX_INTERVAL_MIN = 240
-    const val SMS_LINK_DEFAULT_INTERVAL_MIN = 30
-
-    /** SOS repeat cadence bounds; 6 SMS/hour per recipient at most. */
-    const val SOS_MIN_INTERVAL_MIN = 10
-    const val SOS_MAX_INTERVAL_MIN = 120
-    const val SOS_DEFAULT_INTERVAL_MIN = 15
 
     /** FR-4.2/FR-9.2: beacon + share cadence, 5–300 s, default 60 s. */
     const val MIN_INTERVAL_MS = 5_000L
@@ -118,51 +103,12 @@ object Prefs {
         putSealedString(ctx, KEY_TILE_API_KEY_PREFIX + providerId, key?.trim()?.ifBlank { null })
 
     /**
-     * Phone numbers of network members: they get the encrypted SOS frame, which their app
-     * decodes. Sealed like other secrets (personal data).
-     */
-    fun sosMemberNumbers(ctx: Context): String = sealedString(ctx, KEY_SOS_MEMBERS).orEmpty()
-    fun setSosMemberNumbers(ctx: Context, text: String) =
-        putSealedString(ctx, KEY_SOS_MEMBERS, text.trim().ifBlank { null })
-
-    /** Emergency contacts without the app: they get a plain-text SOS with a maps link. */
-    fun sosContactNumbers(ctx: Context): String = sealedString(ctx, KEY_SOS_CONTACTS).orEmpty()
-    fun setSosContactNumbers(ctx: Context, text: String) =
-        putSealedString(ctx, KEY_SOS_CONTACTS, text.trim().ifBlank { null })
-
-    fun sosIntervalMin(ctx: Context): Int =
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getInt(KEY_SOS_INTERVAL_MIN, SOS_DEFAULT_INTERVAL_MIN)
-            .coerceIn(SOS_MIN_INTERVAL_MIN, SOS_MAX_INTERVAL_MIN)
-
-    fun setSosIntervalMin(ctx: Context, minutes: Int) {
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit()
-            .putInt(KEY_SOS_INTERVAL_MIN, minutes.coerceIn(SOS_MIN_INTERVAL_MIN, SOS_MAX_INTERVAL_MIN)).apply()
-    }
-
-    /** Offer SMS as a fallback link to members (LNP/1). Off by default: SMS may cost money. */
-    fun smsLinkEnabled(ctx: Context): Boolean =
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY_SMS_LINK, false)
-
-    fun setSmsLinkEnabled(ctx: Context, value: Boolean) {
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_SMS_LINK, value).apply()
-    }
-
-    /**
-     * This phone's own number, offered to members for the SMS link. Android cannot read it
-     * reliably, so the user types it. Sealed (personal data).
+     * This phone's own number, offered to members as the LNP/1 SMS rung. Android cannot
+     * read it reliably, so the user types it once. Sealed (personal data).
      */
     fun myPhoneNumber(ctx: Context): String = sealedString(ctx, KEY_MY_PHONE).orEmpty()
     fun setMyPhoneNumber(ctx: Context, number: String) =
-        putSealedString(ctx, KEY_MY_PHONE, SosLogic.parseNumbers(number).firstOrNull())
-
-    fun smsLinkIntervalMin(ctx: Context): Int =
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getInt(KEY_SMS_LINK_INTERVAL_MIN, SMS_LINK_DEFAULT_INTERVAL_MIN)
-            .coerceIn(SMS_LINK_MIN_INTERVAL_MIN, SMS_LINK_MAX_INTERVAL_MIN)
-
-    fun setSmsLinkIntervalMin(ctx: Context, minutes: Int) {
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit()
-            .putInt(KEY_SMS_LINK_INTERVAL_MIN, minutes.coerceIn(SMS_LINK_MIN_INTERVAL_MIN, SMS_LINK_MAX_INTERVAL_MIN)).apply()
-    }
+        putSealedString(ctx, KEY_MY_PHONE, SmsLogic.parseNumbers(number).firstOrNull())
 
     /** Wi-Fi Direct role: host the P2P group (server) instead of letting the system pick. */
     fun p2pGroupOwner(ctx: Context): Boolean =

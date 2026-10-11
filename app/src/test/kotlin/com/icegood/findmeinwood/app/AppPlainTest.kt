@@ -388,46 +388,22 @@ class LinkWatchTest {
     }
 }
 
-class SosLogicTest {
-    private fun alert(seq: Long, via: String = "sms", active: Boolean = true, name: String? = null) = SosAlert(
-        senderHex = "0011223344556677", networkName = "net", name = name, latE7 = 1, lonE7 = 2,
-        accuracyM = 3, sentAtMs = 0, receivedAtMs = 0, seq = seq, active = active, via = via,
-    )
-
-    @Test
-    fun `newer reports replace older ones, duplicates and late ones are ignored`() {
-        val one = SosLogic.upsert(emptyList(), alert(10, name = "Ira"))!!
-        assertEquals(null, SosLogic.upsert(one, alert(10)), "same SMS twice")
-        assertEquals(null, SosLogic.upsert(one, alert(9)), "late older SMS")
-        val two = SosLogic.upsert(one, alert(11, via = "mesh", active = false))!!
-        assertEquals(1, two.size)
-        assertEquals(false, two[0].active)
-        assertEquals("Ira", two[0].name, "name kept when a report has none")
-    }
-
+class SmsLogicTest {
     @Test
     fun `phone numbers are parsed from free text`() {
         assertEquals(
             listOf("+380671234567", "0501112233"),
-            SosLogic.parseNumbers("+380 67 123 45 67, 050-111-22-33;\n12; +380671234567"),
+            SmsLogic.parseNumbers("+380 67 123 45 67, 050-111-22-33;\n12; +380671234567"),
         )
     }
 
     @Test
-    fun `plain text SOS has the position and a maps link, cancel says OK`() {
-        val sos = SosLogic.plainMessage("Ira", 49.849321, 24.06121, 12, 45, 0, cancelled = false)
-        assertTrue("49.84932,24.06121" in sos && "maps.google.com" in sos && "±12 m" in sos && "45%" in sos, sos)
-        assertTrue("position unknown" in SosLogic.plainMessage("Ira", null, null, null, null, 0, false))
-        assertTrue("OK" in SosLogic.plainMessage("Ira", null, null, null, null, 0, cancelled = true))
-    }
-
-    @Test
-    fun `sms budget caps rounds per hour`() {
+    fun `sms budget caps sends per hour`() {
         val b = SmsBudget(maxPerHour = 2)
         assertTrue(b.tryTake(0))
         assertTrue(b.tryTake(1_000))
         assertTrue(!b.tryTake(2_000))
-        assertTrue(b.tryTake(3_600_000), "an hour later the first round has expired")
+        assertTrue(b.tryTake(3_600_000), "an hour later the first send has expired")
     }
 }
 
@@ -443,6 +419,8 @@ class UiTextTest {
             ),
         )
         assertEquals(listOf("Bluetooth: connected", "Wi-Fi Direct: off or unavailable"), lines)
+        assertEquals("via SMS", UiText.via(com.icegood.findmeinwood.core.model.TransportId.SMS))
+        assertEquals("via other members", UiText.via(null))
         val lora = UiText.radios(
             mapOf(
                 com.icegood.findmeinwood.core.model.TransportId.LORA to com.icegood.findmeinwood.transport.api.RadioState.READY,

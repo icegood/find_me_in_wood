@@ -137,7 +137,7 @@ class LinkNegotiator(
         p.active == t && isAgreed(id, p)
     }.map { (id, p) -> id to p.offers?.firstOrNull { it.t == t }?.addr }
 
-    /** Every agreed address for [t], whatever rung the peer is on (SOS reaches all of them). */
+    /** Every agreed address for [t], whatever rung the peer is on. */
     @Synchronized
     fun agreedAddresses(t: TransportId): List<Pair<MemberId, String>> = peers.mapNotNull { (id, p) ->
         val addr = p.offers?.firstOrNull { it.t == t }?.addr

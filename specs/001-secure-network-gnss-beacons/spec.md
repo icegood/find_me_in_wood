@@ -90,10 +90,10 @@ Bluetooth — **so that** everyone stays connected with the least radio cost.
   Up-switch: any direct frame on a cheaper rung makes it active at once; costly sending
   for that peer stops. The rung each peer is on is shown in the member list.
 - FR-3.9 LNP/1 — costly rung rate. On SMS each peer gets one position report
-  (the 47-byte SMS frame of FR-10) every SMS interval (user setting, default 30 min),
-  bounded by a per-hour SMS budget. SOS is a priority flag on the same channel: while
-  SOS is on, reports go to every agreed SMS address at the SOS interval regardless of
-  rung, plus the manually listed emergency numbers.
+  (the 47-byte encrypted SMS frame, `FMIW1:` + base64url) every 30 min,
+  bounded by a per-hour SMS budget (10/h). The SMS rung is offered as soon as the user
+  has entered this phone's number and SMS is permitted; there is no separate distress
+  mode, button or schedule — reaching a lost member is the protocol's normal job.
 - FR-3.10 Relays and the messenger carrier (INTERNET, FR-9) are not rungs: relayed
   frames never count as direct hearing, and messenger hand-off stays user-initiated.
 

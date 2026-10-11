@@ -19,7 +19,7 @@ note over A, B : peer ack == own hash -> ladder agreed.\nOnly now may costly run
 note over A, B : walk apart: no direct BT/WD frame\nfor 3 beacon intervals on both sides
 A -> A : active(B) = SMS
 B -> B : active(A) = SMS
-A ->> B : SMS "FMIW-SOS:..." position report\n(every SMS interval, hourly budget)
+A ->> B : SMS "FMIW1:..." position report\n(every 30 min, max 10/h)
 B ->> A : SMS position report
 note over A, B : map keeps both positions, marked "via SMS"
 

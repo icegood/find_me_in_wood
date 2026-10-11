@@ -13,8 +13,6 @@ data class PeerState(
     val lastSeq: UInt,
     val viaMemberId: MemberId? = null,
     val verified: Boolean = true,
-    /** The peer's latest beacon says it is in SOS mode. */
-    val sos: Boolean = false,
     /** Transport of the last frame heard directly from the peer; null when only relayed. */
     val transport: com.icegood.findmeinwood.core.model.TransportId? = null,
 )
@@ -41,7 +39,6 @@ class PeerTracker(
             lastSeq = b.seq,
             viaMemberId = cur?.viaMemberId,
             verified = cur?.verified ?: true,
-            sos = b.payload.sos == true,
             transport = transport,
         ))
     }

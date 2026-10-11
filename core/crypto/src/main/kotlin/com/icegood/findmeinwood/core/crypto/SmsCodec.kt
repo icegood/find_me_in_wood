@@ -8,14 +8,14 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Position / SOS report sized for one SMS — the one channel an app can push through a satellite
- * link (direct-to-cell / carrier satellite SMS), and through a single bar of 2G.
+ * Position report for the LNP/1 SMS rung (FR-3.9), sized for one SMS — the one channel an
+ * app can push through a satellite link (direct-to-cell / carrier satellite SMS), and
+ * through a single bar of 2G.
  *
- * Text form (GSM-7 safe, ~72 chars, one SMS): `FMIW-SOS:` + base64url(frame)
+ * Text form (GSM-7 safe, ~68 chars, one SMS): `FMIW1:` + base64url(frame)
  *
  * Frame, 47 bytes:
- *   0  flags     1   high nibble = version (1), bit0 = SOS active, bit1 = cancelled;
- *                    neither = routine position report on the LNP/1 SMS rung (FR-3.9)
+ *   0  flags     1   high nibble = version (1), low nibble reserved (0)
  *   1  netTag    2   first bytes of the network id (which key to try)
  *   3  sender    8   first bytes of the sender's member id
  *  11  seq       4   u32, strictly increasing per sender
@@ -28,25 +28,21 @@ import javax.crypto.spec.SecretKeySpec
  * flags, network tag, sender and seq cannot be altered. The key is derived from the
  * network traffic key with its own HKDF label, so SMS and radio frames never share it.
  */
-object SosCodec {
-    const val PREFIX = "FMIW-SOS:"
+object SmsCodec {
+    const val PREFIX = "FMIW1:"
     private const val VERSION = 1
-    private const val FLAG_ACTIVE = 0x01
-    private const val FLAG_CANCELLED = 0x02
     private const val HEADER = 1 + 2 + 8 + 4
     private const val PLAIN = 4 + 4 + 4 + 2 + 1 + 1
     private const val TAG_BYTES = 16
     const val FRAME_BYTES = HEADER + PLAIN + TAG_BYTES
     const val BATTERY_UNKNOWN = 255
-    private val LABEL = "fmiw-sos-sms".toByteArray()
+    private val LABEL = "fmiw-sms-link".toByteArray()
 
     data class Report(
         val networkTag: ByteArray,
         /** First 8 bytes of the sender's member id. */
         val senderPrefix: ByteArray,
         val seq: UInt,
-        val active: Boolean,
-        val cancelled: Boolean,
         val timeS: Long,
         val latE7: Int,
         val lonE7: Int,
@@ -57,7 +53,7 @@ object SosCodec {
         fun isFrom(member: MemberId): Boolean = member.bytes.copyOf(8).contentEquals(senderPrefix)
     }
 
-    fun sosKey(trafficKey: ByteArray): ByteArray = Hkdf.derive(trafficKey, ByteArray(32), LABEL, 32)
+    fun smsKey(trafficKey: ByteArray): ByteArray = Hkdf.derive(trafficKey, ByteArray(32), LABEL, 32)
 
     fun networkTag(networkId: NetworkId): ByteArray = networkId.bytes.copyOf(2)
 
@@ -66,8 +62,6 @@ object SosCodec {
         networkId: NetworkId,
         sender: MemberId,
         seq: UInt,
-        active: Boolean,
-        cancelled: Boolean,
         timeS: Long,
         latE7: Int,
         lonE7: Int,
@@ -75,7 +69,7 @@ object SosCodec {
         batteryPct: Int?,
     ): String {
         val header = ByteArray(HEADER)
-        header[0] = ((VERSION shl 4) or (if (active) FLAG_ACTIVE else 0) or (if (cancelled) FLAG_CANCELLED else 0)).toByte()
+        header[0] = (VERSION shl 4).toByte()
         networkTag(networkId).copyInto(header, 1)
         sender.bytes.copyInto(header, 3, 0, 8)
         FrameCodec.writeU32(header, 11, seq.toInt())
@@ -91,8 +85,8 @@ object SosCodec {
         return PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(header + ct)
     }
 
-    /** True when [text] contains an SOS frame (cheap check before any decryption). */
-    fun looksLikeSos(text: String): Boolean = text.contains(PREFIX)
+    /** True when [text] contains a report (cheap check before any decryption). */
+    fun looksLikeReport(text: String): Boolean = text.contains(PREFIX)
 
     /** The raw frame inside an SMS body, or null when there is none. */
     fun frameOf(text: String): ByteArray? {
@@ -113,14 +107,11 @@ object SosCodec {
         val plain = runCatching {
             cipher(Cipher.DECRYPT_MODE, trafficKey, header).doFinal(frame, HEADER, frame.size - HEADER)
         }.getOrNull() ?: return null
-        val flags = header[0].toInt()
         val battery = plain[14].toInt() and 0xFF
         return Report(
             networkTag = header.copyOfRange(1, 3),
             senderPrefix = header.copyOfRange(3, 11),
             seq = FrameCodec.readU32(header, 11),
-            active = flags and FLAG_ACTIVE != 0,
-            cancelled = flags and FLAG_CANCELLED != 0,
             timeS = FrameCodec.readU32(plain, 0).toLong(),
             latE7 = FrameCodec.readU32(plain, 4).toInt(),
             lonE7 = FrameCodec.readU32(plain, 8).toInt(),
@@ -133,7 +124,7 @@ object SosCodec {
         // nonce = sender(8) | seq(4): unique per (sender, seq) under this network's key
         val nonce = header.copyOfRange(3, 15)
         return Cipher.getInstance("AES/GCM/NoPadding").apply {
-            init(mode, SecretKeySpec(sosKey(trafficKey), "AES"), GCMParameterSpec(TAG_BYTES * 8, nonce))
+            init(mode, SecretKeySpec(smsKey(trafficKey), "AES"), GCMParameterSpec(TAG_BYTES * 8, nonce))
             updateAAD(header)
         }
     }

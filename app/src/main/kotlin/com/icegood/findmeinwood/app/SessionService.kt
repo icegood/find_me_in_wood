@@ -9,7 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import com.icegood.findmeinwood.core.crypto.NetworkKeysFactory
-import com.icegood.findmeinwood.core.crypto.SosCodec
+import com.icegood.findmeinwood.core.crypto.SmsCodec
 import com.icegood.findmeinwood.core.model.PayloadCodec
 import com.icegood.findmeinwood.core.model.BeaconPayload
 import com.icegood.findmeinwood.core.model.GnssFix
@@ -56,9 +56,6 @@ class SessionService : Service() {
     /** Latest own GNSS fix of the running session. */
     @Volatile private var lastFix: GnssFix? = null
     private var activeProfile: NetworkProfile? = null
-    private var sosJob: Job? = null
-    /** At most 6 SOS rounds (one SMS to each recipient) per hour. */
-    private val sosBudget = SmsBudget(maxPerHour = 6)
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -68,11 +65,6 @@ class SessionService : Service() {
                 stopSession()
                 stopSelf()
                 return START_NOT_STICKY
-            }
-            ACTION_SOS_STOP -> stopSos(sendCancel = true)
-            ACTION_SOS_START -> if (session != null && !listening) startSos() else {
-                startSession(intent)
-                if (session != null) startSos()
             }
             ACTION_LISTEN -> if (session == null) startListening()
             else -> startSession(intent)
@@ -149,7 +141,7 @@ class SessionService : Service() {
             // LNP/1: offers, agreed fallback ladder and the active rung per peer.
             links = if (listen) null else LinkNegotiator(
                 profile.myMemberId, clock, beaconIntervalMs = deltaMs,
-                smsIntervalMs = Prefs.smsLinkIntervalMin(this) * 60_000L,
+                smsIntervalMs = SMS_INTERVAL_MS,
             ),
             signer = identityPair,
             beaconsEnabled = !listen,
@@ -226,35 +218,6 @@ class SessionService : Service() {
         scope.launch {
             manager.diagnostics.collect { SessionBus.publishDiagnostics(it) }
         }
-        // Members in SOS over the mesh become alerts too (same store/notification as SMS).
-        scope.launch {
-            val inSos = HashSet<MemberId>()
-            manager.peerFlow.collect { peers ->
-                peers.values.forEach { peer ->
-                    val pos = peer.lastPosition
-                    val wasSos = peer.memberId in inSos
-                    if (peer.sos && pos != null || wasSos && !peer.sos) {
-                        val alert = SosAlert(
-                            senderHex = peer.memberId.bytes.copyOf(8).joinToString("") { "%02x".format(it) },
-                            networkName = profile.name,
-                            name = peer.nickname,
-                            latE7 = pos?.latE7 ?: 0,
-                            lonE7 = pos?.lonE7 ?: 0,
-                            accuracyM = (pos?.accuracyCm ?: 0) / 100,
-                            sentAtMs = peer.lastSeenMs,
-                            receivedAtMs = System.currentTimeMillis(),
-                            seq = peer.lastSeq.toLong(),
-                            active = peer.sos,
-                            via = "mesh",
-                        )
-                        if (SosAlerts.upsert(this@SessionService, alert) && peer.sos != wasSos) {
-                            SosNotify.show(this@SessionService, alert)
-                        }
-                    }
-                    if (peer.sos) inSos += peer.memberId else inSos -= peer.memberId
-                }
-            }
-        }
         manager.links?.let { links -> runLinks(manager, links) }
         // On Restart the old transports may still be releasing their radios; starting
         // the new ones before that finishes would fight over the same GATT server/link.
@@ -295,7 +258,7 @@ class SessionService : Service() {
 
     /** Last SMS position report per peer (FR-3.9 rate). */
     private val smsSentAt = HashMap<MemberId, Long>()
-    /** SMS link budget, separate from SOS so routine reports never starve an SOS. */
+    /** SMS link budget: SMS may be slow, limited (satellite) and paid. */
     private val smsLinkBudget = SmsBudget(maxPerHour = 10)
 
     /**
@@ -308,16 +271,16 @@ class SessionService : Service() {
             while (true) {
                 links.setOffers(currentOffers(manager))
                 val now = System.currentTimeMillis()
-                val interval = Prefs.smsLinkIntervalMin(this@SessionService) * 60_000L
+                val interval = SMS_INTERVAL_MS
                 for ((peer, addr) in links.peersOn(TransportId.SMS)) {
                     if (addr == null || now - (smsSentAt[peer] ?: 0L) < interval) continue
                     if (!smsLinkBudget.tryTake(now)) break
                     smsSentAt[peer] = now
-                    val sent = SosSms.send(this@SessionService, listOf(addr), positionSms(manager, sos = false, cancelled = false))
+                    val sent = SmsSender.send(this@SessionService, listOf(addr), positionSms(manager))
                     linkLog?.write("sms_report") {
                         put("peer", peer.bytes.take(4).joinToString("") { "%02x".format(it) })
                         put("handedToModem", sent)
-                        put("satellite", SosSms.onSatellite(this@SessionService))
+                        put("satellite", SmsSender.onSatellite(this@SessionService))
                     }
                 }
                 delay(10_000)
@@ -337,7 +300,8 @@ class SessionService : Service() {
         if (wifiOn) add(LinkOffer(TransportId.WIFI_DIRECT))
         if (states[TransportId.LORA] == com.icegood.findmeinwood.transport.api.RadioState.READY) add(LinkOffer(TransportId.LORA))
         val number = Prefs.myPhoneNumber(this@SessionService)
-        if (Prefs.smsLinkEnabled(this@SessionService) && number.isNotEmpty() && smsPermitted()) {
+        // Offered as soon as this phone's number is known and SMS is permitted: just another rung.
+        if (number.isNotEmpty() && smsPermitted()) {
             add(LinkOffer(TransportId.SMS, number))
         }
     }
@@ -346,116 +310,19 @@ class SessionService : Service() {
         checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
-    /** The 47-byte encrypted SMS frame (FR-10): routine position, SOS or SOS cancel. */
-    private fun positionSms(manager: SessionManager, sos: Boolean, cancelled: Boolean): String {
+    /** The 47-byte encrypted SMS position frame (FR-3.9). */
+    private fun positionSms(manager: SessionManager): String {
         val profile = activeProfile!!
         val now = System.currentTimeMillis()
         val fix = lastFix ?: lastKnownFix()
-        return SosCodec.encode(
+        return SmsCodec.encode(
             profile.trafficKey, profile.networkId, profile.myMemberId, manager.nextSeq(),
-            active = sos, cancelled = cancelled,
             timeS = (fix?.epochMs ?: now) / 1000,
             latE7 = fix?.let { (it.lat * 1e7).toInt() } ?: 0,
             lonE7 = fix?.let { (it.lon * 1e7).toInt() } ?: 0,
             accuracyM = fix?.accuracyM?.toInt() ?: 0xFFFF,
             batteryPct = batteryPct(),
         )
-    }
-
-    // ------------------------------------------------------------------ SOS
-
-    /**
-     * SOS mode: every beacon carries the SOS flag (nearby members see it over the mesh),
-     * and an encrypted one-SMS report goes to the member numbers (plain text with a maps
-     * link to emergency contacts) right away and then every [Prefs.sosIntervalMin].
-     * Plain SMS is what reaches satellites (direct-to-cell / carrier satellite SMS) when
-     * there is no land network; apps get no other access to the satellite modem.
-     */
-    private fun startSos() {
-        val manager = session ?: return
-        if (sosJob?.isActive == true) return
-        manager.sosActive = true
-        linkLog?.write("sos_start")
-        SessionBus.publishSos(SessionBus.SosState(active = true, note = "starting…"))
-        sosJob = scope.launch {
-            // Mesh first: free and immediate for anyone in radio range.
-            runCatching { manager.sendBeaconSigned(sosBeacon()) }
-            var rounds = 0
-            while (true) {
-                val note = sendSosRound(manager, cancelled = false)
-                if (note == null) rounds++
-                val interval = Prefs.sosIntervalMin(this@SessionService) * 60_000L
-                val now = System.currentTimeMillis()
-                SessionBus.publishSos(
-                    SessionBus.SosState(
-                        active = true,
-                        roundsSent = rounds,
-                        lastSentAtMs = if (note == null) now else SessionBus.sos.value.lastSentAtMs,
-                        nextAtMs = now + interval,
-                        note = note,
-                        satellite = SosSms.onSatellite(this@SessionService),
-                    ),
-                )
-                delay(interval)
-            }
-        }
-    }
-
-    private fun stopSos(sendCancel: Boolean) {
-        val manager = session
-        val wasActive = sosJob?.isActive == true
-        sosJob?.cancel()
-        sosJob = null
-        manager?.sosActive = false
-        if (wasActive && sendCancel && manager != null) {
-            linkLog?.write("sos_cancel")
-            scope.launch {
-                runCatching { manager.sendBeaconSigned(sosBeacon().copy(sos = null)) }
-                sendSosRound(manager, cancelled = true)
-            }
-        }
-        SessionBus.publishSos(SessionBus.SosState(active = false))
-    }
-
-    private fun sosBeacon(): BeaconPayload =
-        lastFix?.let { PayloadCodec.fromFix(it, batteryPct()) }?.copy(sos = true) ?: BeaconPayload(sos = true)
-
-    /** One SMS to each recipient; returns a problem description, or null when sent. */
-    private fun sendSosRound(manager: SessionManager, cancelled: Boolean): String? {
-        // Members who agreed the SMS rung (LNP/1) are reached automatically; the manual
-        // list adds anyone else.
-        val members = (
-            SosLogic.parseNumbers(Prefs.sosMemberNumbers(this)) +
-                (manager.links?.agreedAddresses(TransportId.SMS)?.map { it.second } ?: emptyList())
-            ).distinct()
-        val contacts = SosLogic.parseNumbers(Prefs.sosContactNumbers(this))
-        if (members.isEmpty() && contacts.isEmpty()) return "no SOS phone numbers in Settings — mesh only"
-        if (checkSelfPermission(android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            return "SMS permission not granted — mesh only"
-        }
-        val now = System.currentTimeMillis()
-        if (!cancelled && !sosBudget.tryTake(now)) return "hourly SMS limit reached"
-        val fix = lastFix ?: lastKnownFix()
-        val battery = batteryPct()
-        val profile = activeProfile ?: return "no network"
-        var sent = 0
-        if (members.isNotEmpty()) {
-            sent += SosSms.send(this, members, positionSms(manager, sos = !cancelled, cancelled = cancelled))
-        }
-        if (contacts.isNotEmpty()) {
-            val name = Prefs.currentDisplayName(this) ?: "A find-me-in-wood user"
-            val text = SosLogic.plainMessage(
-                name, fix?.lat, fix?.lon, fix?.accuracyM?.toInt(), battery, fix?.epochMs ?: now, cancelled,
-            )
-            sent += SosSms.send(this, contacts, text)
-        }
-        linkLog?.write(if (cancelled) "sos_cancel_sms" else "sos_sms") {
-            put("recipients", members.size + contacts.size)
-            put("handedToModem", sent)
-            put("satellite", SosSms.onSatellite(this@SessionService))
-            put("fixAccM", fix?.accuracyM)
-        }
-        return if (sent == 0) "SMS could not be sent" else null
     }
 
     private fun lastKnownFix(): GnssFix? = runCatching {
@@ -470,7 +337,6 @@ class SessionService : Service() {
     }.getOrNull()
 
     private fun stopSession() {
-        stopSos(sendCancel = false)
         val s = session
         session = null
         linkLog?.let { log ->
@@ -534,8 +400,8 @@ class SessionService : Service() {
         private const val CHANNEL = "session"
         private const val NOTIFICATION_ID = 1
         const val ACTION_STOP = "com.icegood.findmeinwood.action.STOP"
-        const val ACTION_SOS_START = "com.icegood.findmeinwood.action.SOS_START"
-        const val ACTION_SOS_STOP = "com.icegood.findmeinwood.action.SOS_STOP"
+        /** LNP/1 SMS rung cadence (FR-3.9): one position SMS per lost member per 30 min. */
+        const val SMS_INTERVAL_MS = 30 * 60_000L
         const val ACTION_LISTEN = "com.icegood.findmeinwood.action.LISTEN"
         const val EXTRA_NAME = "name"
         const val EXTRA_NETWORK_ID = "networkId"
@@ -586,29 +452,10 @@ class SessionService : Service() {
                 .putExtra(EXTRA_OWNER_ID, p.ownerMemberIdHex)
                 .putExtra(EXTRA_POLICY, p.policy.name)
 
-        /**
-         * Starts SOS. With no session running, [fallback] (a stored network) is started
-         * first — SOS needs the network keys and wants the mesh beacons too.
-         */
-        fun startSos(context: Context, fallback: StoredProfile?): Boolean {
-            if ((activeManager == null || listening) && fallback == null) return false
-            val i = if (activeManager != null && !listening) {
-                Intent(context, SessionService::class.java)
-            } else {
-                intentFor(context, fallback!!)
-            }.setAction(ACTION_SOS_START)
-            if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)
-            return true
-        }
-
         /** Starts listening for networks to join; no-op while a session already runs. */
         fun listen(context: Context) {
             val i = Intent(context, SessionService::class.java).setAction(ACTION_LISTEN)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)
-        }
-
-        fun stopSos(context: Context) {
-            context.startService(Intent(context, SessionService::class.java).setAction(ACTION_SOS_STOP))
         }
 
         fun stop(context: Context) {

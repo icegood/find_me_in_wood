@@ -66,11 +66,8 @@ class SessionManager(
     val runningFlow: StateFlow<Boolean> = running
     val peerFlow: StateFlow<Map<MemberId, PeerState>> get() = tracker.peersFlow
 
-    /** SOS mode: every beacon carries the flag so nearby members see it over the mesh. */
-    @Volatile var sosActive: Boolean = false
-
     /**
-     * Next sequence number from the same clock-seeded counter as radio frames. SMS SOS
+     * Next sequence number from the same clock-seeded counter as radio frames. SMS position
      * reports use it too, so (sender, seq) — their AEAD nonce — is never reused.
      */
     fun nextSeq(): UInt = seq.getAndIncrement().toUInt()
@@ -106,12 +103,12 @@ class SessionManager(
      */
     fun acceptSmsReport(
         senderPrefix: ByteArray, seq: UInt, sentAtMs: Long,
-        position: com.icegood.findmeinwood.core.model.BeaconPosition?, batteryPct: Int?, sos: Boolean,
+        position: com.icegood.findmeinwood.core.model.BeaconPosition?, batteryPct: Int?,
     ): MemberId? {
         val member = (tracker.peersFlow.value.keys + (links?.all()?.map { it.peer } ?: emptyList()))
             .firstOrNull { it.bytes.copyOf(8).contentEquals(senderPrefix) } ?: return null
         tracker.onBeacon(
-            DecryptedBeacon(member, seq, sentAtMs, BeaconPayload(position = position, batteryPct = batteryPct, sos = sos.takeIf { it })),
+            DecryptedBeacon(member, seq, sentAtMs, BeaconPayload(position = position, batteryPct = batteryPct)),
             TransportId.SMS,
         )
         links?.let { announce(it.onFrame(member, TransportId.SMS, direct = true, ctl = null)) }
@@ -154,7 +151,7 @@ class SessionManager(
                 .commands(fixes)
                 .collect {
                     val payload = it.fix?.let { f -> PayloadCodec.fromFix(f) } ?: BeaconPayload()
-                    sendBeaconSigned(if (sosActive) payload.copy(sos = true) else payload)
+                    sendBeaconSigned(payload)
                 }
         }
         jobs += scope.launch {

@@ -240,13 +240,12 @@ class SessionManagerBranchTest {
         val m = manager(links = links)
         m.start()
         try {
-            assertEquals(null, m.acceptSmsReport(other.bytes.copyOf(8), 10u, now, BeaconPosition(1, 2, 300, 0), 50, sos = true))
+            assertEquals(null, m.acceptSmsReport(other.bytes.copyOf(8), 10u, now, BeaconPosition(1, 2, 300, 0), 50))
             t.deliver(frame(seq = 5u, payload = validBeacon()))
             eventually { m.peerFlow.value.containsKey(other) }
-            assertEquals(other, m.acceptSmsReport(other.bytes.copyOf(8), 10u, now, BeaconPosition(7, 8, 300, 0), 50, sos = true))
+            assertEquals(other, m.acceptSmsReport(other.bytes.copyOf(8), 10u, now, BeaconPosition(7, 8, 300, 0), 50))
             val p = m.peerFlow.value[other]!!
             assertEquals(7, p.lastPosition?.latE7)
-            assertTrue(p.sos)
             assertEquals(TransportId.SMS, p.transport)
         } finally { m.stop() }
     }
