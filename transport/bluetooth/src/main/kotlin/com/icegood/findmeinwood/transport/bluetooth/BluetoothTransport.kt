@@ -67,6 +67,8 @@ class BluetoothTransport internal constructor(
     )
     @Volatile private var running = false
     @Volatile private var ready = false
+    /** GATT server, advertising and scanning are active (only possible while Bluetooth is on). */
+    @Volatile private var radiosUp = false
 
     private val manager: BluetoothManager? get() = runCatching { context.getSystemService(BluetoothManager::class.java) }.getOrNull()
     private val adapter: BluetoothAdapter? get() = manager?.adapter
@@ -94,24 +96,58 @@ class BluetoothTransport internal constructor(
     override fun start(config: SessionConfig): Flow<TransportEvent> {
         if (!running) {
             running = true
-            try {
-                startPeripheral()
-                startCentral()
-                armSupervisor()
-                emit(RadioState.READY)
-                ready = true
-            } catch (e: Exception) {
-                // Transport contract: start must not throw for normal failures
-                // (missing radios/permissions surface as LINK_DOWN).
-                emit(RadioState.LINK_DOWN)
-            }
+            bringUp()
+            armSupervisor()
         }
         return events
+    }
+
+    /**
+     * Starts GATT server, advertising and scanning — only when Bluetooth is really on.
+     * With Bluetooth off (or only in "BLE scanning always available" mode) the stack
+     * refuses scans and has no advertiser, so report LINK_DOWN instead of a false READY;
+     * the supervisor retries until the user turns Bluetooth on.
+     */
+    private fun bringUp() {
+        if (radiosUp) return
+        if (adapter?.isEnabled != true) {
+            ready = false
+            emit(RadioState.LINK_DOWN)
+            return
+        }
+        try {
+            startPeripheral()
+            startCentral()
+            radiosUp = true
+            ready = true
+            emit(RadioState.READY)
+        } catch (e: Exception) {
+            // Transport contract: start must not throw for normal failures
+            // (missing radios/permissions surface as LINK_DOWN).
+            ready = false
+            emit(RadioState.LINK_DOWN)
+        }
+    }
+
+    /** Bluetooth was switched off under us: drop every link and wait for it to return. */
+    private fun bringDown() {
+        radiosUp = false
+        ready = false
+        clients.values.forEach { g -> try { g.disconnect(); g.close() } catch (_: Exception) {} }
+        clients.clear(); clientMtu.clear(); clientReady.clear(); clientFramers.clear()
+        try { gattServer?.close() } catch (_: Exception) {}
+        gattServer = null
+        advertiser = null
+        scannerCallback = null
+        synchronized(lock) { clientQueues.clear(); clientWriting.clear() }
+        serverFramers.clear(); serverDevices.clear(); serverMtu.clear()
+        emit(RadioState.LINK_DOWN)
     }
 
     override suspend fun stop() {
         running = false
         ready = false
+        radiosUp = false
         try { adapter?.bluetoothLeScanner?.stopScan(scannerCallback) } catch (_: SecurityException) {}
         scannerCallback = null
         advertiser?.let { adapter?.bluetoothLeAdvertiser?.stopAdvertising(it) }
@@ -290,14 +326,20 @@ class BluetoothTransport internal constructor(
     private fun armSupervisor() {
         scheduleDelayed(SUPERVISOR_INTERVAL_MS) {
             if (running) {
-                pruneStaleLinks()
-                if (clients.isEmpty() && serverDevices.isEmpty()) {
-                    try {
-                        adapter?.bluetoothLeScanner?.stopScan(scannerCallback)
-                    } catch (_: SecurityException) {
+                val wasUp = radiosUp
+                if (!wasUp) bringUp() else if (adapter?.isEnabled != true) bringDown()
+                // A freshly started scan needs no restart on the same tick.
+                if (wasUp && radiosUp) {
+                    pruneStaleLinks()
+                    if (clients.isEmpty() && serverDevices.isEmpty()) {
+                        try {
+                            adapter?.bluetoothLeScanner?.stopScan(scannerCallback)
+                        } catch (_: SecurityException) {
+                        }
+                        scannerCallback = wiring.startScan(adapter, scanConsumer)
                     }
-                    scannerCallback = wiring.startScan(adapter, scanConsumer)
                 }
+                // Keep supervising while Bluetooth is off too, so it comes back on its own.
                 armSupervisor()
             }
         }

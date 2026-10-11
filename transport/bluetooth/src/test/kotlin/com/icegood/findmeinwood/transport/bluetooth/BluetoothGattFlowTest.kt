@@ -72,6 +72,7 @@ class BluetoothGattFlowTest {
         val manager = m(BluetoothManager::class.java)
         val adapter = m(BluetoothAdapter::class.java)
         whenever(manager.adapter).thenReturn(adapter)
+        Mockito.`when`(adapter.isEnabled).thenReturn(true)
         whenever(ctx.getSystemService(BluetoothManager::class.java)).thenReturn(manager)
 
         val wiring = Mockito.mock(BluetoothGattWiring::class.java)
@@ -146,6 +147,7 @@ class BluetoothGattFlowTest {
         val manager = m(BluetoothManager::class.java)
         val adapter = m(BluetoothAdapter::class.java)
         whenever(manager.adapter).thenReturn(adapter)
+        Mockito.`when`(adapter.isEnabled).thenReturn(true)
         whenever(ctx.getSystemService(BluetoothManager::class.java)).thenReturn(manager)
         Mockito.`when`(adapter.bluetoothLeAdvertiser).thenReturn(null)
 
@@ -240,6 +242,7 @@ class BluetoothTransportMeshTest {
         val manager = Mockito.mock(BluetoothManager::class.java)
         adapter = Mockito.mock(BluetoothAdapter::class.java)
         Mockito.`when`(manager.adapter).thenReturn(adapter)
+        Mockito.`when`(adapter.isEnabled).thenReturn(true)
         Mockito.`when`(ctx.getSystemService(BluetoothManager::class.java)).thenReturn(manager)
         wiring = Mockito.mock(BluetoothGattWiring::class.java)
         Mockito.`when`(wiring.openServer(any(), any())).thenReturn(null)
@@ -276,6 +279,35 @@ class BluetoothTransportMeshTest {
         val f = BluetoothTransport::class.java.getDeclaredField("clientCallback")
         f.isAccessible = true
         return f.get(t) as BluetoothGattCallback
+    }
+
+    @Test
+    fun `bluetooth off reports link down and recovers when switched on`() = runBlocking<Unit> {
+        Mockito.`when`(adapter.isEnabled).thenReturn(false)
+        val t = transport()
+        val events = t.start(SessionConfig(NetworkId(ByteArray(8)), emptySet()))
+            as kotlinx.coroutines.flow.SharedFlow<TransportEvent>
+        val first = events.replayCache.filterIsInstance<TransportEvent.StateChanged>().last()
+        assertEquals(RadioState.LINK_DOWN, first.state, "must not claim READY with Bluetooth off")
+        Mockito.verify(wiring, Mockito.never()).startScan(any(), any())
+        assertIs<SendResult.Failed>(t.send(meshWire(4)))
+
+        // User turns Bluetooth on: the next supervisor tick brings the radios up.
+        Mockito.`when`(adapter.isEnabled).thenReturn(true)
+        pending.removeAt(0).invoke()
+        val now = events.replayCache.filterIsInstance<TransportEvent.StateChanged>().last()
+        assertEquals(RadioState.READY, now.state)
+        Mockito.verify(wiring).startScan(same(adapter), any())
+
+        // ...and switched off again: links dropped, LINK_DOWN, supervision continues.
+        Mockito.`when`(adapter.isEnabled).thenReturn(false)
+        pending.removeAt(0).invoke()
+        assertEquals(
+            RadioState.LINK_DOWN,
+            events.replayCache.filterIsInstance<TransportEvent.StateChanged>().last().state,
+        )
+        assertTrue(pending.isNotEmpty(), "supervisor keeps running while Bluetooth is off")
+        t.stop()
     }
 
     @Test
@@ -370,6 +402,7 @@ class BluetoothLinkSupervisionTest {
         val manager = Mockito.mock(BluetoothManager::class.java)
         adapter = Mockito.mock(BluetoothAdapter::class.java)
         Mockito.`when`(manager.adapter).thenReturn(adapter)
+        Mockito.`when`(adapter.isEnabled).thenReturn(true)
         Mockito.`when`(ctx.getSystemService(BluetoothManager::class.java)).thenReturn(manager)
         wiring = Mockito.mock(BluetoothGattWiring::class.java)
         Mockito.`when`(wiring.openServer(any(), any())).thenReturn(null)
