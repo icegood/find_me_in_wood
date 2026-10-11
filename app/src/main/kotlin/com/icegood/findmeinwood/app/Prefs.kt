@@ -11,9 +11,10 @@ object Prefs {
     private const val KEY_LORA_NODE = "lora_node"
     private const val KEY_CURRENT_UID = "current_uid"
     private const val KEY_CURRENT_NAME = "current_display_name"
+    private const val KEY_MY_NAME = "my_display_name"
     private const val KEY_INTERVAL_MS = "beacon_interval_ms"
     private const val KEY_SECRET_PREFIX = "secret_"
-    private const val KEY_UNVERIFIED_PREFIX = "unverified_"
+    private const val KEY_UNVERIFIED_PREFIX = "join_code_"
     private const val KEY_TILE_SOURCE = "tile_source"
     private const val KEY_TILE_API_KEY_PREFIX = "tile_api_key_"
     private const val KEY_P2P_OWNER = "p2p_group_owner"
@@ -72,12 +73,14 @@ object Prefs {
     }
 
     /** FR-8.4: member joined without a confirmed SAS comparison. */
-    fun unverified(ctx: Context, networkIdHex: String): Boolean =
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY_UNVERIFIED_PREFIX + networkIdHex, false)
+    /** FR-8.4: the 6-digit code of a password-less join still to be compared; null = done. */
+    fun unverifiedCode(ctx: Context, networkIdHex: String): String? =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_UNVERIFIED_PREFIX + networkIdHex, null)
 
-    fun setUnverified(ctx: Context, networkIdHex: String, value: Boolean) {
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit()
-            .putBoolean(KEY_UNVERIFIED_PREFIX + networkIdHex, value).apply()
+    fun setUnverifiedCode(ctx: Context, networkIdHex: String, code: String?) {
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().apply {
+            if (code == null) remove(KEY_UNVERIFIED_PREFIX + networkIdHex) else putString(KEY_UNVERIFIED_PREFIX + networkIdHex, code)
+        }.apply()
     }
 
     /** FR-6.5: OFFLINE (default, NFR-2) / OSM / SATELLITE. */
@@ -137,9 +140,25 @@ object Prefs {
         }.apply()
     }
 
-    /** Display name of the signed-in user; the session service sends it as the join nick. */
+    /**
+     * The name members see: the one chosen in Settings, else the signed-in account's name.
+     * Sent with link control (LNP/1), as the join nick and on chat messages.
+     */
     fun currentDisplayName(ctx: Context): String? =
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_CURRENT_NAME, null)
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).let {
+            it.getString(KEY_MY_NAME, null) ?: it.getString(KEY_CURRENT_NAME, null)
+        }
+
+    fun myName(ctx: Context): String =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_MY_NAME, null).orEmpty()
+
+    /** Own name shown to members; blank falls back to the account name. */
+    fun setMyName(ctx: Context, name: String) {
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().apply {
+            val n = name.trim().take(32)
+            if (n.isEmpty()) remove(KEY_MY_NAME) else putString(KEY_MY_NAME, n)
+        }.apply()
+    }
 
     fun setCurrentDisplayName(ctx: Context, name: String?) {
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().apply {

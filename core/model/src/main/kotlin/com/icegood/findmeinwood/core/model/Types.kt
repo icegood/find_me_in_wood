@@ -78,6 +78,8 @@ data class LinkCtl(
     val v: Int = 1,
     val offers: List<LinkOffer> = emptyList(),
     val acks: List<LinkAck> = emptyList(),
+    /** Sender's display name, so members show up by name rather than as "member". */
+    val name: String? = null,
 )
 
 @kotlinx.serialization.Serializable

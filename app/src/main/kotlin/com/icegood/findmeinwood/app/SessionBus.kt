@@ -96,7 +96,8 @@ object SessionBus {
         _pendingJoins.value = emptyList()
         _ownerSas.value = null
         _ownerNote.value = null
-        _joinOutcome.value = null
+        // _joinOutcome survives on purpose: a successful join restarts the session on the
+        // joined network, and the joiner still has to compare the code shown with it.
         _radioStates.value = emptyMap()
         // Swap out the chat replay buffer entirely: a stale session's payloads must
         // not replay into a fresh collector after Stop (same "buffer still shown"

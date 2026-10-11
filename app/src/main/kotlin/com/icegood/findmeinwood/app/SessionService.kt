@@ -247,7 +247,7 @@ class SessionService : Service() {
                 ProfileStore.add(this, it)
                 Prefs.setSecretFor(this, it.networkIdHex, outcome.secret)
                 // FR-8.4: unverified until the human compares the SAS
-                Prefs.setUnverified(this, it.networkIdHex, true)
+                Prefs.setUnverifiedCode(this, it.networkIdHex, outcome.sas)
             }
             if (stored != null && listening) start(this, stored)
         }
@@ -270,6 +270,7 @@ class SessionService : Service() {
         scope.launch {
             while (true) {
                 links.setOffers(currentOffers(manager))
+                links.setName(Prefs.currentDisplayName(this@SessionService))
                 val now = System.currentTimeMillis()
                 val interval = SMS_INTERVAL_MS
                 for ((peer, addr) in links.peersOn(TransportId.SMS)) {

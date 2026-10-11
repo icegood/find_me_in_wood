@@ -43,6 +43,12 @@ class PeerTracker(
         ))
     }
 
+    /** Display name announced by the peer (LNP/1 link control). */
+    fun setNickname(member: MemberId, name: String) {
+        val cur = peers.value[member] ?: return
+        if (cur.nickname != name) peers.value = peers.value + (member to cur.copy(nickname = name))
+    }
+
     /** Marks peers stale / purges old ones; call periodically or from [tick]. */
     fun tick() {
         val now = nowMs()

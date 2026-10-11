@@ -41,7 +41,9 @@ class SessionBusTest {
         assertTrue(SessionBus.discovered.value.isEmpty())
         assertTrue(SessionBus.pendingJoins.value.isEmpty())
         assertEquals(null, SessionBus.ownerSas.value)
-        assertEquals(null, SessionBus.joinOutcome.value)
+        // The join result outlives the restart onto the joined network (code still to compare).
+        assertTrue(SessionBus.joinOutcome.value is com.icegood.findmeinwood.core.session.JoinOutcome.Joined)
+        SessionBus.publishJoinOutcome(null)
     }
 
     @Test
@@ -432,5 +434,20 @@ class UiTextTest {
             emptyList(),
             UiText.radios(mapOf(com.icegood.findmeinwood.core.model.TransportId.INTERNET to com.icegood.findmeinwood.transport.api.RadioState.READY)),
         )
+    }
+}
+
+class MemberNamingTest {
+    private val id = com.icegood.findmeinwood.core.model.MemberId(ByteArray(32) { 7 })
+    private val peer = com.icegood.findmeinwood.core.session.PeerState(id, nickname = "Iryna", lastSeenMs = 0, lastSeq = 1u)
+
+    @Test
+    fun `a label given on this phone overrides the announced name, blank removes it`() {
+        val labels = MemberNaming.rename(emptyMap(), id, "  Mom ")
+        assertEquals("Mom", MemberNaming.apply(mapOf(id to peer), labels)[id]?.nickname)
+        val cleared = MemberNaming.rename(labels, id, " ")
+        assertTrue(cleared.isEmpty())
+        assertEquals("Iryna", MemberNaming.apply(mapOf(id to peer), cleared)[id]?.nickname)
+        assertEquals(32, MemberNaming.rename(emptyMap(), id, "x".repeat(50)).values.single().length)
     }
 }

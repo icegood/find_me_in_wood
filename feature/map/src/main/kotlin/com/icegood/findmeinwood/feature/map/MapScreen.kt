@@ -853,9 +853,10 @@ fun PeerList(
     findTarget: MemberId? = null,
     onFind: (MemberId?) -> Unit = {},
     emptyText: String = "No members heard yet.",
+    onRename: ((MemberId, String?) -> Unit)? = null,
 ) {
     val me = rememberDeviceFix(LocalContext.current)?.location
-    PeerList(peers, me, modifier, findTarget, onFind, emptyText)
+    PeerList(peers, me, modifier, findTarget, onFind, emptyText, onRename)
 }
 
 /** FR-6.4: mapless alternative — distance and bearing to each peer. */
@@ -867,8 +868,11 @@ fun PeerList(
     findTarget: MemberId? = null,
     onFind: (MemberId?) -> Unit = {},
     emptyText: String = "No members heard yet.",
+    /** Give a member a name on this phone (null/blank = back to their own name). */
+    onRename: ((MemberId, String?) -> Unit)? = null,
 ) {
     val ps by peers.collectAsState()
+    var renaming by remember { mutableStateOf<PeerState?>(null) }
     Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Members", style = MaterialTheme.typography.titleMedium)
         if (ps.isEmpty()) {
@@ -897,6 +901,7 @@ fun PeerList(
                         modifier = Modifier.weight(1f),
                     )
                 }
+                if (onRename != null) TextButton(onClick = { renaming = peer }) { Text("Rename") }
                 if (isTarget) {
                     TextButton(onClick = { onFind(null) }) { Text("Stop") }
                 } else {
@@ -904,6 +909,23 @@ fun PeerList(
                 }
             }
         }
+    }
+    renaming?.let { peer ->
+        var text by remember(peer.memberId) { mutableStateOf(peer.nickname.orEmpty()) }
+        AlertDialog(
+            onDismissRequest = { renaming = null },
+            title = { Text("Rename member") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Only on this phone. Empty = the name they chose.", style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { onRename?.invoke(peer.memberId, text); renaming = null }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { renaming = null }) { Text("Cancel") } },
+        )
     }
 }
 

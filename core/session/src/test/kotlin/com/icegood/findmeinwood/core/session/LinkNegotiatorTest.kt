@@ -104,6 +104,16 @@ class LinkNegotiatorTest {
     }
 
     @Test
+    fun `display name is announced on change only`() {
+        agree()
+        assertNull(a.outgoing())
+        a.setName("  Ira  ")
+        assertEquals("Ira", a.outgoing()!!.name)
+        a.setName("Ira")
+        assertNull(a.outgoing(), "same name again is not news")
+    }
+
+    @Test
     fun `changed offers re-open the agreement and are announced at once`() {
         agree()
         assertNull(a.outgoing(), "nothing changed, not every 5th beacon")

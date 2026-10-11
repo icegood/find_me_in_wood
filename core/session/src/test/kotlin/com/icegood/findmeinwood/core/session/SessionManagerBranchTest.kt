@@ -231,6 +231,11 @@ class SessionManagerBranchTest {
             val sent = FrameCodec.decode(t.sentHistory.last())
             val plain = AesGcmAead.open(profile.trafficKey, sent.ciphertext, FrameCodec.aad(sent.networkId, sent.senderId, sent.seq, sent.sentAtMs))
             assertEquals("+1", PayloadCodec.decode(plain).link?.offers?.last()?.addr)
+
+            // A name in the peer's link control becomes its nickname.
+            val named = PayloadCodec.encode(BeaconPayload(link = com.icegood.findmeinwood.core.model.LinkCtl(name = "Ira")))
+            t.deliver(frame(seq = 8u, payload = named))
+            eventually { m.peerFlow.value[other]?.nickname == "Ira" }
         } finally { m.stop() }
     }
 

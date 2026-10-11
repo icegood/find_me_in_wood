@@ -275,6 +275,7 @@ class SessionManager(
             }
             tracker.onBeacon(DecryptedBeacon(f.senderId, f.seq, f.sentAtMs, payload), ev.source.takeIf { direct })
             links?.let { announce(it.onFrame(f.senderId, ev.source, direct, payload.link)) }
+            payload.link?.name?.let { tracker.setNickname(f.senderId, it.take(32)) }
         } else {
             links?.let { announce(it.onFrame(f.senderId, ev.source, direct, null)) }
         }

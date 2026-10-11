@@ -42,6 +42,9 @@ fun DiscoverScreen(
     onStart: (StoredProfile) -> Unit,
 ) {
     val discovered by SessionBus.discovered.collectAsState()
+    // Re-check system switches (Location) every few seconds: the user flips them elsewhere.
+    var tick by remember { mutableStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(3_000); tick++ } }
     val pending by SessionBus.pendingJoins.collectAsState()
     val sas by SessionBus.ownerSas.collectAsState()
     val note by SessionBus.ownerNote.collectAsState()
@@ -58,6 +61,20 @@ fun DiscoverScreen(
     ) {
         Text("Networks around you", style = MaterialTheme.typography.titleMedium)
         when {
+            tick >= 0 && !locationOn(context) -> {
+                Text(
+                    "Location is off. Android hides nearby phones from Bluetooth and Wi-Fi " +
+                        "Direct searches while it is off, so no network can show up.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                Button(onClick = {
+                    context.startActivity(
+                        android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Location") }
+            }
             !running -> {
                 Text(
                     "Turn on the radios to see networks nearby. A network shows up only while " +
@@ -82,10 +99,7 @@ fun DiscoverScreen(
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(net.name ?: "(unnamed)", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "heard via " + net.activeTransports.joinToString { it.name.lowercase().replace('_', ' ') },
-                        style = MaterialTheme.typography.labelSmall,
-                    )
+
                     if (net.policy == JoinPolicy.OPEN) {
                         Text(
                             "OPEN: anyone nearby who asks gets the password.",
@@ -125,7 +139,7 @@ fun DiscoverScreen(
                                     "the same code: ${result.sas}",
                             )
                             TextButton(onClick = {
-                                Prefs.setUnverified(context, ProfileStore.networkIdOf(result.secret).bytes.joinToString("") { "%02x".format(it) }, false)
+                                Prefs.setUnverifiedCode(context, ProfileStore.networkIdOf(result.secret).bytes.joinToString("") { "%02x".format(it) }, null)
                                 SessionBus.publishJoinOutcome(null)
                             }) { Text("The codes matched") }
                         }
@@ -179,6 +193,11 @@ fun DiscoverScreen(
         )
     }
 }
+
+private fun locationOn(ctx: android.content.Context): Boolean = runCatching {
+    ctx.getSystemService(android.location.LocationManager::class.java)
+        ?.let { androidx.core.location.LocationManagerCompat.isLocationEnabled(it) } ?: true
+}.getOrDefault(true)
 
 /** Password entry; [onJoin] returns an error to show, or null when done. */
 @Composable

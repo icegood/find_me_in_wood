@@ -84,6 +84,18 @@ class LinkNegotiator(
     @Synchronized
     fun offers(): List<LinkOffer> = myOffers
 
+    private var myName: String? = null
+
+    /** Display name announced with the offers; a change is announced on the next beacon. */
+    @Synchronized
+    fun setName(name: String?) {
+        val n = name?.trim()?.take(32)?.ifBlank { null }
+        if (n != myName) {
+            myName = n
+            dirty = true
+        }
+    }
+
     /** Link control for the next beacon, or null when there is nothing worth the bytes. */
     @Synchronized
     fun outgoing(): LinkCtl? {
@@ -93,7 +105,7 @@ class LinkNegotiator(
         if (!dirty && !pending && beaconCount % OFFERS_EVERY != 0) return null
         dirty = false
         acks.forEach { (ack, id) -> ackSent[id] = ack.h }
-        return LinkCtl(offers = myOffers, acks = acks.map { it.first })
+        return LinkCtl(offers = myOffers, acks = acks.map { it.first }, name = myName)
     }
 
     /**

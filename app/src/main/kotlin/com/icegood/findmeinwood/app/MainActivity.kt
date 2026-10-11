@@ -39,6 +39,7 @@ import com.icegood.findmeinwood.feature.map.MapScreen
 import com.icegood.findmeinwood.transport.share.ShareTransport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         permissionLauncher.launch(permissions.toTypedArray())
+        MemberNames.load(this)
         setContent {
             var themeMode by remember { mutableStateOf(Prefs.themeMode(this@MainActivity)) }
             val darkTheme = when (themeMode) {
@@ -175,6 +177,11 @@ class MainActivity : ComponentActivity() {
         val running by SessionBus.sessionRunning.collectAsState()
         val scope = rememberCoroutineScope()
         val chatRepo = remember { mutableStateOf<ChatRepository?>(null) }
+        // Members as shown: their announced names, overridden by labels given on this phone.
+        val namedPeers = remember {
+            kotlinx.coroutines.flow.combine(SessionBus.peers, MemberNames.labels) { p, l -> MemberNaming.apply(p, l) }
+                .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, emptyMap())
+        }
 
         LaunchedEffect(profile) {
             // Always drop the repo bound to the previous manager first: on Restart the
@@ -193,7 +200,10 @@ class MainActivity : ComponentActivity() {
                 delay(500)
                 manager = SessionService.activeManager
             }
-            val repo = ChatRepository(this@MainActivity, manager, p.myMemberId, scope, user.displayName)
+            val repo = ChatRepository(
+                this@MainActivity, manager, p.myMemberId, scope,
+                Prefs.currentDisplayName(this@MainActivity) ?: user.displayName,
+            )
             chatRepo.value = repo
             // Collected inside the effect so it is cancelled with it; SessionBus.clear()
             // swaps the flow, so a collector outliving the session would hear nothing.
@@ -242,7 +252,7 @@ class MainActivity : ComponentActivity() {
                     tab == "chat" -> ChatListPlaceholder()
                     tab == "map" -> MapScreen(
                         profile = SessionBus.profile,
-                        peers = SessionBus.peers,
+                        peers = namedPeers,
                         isDarkTheme = darkTheme,
                         tileSource = mapTileSource,
                         tileApiKeys = mapTileKeys,
@@ -254,7 +264,8 @@ class MainActivity : ComponentActivity() {
                         onFindTargetChange = { findTarget = it },
                     )
                     tab == "peers" -> com.icegood.findmeinwood.feature.map.PeerList(
-                        SessionBus.peers,
+                        namedPeers,
+                        onRename = { id, name -> MemberNames.rename(this@MainActivity, id, name) },
                         emptyText = if (profile == null) {
                             "No network running. Start one in Networks to see its members here."
                         } else {
@@ -347,7 +358,7 @@ class MainActivity : ComponentActivity() {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     profiles.forEach { p ->
                         val isRunning = runningId == p.networkIdHex
-                        val unverified = verifyTick >= 0 && Prefs.unverified(this@MainActivity, p.networkIdHex)
+                        val code = if (verifyTick >= 0) Prefs.unverifiedCode(this@MainActivity, p.networkIdHex) else null
                         Card(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(p.name, style = MaterialTheme.typography.titleMedium)
@@ -356,14 +367,14 @@ class MainActivity : ComponentActivity() {
                                     style = MaterialTheme.typography.labelMedium,
                                     color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                if (unverified) {
+                                if (code != null) {
                                     Text(
-                                        "Joined without a password: check that the member who let you in " +
-                                            "saw the same 6-digit code as you.",
+                                        "Joined without a password. The member who let you in must see " +
+                                            "the same code: $code",
                                         style = MaterialTheme.typography.bodySmall,
                                     )
                                     TextButton(onClick = {
-                                        Prefs.setUnverified(this@MainActivity, p.networkIdHex, false)
+                                        Prefs.setUnverifiedCode(this@MainActivity, p.networkIdHex, null)
                                         verifyTick++
                                     }) { Text("The codes matched") }
                                 }
@@ -496,6 +507,22 @@ class MainActivity : ComponentActivity() {
         val wifiOff = tick >= 0 && runCatching {
             getSystemService(android.net.wifi.WifiManager::class.java)?.isWifiEnabled == false
         }.getOrDefault(false)
+        val locationOff = tick >= 0 && runCatching {
+            getSystemService(android.location.LocationManager::class.java)?.let {
+                !androidx.core.location.LocationManagerCompat.isLocationEnabled(it)
+            } ?: false
+        }.getOrDefault(false)
+        if (locationOff) {
+            Text(
+                "Location is off: Android then hides other phones from Bluetooth and Wi-Fi " +
+                    "Direct searches, so nobody can be found — and your own position is unknown.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+            Button(onClick = {
+                startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Location") }
+        }
         if (btOff) {
             OutlinedButton(onClick = {
                 runCatching {
@@ -858,8 +885,25 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun SmsLinkCard(snackbar: SnackbarHostState, uiScope: kotlinx.coroutines.CoroutineScope) {
         var number by remember { mutableStateOf(Prefs.myPhoneNumber(this@MainActivity)) }
+        var myName by remember { mutableStateOf(Prefs.myName(this@MainActivity)) }
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Your name", style = MaterialTheme.typography.titleSmall)
+                Text("What members see on their map and member list.", style = MaterialTheme.typography.bodySmall)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = myName, onValueChange = { myName = it },
+                        placeholder = { Text(Prefs.currentDisplayName(this@MainActivity) ?: "e.g. Ira") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Button(onClick = {
+                        Prefs.setMyName(this@MainActivity, myName)
+                        myName = Prefs.myName(this@MainActivity)
+                        uiScope.launch { snackbar.showSnackbar("Members will see “${Prefs.currentDisplayName(this@MainActivity)}”") }
+                    }) { Text("Save") }
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Text("This phone's number", style = MaterialTheme.typography.titleSmall)
                 Text(
                     "Lets members reach you by SMS — also over satellite where the carrier " +
