@@ -313,7 +313,7 @@ class MainActivity : ComponentActivity() {
                         tileApiKeys = mapTileKeys,
                         onTileApiKey = { source, key -> mapTileKeys = mapTileKeys + (source to key) },
                     )
-                    else -> NetworksScreen()
+                    else -> NetworksScreen(onDiscover = { tab = "discover" })
                 }
             }
         }
@@ -341,7 +341,7 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun NetworksScreen() {
+    private fun NetworksScreen(onDiscover: () -> Unit) {
         var profiles by remember { mutableStateOf(ProfileStore.load(this)) }
         var showCreate by remember { mutableStateOf(false) }
         var showJoin by remember { mutableStateOf(false) }
@@ -370,6 +370,10 @@ class MainActivity : ComponentActivity() {
                     onClick = { showJoin = true; createError = null },
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Join by password") }
+                OutlinedButton(
+                    onClick = onDiscover,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Find networks nearby") }
                 createError?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
