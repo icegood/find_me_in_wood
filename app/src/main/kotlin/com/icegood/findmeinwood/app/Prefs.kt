@@ -1,5 +1,7 @@
 package com.icegood.findmeinwood.app
 
+import com.icegood.findmeinwood.core.storage.SecretBox
+import com.icegood.findmeinwood.core.storage.SecureStorage
 import android.content.Context
 import com.icegood.findmeinwood.core.model.ThemeMode
 import java.util.Base64

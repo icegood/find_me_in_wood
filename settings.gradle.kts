@@ -16,7 +16,8 @@ dependencyResolutionManagement {
 rootProject.name = "find_me_in_wood"
 
 include(":app")
-include(":core:model", ":core:crypto", ":core:session", ":core:auth", ":core:chat", ":core:p2p")
+include(":core:model", ":core:crypto", ":core:session", ":core:auth", ":core:chat", ":core:p2p",
+        ":core:storage")
 include(":transport:api", ":transport:wifidirect", ":transport:bluetooth", ":transport:lora",
         ":transport:share")
 include(":feature:networks", ":feature:map")

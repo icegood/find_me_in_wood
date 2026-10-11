@@ -1,5 +1,7 @@
 package com.icegood.findmeinwood.app
 
+import com.icegood.findmeinwood.core.storage.SecretBox
+import com.icegood.findmeinwood.core.storage.SecureStorage
 import com.icegood.findmeinwood.core.model.DiscoveredNetwork
 import com.icegood.findmeinwood.core.model.JoinPolicy
 import com.icegood.findmeinwood.core.model.PendingJoin

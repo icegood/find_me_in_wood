@@ -4,17 +4,32 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
+import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteOpenHelper
+import androidx.sqlite.db.SupportSQLiteQueryBuilder
+import com.icegood.findmeinwood.core.storage.SecureDb
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 
-internal class ChatStore(context: Context) :
-    SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
+/** Chat history, encrypted at rest with SQLCipher (see [SecureDb]). */
+internal class ChatStore(context: Context) {
 
     private val changeFlow = MutableStateFlow(0L)
 
-    override fun onCreate(db: SQLiteDatabase) {
+    private val helper: SupportSQLiteOpenHelper = SecureDb.open(
+        context, DB_NAME,
+        object : SupportSQLiteOpenHelper.Callback(DB_VERSION) {
+            override fun onCreate(db: SupportSQLiteDatabase) = create(db)
+            override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                db.execSQL("DROP TABLE IF EXISTS $TABLE")
+                create(db)
+            }
+        },
+    )
+    private val db: SupportSQLiteDatabase get() = helper.writableDatabase
+
+    private fun create(db: SupportSQLiteDatabase) {
         db.execSQL(
             """CREATE TABLE $TABLE (
                 $COL_ID TEXT PRIMARY KEY,
@@ -30,10 +45,15 @@ internal class ChatStore(context: Context) :
         db.execSQL("CREATE INDEX idx_channel ON $TABLE ($COL_CHANNEL, $COL_TIMESTAMP)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE")
-        onCreate(db)
-    }
+    /** Raw query for the content provider. */
+    fun query(projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): Cursor =
+        db.query(
+            SupportSQLiteQueryBuilder.builder(TABLE)
+                .columns(projection?.let { arrayOf(*it) })
+                .selection(selection, selectionArgs)
+                .orderBy(sortOrder)
+                .create(),
+        )
 
     fun insert(msg: ChatMessage): Boolean {
         val cv = ContentValues().apply {
@@ -46,15 +66,15 @@ internal class ChatStore(context: Context) :
             put(COL_TIMESTAMP, msg.timestamp)
             put(COL_IS_OWN, if (msg.isOwn) 1 else 0)
         }
-        val result = writableDatabase.insertWithOnConflict(TABLE, null, cv, SQLiteDatabase.CONFLICT_IGNORE)
+        val result = db.insert(TABLE, SQLiteDatabase.CONFLICT_IGNORE, cv)
         if (result != -1L) changeFlow.value = System.currentTimeMillis()
         return result != -1L
     }
 
     fun getMessages(channelId: String, limit: Int = 200): List<ChatMessage> {
-        val c = readableDatabase.query(
-            TABLE, null, "$COL_CHANNEL=?", arrayOf(channelId),
-            null, null, "$COL_TIMESTAMP ASC", limit.toString(),
+        val c = db.query(
+            "SELECT * FROM $TABLE WHERE $COL_CHANNEL=? ORDER BY $COL_TIMESTAMP ASC LIMIT ?",
+            arrayOf<Any?>(channelId, limit),
         )
         return c.use { cursor -> (0 until cursor.count).map { cursorToMessage(cursor.apply { moveToPosition(it) }) } }
     }
@@ -68,16 +88,16 @@ internal class ChatStore(context: Context) :
     }
 
     fun getChannelIds(): List<String> {
-        val c = readableDatabase.rawQuery(
-            "SELECT $COL_CHANNEL FROM $TABLE GROUP BY $COL_CHANNEL ORDER BY MAX($COL_TIMESTAMP) DESC", null,
+        val c = db.query(
+            "SELECT $COL_CHANNEL FROM $TABLE GROUP BY $COL_CHANNEL ORDER BY MAX($COL_TIMESTAMP) DESC",
         )
         return c.use { cur -> (0 until cur.count).map { cur.apply { moveToPosition(it) }.getString(0) } }
     }
 
     fun getLatestMessage(channelId: String): ChatMessage? {
-        val c = readableDatabase.query(
-            TABLE, null, "$COL_CHANNEL=?", arrayOf(channelId),
-            null, null, "$COL_TIMESTAMP DESC", "1",
+        val c = db.query(
+            "SELECT * FROM $TABLE WHERE $COL_CHANNEL=? ORDER BY $COL_TIMESTAMP DESC LIMIT 1",
+            arrayOf<Any?>(channelId),
         )
         return c.use { if (it.moveToFirst()) cursorToMessage(it) else null }
     }

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.icegood.findmeinwood.core.chat.ChatMessage
 import com.icegood.findmeinwood.core.chat.ChatRepository
+import com.icegood.findmeinwood.core.storage.SealedFiles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -120,13 +121,14 @@ fun ChatScreen(
         contract = ActivityResultContracts.GetContent(),
     ) { uri: Uri? ->
         uri?.let {
-            val contentResolver = context.contentResolver
-            val inputStream = contentResolver.openInputStream(it) ?: return@let
-            val fileName = "chat_${System.currentTimeMillis()}.jpg"
-            val file = File(context.filesDir, "chat_photos").apply { mkdirs() }
-                .resolve(fileName)
-            inputStream.use { input -> file.outputStream().use { out -> input.copyTo(out) } }
             scope.launch {
+                // Our copy of the picked photo is stored sealed like every chat photo.
+                val file = withContext(Dispatchers.IO) {
+                    val bytes = context.contentResolver.openInputStream(it)?.use { input -> input.readBytes() }
+                        ?: return@withContext null
+                    ChatRepository.photoDir(context).resolve("chat_${System.currentTimeMillis()}.jpg")
+                        .also { f -> SealedFiles.write(f, bytes) }
+                } ?: return@launch
                 chatRepo.sendPhoto("file://${file.absolutePath}", channelId)
             }
         }
@@ -263,13 +265,13 @@ private fun decodePhoto(photoRef: String): android.graphics.Bitmap? {
     return try {
         val uri = Uri.parse(photoRef)
         if (uri.scheme == "file") {
-            val path = uri.path ?: return null
-            if (!File(path).exists()) return null
+            // chat_photos are sealed by the Keystore key; anything else is not shown.
+            val bytes = SealedFiles.read(File(uri.path ?: return null)) ?: return null
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeFile(path, bounds)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
             val sample = maxOf(1, (bounds.outWidth / 480) / 2)
             val opts = BitmapFactory.Options().apply { inSampleSize = sample }
-            BitmapFactory.decodeFile(path, opts)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
         } else {
             null
         }

@@ -4,16 +4,31 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
+import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteOpenHelper
+import androidx.sqlite.db.SupportSQLiteQueryBuilder
+import com.icegood.findmeinwood.core.storage.SecureDb
 import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
-internal class SQLiteAuthStore(context: Context) :
-    SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
+/** Local accounts, encrypted at rest with SQLCipher (see [SecureDb]). */
+internal class SQLiteAuthStore(context: Context) {
 
-    override fun onCreate(db: SQLiteDatabase) {
+    private val helper: SupportSQLiteOpenHelper = SecureDb.open(
+        context, DB_NAME,
+        object : SupportSQLiteOpenHelper.Callback(DB_VERSION) {
+            override fun onCreate(db: SupportSQLiteDatabase) = create(db)
+            override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                db.execSQL("DROP TABLE IF EXISTS $TABLE")
+                create(db)
+            }
+        },
+    )
+    private val db: SupportSQLiteDatabase get() = helper.writableDatabase
+
+    private fun create(db: SupportSQLiteDatabase) {
         db.execSQL(
             """CREATE TABLE $TABLE (
                 $COL_ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,10 +42,19 @@ internal class SQLiteAuthStore(context: Context) :
         )
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE")
-        onCreate(db)
-    }
+    /** Raw query for the content provider. */
+    fun query(
+        projection: Array<out String>?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+        sortOrder: String?,
+    ): Cursor = db.query(
+        SupportSQLiteQueryBuilder.builder(TABLE)
+            .columns(projection?.let { arrayOf(*it) })
+            .selection(selection, selectionArgs)
+            .orderBy(sortOrder)
+            .create(),
+    )
 
     fun insertUser(email: String, passwordHash: String, displayName: String): Long {
         val cv = ContentValues().apply {
@@ -39,34 +63,25 @@ internal class SQLiteAuthStore(context: Context) :
             put(COL_DISPLAY_NAME, displayName)
             put(COL_CREATED_AT, System.currentTimeMillis())
         }
-        return writableDatabase.insert(TABLE, null, cv)
+        return db.insert(TABLE, SQLiteDatabase.CONFLICT_IGNORE, cv)
     }
 
     fun queryByEmail(email: String): UserProfile? {
-        val c = readableDatabase.query(
-            TABLE, null, "$COL_EMAIL=?", arrayOf(email.lowercase().trim()),
-            null, null, null,
-        )
+        val c = db.query("SELECT * FROM $TABLE WHERE $COL_EMAIL=?", arrayOf<Any?>(email.lowercase().trim()))
         return c.use {
             if (it.moveToFirst()) cursorToProfile(it) else null
         }
     }
 
     fun queryById(uid: String): UserProfile? {
-        val c = readableDatabase.query(
-            TABLE, null, "$COL_ID=?", arrayOf(uid),
-            null, null, null,
-        )
+        val c = db.query("SELECT * FROM $TABLE WHERE $COL_ID=?", arrayOf<Any?>(uid))
         return c.use {
             if (it.moveToFirst()) cursorToProfile(it) else null
         }
     }
 
     fun queryByGoogleId(googleId: String): UserProfile? {
-        val c = readableDatabase.query(
-            TABLE, null, "$COL_GOOGLE_ID=?", arrayOf(googleId),
-            null, null, null,
-        )
+        val c = db.query("SELECT * FROM $TABLE WHERE $COL_GOOGLE_ID=?", arrayOf<Any?>(googleId))
         return c.use {
             if (it.moveToFirst()) cursorToProfile(it) else null
         }
@@ -74,14 +89,11 @@ internal class SQLiteAuthStore(context: Context) :
 
     fun updateGoogleId(uid: String, googleId: String): Int {
         val cv = ContentValues().apply { put(COL_GOOGLE_ID, googleId) }
-        return writableDatabase.update(TABLE, cv, "$COL_ID=?", arrayOf(uid))
+        return db.update(TABLE, SQLiteDatabase.CONFLICT_NONE, cv, "$COL_ID=?", arrayOf(uid))
     }
 
     fun verifyPassword(email: String, password: String): UserProfile? {
-        val c = readableDatabase.query(
-            TABLE, null, "$COL_EMAIL=?", arrayOf(email.lowercase().trim()),
-            null, null, null,
-        )
+        val c = db.query("SELECT * FROM $TABLE WHERE $COL_EMAIL=?", arrayOf<Any?>(email.lowercase().trim()))
         val (profile, stored) = c.use {
             if (!it.moveToFirst()) return null
             cursorToProfile(it) to it.getString(it.getColumnIndexOrThrow(COL_PASSWORD_HASH))

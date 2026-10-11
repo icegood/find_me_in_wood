@@ -23,6 +23,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":transport:api"))
     implementation(project(":core:session"))
+    api(project(":core:storage"))
     implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.mockito.core)
@@ -30,6 +31,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.sqlite.framework)
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {

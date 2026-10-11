@@ -20,19 +20,8 @@ class AuthContentProvider : ContentProvider() {
         uri: Uri, projection: Array<out String>?, selection: String?,
         selectionArgs: Array<out String>?, sortOrder: String?,
     ): Cursor = when (matcher.match(uri)) {
-        USERS -> {
-            val db = store.readableDatabase
-            db.query(SQLiteAuthStore.TABLE, projection, selection, selectionArgs, null, null, sortOrder)
-        }
-        USER_ID -> {
-            val id = uri.lastPathSegment!!
-            val db = store.readableDatabase
-            db.query(
-                SQLiteAuthStore.TABLE, projection,
-                "${SQLiteAuthStore.COL_ID}=?", arrayOf(id),
-                null, null, sortOrder,
-            )
-        }
+        USERS -> store.query(projection, selection, selectionArgs, sortOrder)
+        USER_ID -> store.query(projection, "${SQLiteAuthStore.COL_ID}=?", arrayOf(uri.lastPathSegment!!), sortOrder)
         else -> throw IllegalArgumentException("Unknown URI: $uri")
     }
 

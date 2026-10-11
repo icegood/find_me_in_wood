@@ -19,8 +19,7 @@ class ChatContentProvider : ContentProvider() {
         uri: Uri, projection: Array<out String>?, selection: String?,
         selectionArgs: Array<out String>?, sortOrder: String?,
     ): Cursor {
-        val db = store.readableDatabase
-        return db.query(ChatStore.TABLE, projection, selection, selectionArgs, null, null, sortOrder)
+        return store.query(projection, selection, selectionArgs, sortOrder)
     }
 
     override fun insert(uri: Uri, values: ContentValues?): Uri {

@@ -6,6 +6,7 @@ import com.icegood.findmeinwood.core.model.ChatPayloadCodec
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.PayloadCodec
 import com.icegood.findmeinwood.core.session.SessionManager
+import com.icegood.findmeinwood.core.storage.SealedFiles
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -114,11 +115,10 @@ class ChatRepository(
         }
     }
 
-    /** Store the photo we received so the bubble can render it locally. */
+    /** Store the photo we received, sealed like all chat photos, so the bubble can render it. */
     private fun saveIncomingPhoto(id: String, bytes: ByteArray): String? = runCatching {
-        val dir = File(context.filesDir, "chat_photos").apply { mkdirs() }
-        val file = File(dir, "in_${id.filter { it.isLetterOrDigit() }}.jpg")
-        file.writeBytes(bytes)
+        val file = File(photoDir(context), "in_${id.filter { it.isLetterOrDigit() }}.jpg")
+        SealedFiles.write(file, bytes)
         "file://${file.absolutePath}"
     }.getOrNull()
 
@@ -130,7 +130,9 @@ class ChatRepository(
         val uri = android.net.Uri.parse(uriString)
         val src = runCatching {
             if (uri.scheme == "file") {
-                android.graphics.BitmapFactory.decodeFile(uri.path)
+                // Our own chat_photos are stored sealed (see SealedFiles).
+                val bytes = SealedFiles.read(File(uri.path ?: return null)) ?: return null
+                android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             } else {
                 context.contentResolver.openInputStream(uri)?.use {
                     android.graphics.BitmapFactory.decodeStream(it)
@@ -155,6 +157,11 @@ class ChatRepository(
         val h = src.height
         val factor = maxOf(1, maxOf(w, h) / maxDim)
         return android.graphics.Bitmap.createScaledBitmap(src, w / factor, h / factor, true)
+    }
+
+    companion object {
+        /** Chat photos (sent and received); every file in it is sealed by the Keystore key. */
+        fun photoDir(context: Context): File = File(context.filesDir, "chat_photos").apply { mkdirs() }
     }
 
     fun handleIncomingPayload(rawPayload: ByteArray, senderId: MemberId) {

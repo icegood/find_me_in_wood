@@ -1,5 +1,7 @@
 package com.icegood.findmeinwood.app
 
+import com.icegood.findmeinwood.core.storage.SecureStorage
+import com.icegood.findmeinwood.core.storage.SealedFiles
 import android.content.Context
 import com.icegood.findmeinwood.core.crypto.Identity
 import java.io.File
@@ -50,16 +52,11 @@ object IdentityHolder {
 
     private fun write(file: File, pair: KeyPair) {
         val enc = Base64.getEncoder()
-        val tmp = File(file.parentFile, file.name + ".tmp")
         val text = listOf(
             pair.private.algorithm,
             enc.encodeToString(pair.private.encoded),
             enc.encodeToString(pair.public.encoded),
         ).joinToString("\n")
-        tmp.writeBytes(SecureStorage.box.seal(text.toByteArray()))
-        if (!tmp.renameTo(file)) {
-            tmp.delete()
-            error("cannot store identity")
-        }
+        SealedFiles.write(file, text.toByteArray())
     }
 }

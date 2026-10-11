@@ -1,4 +1,4 @@
-package com.icegood.findmeinwood.app
+package com.icegood.findmeinwood.core.storage
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -73,5 +73,5 @@ object KeystoreBox : SecretBox() {
 
 /** Which [SecretBox] the stores use; unit tests swap in a software key (no Keystore on the JVM). */
 object SecureStorage {
-    @Volatile internal var box: SecretBox = KeystoreBox
+    @Volatile var box: SecretBox = KeystoreBox
 }

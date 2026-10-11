@@ -19,6 +19,9 @@ class ChatStoreTest {
 
     @Before
     fun setup() {
+        // SQLCipher's native library does not load on the JVM: plain SQLite for unit tests.
+        com.icegood.findmeinwood.core.storage.SecureDb.factoryOverride =
+            androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory()
         store = ChatStore(ApplicationProvider.getApplicationContext())
     }
 
