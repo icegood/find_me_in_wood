@@ -73,7 +73,6 @@ import kotlin.math.sin
 import kotlinx.coroutines.flow.StateFlow
 import org.osmdroid.api.IGeoPoint
 import org.osmdroid.config.Configuration
-import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
@@ -90,7 +89,6 @@ import org.osmdroid.tileprovider.util.SimpleRegisterReceiver
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.ScaleBarOverlay
 
@@ -100,8 +98,9 @@ import org.osmdroid.views.overlay.ScaleBarOverlay
  * Google sign-in); when an MBTiles archive is dropped in files/maps/offline.mbtiles the
  * map switches to that archive and stays offline.
  *
- * Extra navigation aids: tap a member marker to follow it (arrow + distance +
- * bearing), a scale bar (bottom-left), a compass, and an arrow for my own movement
+ * Extra navigation aids: pick a member to find (tap their marker, or "Find" in the peer
+ * list) — others turn grey, an arrow points at them with the distance at its tip, and a
+ * card shows distance + bearing until cleared with ✕; a scale bar (bottom-left), a compass, and an arrow for my own movement
  * derived from consecutive GPS fixes.
  */
 /** My GNSS fix plus the movement heading derived from consecutive fixes. */
@@ -124,6 +123,45 @@ internal fun blendHeading(prev: Float?, bearing: Float, weight: Float = 0.4f): F
     val diff = ((bearing - prev + 540f) % 360f) - 180f
     return (prev + weight * diff + 360f) % 360f
 }
+
+/** Where the arrow to the target ends, and whether the target itself is off-screen. */
+internal data class ArrowEnd(val x: Float, val y: Float, val offScreen: Boolean)
+
+/**
+ * End point of the arrow from ([fromX],[fromY]) towards ([toX],[toY]) in a [width]x[height]
+ * view: the target itself when it is visible (inset by [margin]), otherwise the point where
+ * the ray leaves the view, so the arrow and its distance label sit right on the edge.
+ * Null when the two points coincide.
+ */
+internal fun arrowEnd(
+    fromX: Float, fromY: Float, toX: Float, toY: Float,
+    width: Float, height: Float, margin: Float,
+): ArrowEnd? {
+    val dx = toX - fromX
+    val dy = toY - fromY
+    val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+    if (dist < 1f) return null
+    val inside = toX in margin..(width - margin) && toY in margin..(height - margin)
+    if (inside) return ArrowEnd(toX, toY, offScreen = false)
+    val ux = dx / dist
+    val uy = dy / dist
+    val ts = buildList {
+        if (ux > 0f) add((width - margin - fromX) / ux)
+        if (ux < 0f) add((margin - fromX) / ux)
+        if (uy > 0f) add((height - margin - fromY) / uy)
+        if (uy < 0f) add((margin - fromY) / uy)
+    }
+    // Ray parameter where it first leaves the inset view; if we start outside it, clamp.
+    val t = (ts.filter { it > 0f }.minOrNull() ?: 0f).coerceAtMost(dist)
+    return ArrowEnd(
+        (fromX + ux * t).coerceIn(margin, width - margin),
+        (fromY + uy * t).coerceIn(margin, height - margin),
+        offScreen = true,
+    )
+}
+
+internal fun formatDistance(meters: Double): String =
+    if (meters >= 1000) "%.1f km".format(meters / 1000) else "${meters.toInt()} m"
 
 private fun compass(bearing: Double): String {
     val dirs = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
@@ -212,13 +250,19 @@ fun MapScreen(
     tileSource: TileSource = TileSource.OFFLINE,
     tileApiKeys: Map<TileProvider, String> = emptyMap(),
     onTileSourceChange: (TileSource) -> Unit = {},
+    /**
+     * The member being searched for. Hoisted so the choice survives tab switches and can
+     * be made from the peer list; only the ✕ in the target card clears it.
+     */
+    findTarget: MemberId? = null,
+    onFindTargetChange: (MemberId?) -> Unit = {},
 ) {
     val context = LocalContext.current
     val p by profile.collectAsState()
     val ps by peers.collectAsState()
     val fix = rememberDeviceFix(context)
     val me = fix?.location
-    var follow by remember { mutableStateOf<MemberId?>(null) }
+    val follow = findTarget
     var mapVersion by remember { mutableStateOf(0) }
     val azimuth = rememberCompassAzimuth(context)
     // The source OFFLINE reads: the last source used while online, so saved offline
@@ -256,6 +300,9 @@ fun MapScreen(
     // (view creation + effects + HUD overlay) is scoped under key(...).
     val accent = MaterialTheme.colorScheme.primary
     val myDirColor = MaterialTheme.colorScheme.secondary
+    val labelBg = MaterialTheme.colorScheme.primary
+    val labelFg = MaterialTheme.colorScheme.onPrimary
+    val textMeasurer = rememberTextMeasurer()
     val peer = follow?.let { ps[it] }
 
     Box(modifier.fillMaxSize()) {
@@ -273,12 +320,7 @@ fun MapScreen(
             }
 
             DisposableEffect(mapView) {
-                val receiver = object : MapEventsReceiver {
-                    override fun singleTapConfirmedHelper(p: GeoPoint): Boolean { follow = null; return true }
-                    override fun longPressHelper(p: GeoPoint): Boolean = false
-                }
-                val tapOverlay = MapEventsOverlay(context, receiver)
-                mapView.overlays.add(0, tapOverlay)
+                // No tap-to-clear: a stray tap must never drop the person being searched for.
                 val listener = object : MapListener {
                     override fun onScroll(event: ScrollEvent): Boolean { mapVersion++; return true }
                     override fun onZoom(event: ZoomEvent): Boolean {
@@ -288,18 +330,17 @@ fun MapScreen(
                     }
                 }
                 mapView.addMapListener(listener)
-                onDispose {
-                    mapView.overlays.remove(tapOverlay)
-                    mapView.removeMapListener(listener)
-                }
+                onDispose { mapView.removeMapListener(listener) }
             }
 
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { mapView },
-            ) { mv -> renderMarkers(mv, p, ps, me, follow) { id -> follow = id } }
+            ) { mv -> renderMarkers(mv, p, ps, me, follow, onFindTargetChange) }
 
-            // HUD: my movement arrow, followed-member ring and direction arrow.
+            // HUD, two arrows: my own direction (movement heading or compass) at my position,
+            // and the direction to the member being searched for, ending at that member when
+            // visible or on the screen edge with the distance written there.
             Canvas(Modifier.fillMaxSize()) {
                 val tick = mapVersion
                 if (!(mapView.width > 0 && mapView.height > 0)) return@Canvas
@@ -330,18 +371,46 @@ fun MapScreen(
                             GeoPoint(target.latE7 / 1e7, target.lonE7 / 1e7), null,
                         )
                         val t = Offset(tp.x.toFloat(), tp.y.toFloat())
-                        drawCircle(
-                            color = accent.copy(alpha = 0.30f),
-                            radius = 18.dp.toPx(),
-                            center = t,
-                        )
-                        drawCircle(
-                            color = accent,
-                            radius = 18.dp.toPx(),
-                            center = t,
-                            style = Stroke(2.dp.toPx()),
-                        )
-                        drawDirectionArrow(my, t, accent, size)
+                        val ring = 18.dp.toPx()
+                        val end = arrowEnd(my.x, my.y, t.x, t.y, size.width, size.height, 12.dp.toPx())
+                        if (end != null && !end.offScreen) {
+                            drawCircle(color = accent.copy(alpha = 0.30f), radius = ring, center = t)
+                            drawCircle(color = accent, radius = ring, center = t, style = Stroke(2.dp.toPx()))
+                        }
+                        if (end != null) {
+                            // Stop at the ring of a visible target instead of covering it.
+                            val tip = if (end.offScreen) {
+                                Offset(end.x, end.y)
+                            } else {
+                                val dx = t.x - my.x
+                                val dy = t.y - my.y
+                                val d = kotlin.math.sqrt(dx * dx + dy * dy).coerceAtLeast(1f)
+                                Offset(t.x - dx / d * ring, t.y - dy / d * ring)
+                            }
+                            drawDirectionArrow(my, tip, accent)
+                            val (meters, _) = distanceBearing(meNow, target.latE7, target.lonE7)
+                            val layout = textMeasurer.measure(
+                                formatDistance(meters),
+                                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelFg),
+                            )
+                            val pad = 6.dp.toPx()
+                            val w = layout.size.width + 2 * pad
+                            val h = layout.size.height + 2 * pad
+                            // Beside the arrow tip, pushed inward so it stays fully on screen.
+                            val gap = 22.dp.toPx()
+                            val ux = (tip.x - my.x)
+                            val uy = (tip.y - my.y)
+                            val ul = kotlin.math.sqrt(ux * ux + uy * uy).coerceAtLeast(1f)
+                            val cx = (tip.x - ux / ul * gap).coerceIn(w / 2, size.width - w / 2)
+                            val cy = (tip.y - uy / ul * gap).coerceIn(h / 2, size.height - h / 2)
+                            drawRoundRect(
+                                color = labelBg,
+                                topLeft = Offset(cx - w / 2, cy - h / 2),
+                                size = Size(w, h),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(h / 2, h / 2),
+                            )
+                            drawText(layout, topLeft = Offset(cx - w / 2 + pad, cy - h / 2 + pad))
+                        }
                     }
                 }
                 tick.hashCode()
@@ -462,17 +531,17 @@ fun MapScreen(
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "→ ${peer.nickname ?: "member"}",
+                            "Finding ${peer.nickname ?: "member"}",
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.weight(1f),
                         )
-                        TextButton(onClick = { follow = null }) { Text("✕") }
+                        TextButton(onClick = { onFindTargetChange(null) }) { Text("✕") }
                     }
                     val pos = peer.lastPosition
                     val fix0 = me
                     if (pos != null && fix0 != null) {
                         val (meters, bearing) = distanceBearing(fix0, pos.latE7, pos.lonE7)
-                        val dist = if (meters >= 1000) "%.1f km".format(meters / 1000) else "${meters.toInt()} m"
+                        val dist = formatDistance(meters)
                         Text(
                             "$dist · ${bearing.toInt()}° ${compass(bearing)}" +
                                 if (peer.viaMemberId != null) " · relayed" else "",
@@ -682,24 +751,12 @@ fun startOfflineDownload(
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDirectionArrow(
     from: Offset,
-    to: Offset,
+    end: Offset,
     color: Color,
-    view: Size,
 ) {
-    val margin = 12f
-    var dx = to.x - from.x
-    var dy = to.y - from.y
-    val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-    if (dist < 20f) return
-    dx /= dist
-    dy /= dist
-    val ts = mutableListOf<Float>()
-    if (dx > 0f) ts += (view.width - margin - from.x) / dx
-    if (dx < 0f) ts += (margin - from.x) / dx
-    if (dy > 0f) ts += (view.height - margin - from.y) / dy
-    if (dy < 0f) ts += (margin - from.y) / dy
-    val t = ts.filter { it > 0 }.minOrNull() ?: 1f
-    val end = Offset(from.x + dx * t * 0.98f, from.y + dy * t * 0.98f)
+    val dx = end.x - from.x
+    val dy = end.y - from.y
+    if (dx * dx + dy * dy < 20f * 20f) return
     drawLine(color, from, end, strokeWidth = 5.dp.toPx(), cap = StrokeCap.Round)
     val angle = atan2(dy, dx)
     val wing = 16.dp.toPx()
@@ -771,9 +828,11 @@ private fun CompassHud(azimuth: Float?, isDarkTheme: Boolean, modifier: Modifier
 fun PeerList(
     peers: StateFlow<Map<MemberId, PeerState>>,
     modifier: Modifier = Modifier,
+    findTarget: MemberId? = null,
+    onFind: (MemberId?) -> Unit = {},
 ) {
     val me = rememberDeviceFix(LocalContext.current)?.location
-    PeerList(peers, me, modifier)
+    PeerList(peers, me, modifier, findTarget, onFind)
 }
 
 /** FR-6.4: mapless alternative — distance and bearing to each peer. */
@@ -782,6 +841,8 @@ fun PeerList(
     peers: StateFlow<Map<MemberId, PeerState>>,
     me: Location?,
     modifier: Modifier = Modifier,
+    findTarget: MemberId? = null,
+    onFind: (MemberId?) -> Unit = {},
 ) {
     val ps by peers.collectAsState()
     Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -791,18 +852,30 @@ fun PeerList(
         }
         ps.values.forEach { peer ->
             val pos = peer.lastPosition
-            if (pos == null || me == null) {
-                Text(
-                    "${peer.nickname ?: "member"} — unlocated, last seen ${age(peer.lastSeenMs)} ago",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                )
-            } else {
-                val (meters, bearing) = distanceBearing(me, pos.latE7, pos.lonE7)
-                Text(
-                    "${peer.nickname ?: "member"} — ${meters.toInt()} m, bearing ${bearing.toInt()}° ${compass(bearing)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+            val isTarget = peer.memberId == findTarget
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                val name = (if (isTarget) "→ " else "") + (peer.nickname ?: "member")
+                if (pos == null || me == null) {
+                    Text(
+                        "$name — unlocated, last seen ${age(peer.lastSeenMs)} ago",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    val (meters, bearing) = distanceBearing(me, pos.latE7, pos.lonE7)
+                    Text(
+                        "$name — ${formatDistance(meters)}, bearing ${bearing.toInt()}° ${compass(bearing)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (findTarget != null && !isTarget) Color.Gray else Color.Unspecified,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (isTarget) {
+                    TextButton(onClick = { onFind(null) }) { Text("Stop") }
+                } else {
+                    TextButton(onClick = { onFind(peer.memberId) }) { Text("Find") }
+                }
             }
         }
     }
@@ -999,7 +1072,6 @@ private fun renderMarkers(
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                 title = "You"
                 snippet = "±${me.accuracy.toInt()} m"
-                setOnMarkerClickListener { _, _ -> onSelect(null); true }
             },
         )
         if (!centeredOnce.contains(mv)) {
@@ -1009,13 +1081,26 @@ private fun renderMarkers(
     }
     peers.values.forEach { peer ->
         val pos = peer.lastPosition ?: return@forEach
+        val isTarget = peer.memberId == follow
         mv.overlays.add(
             Marker(mv).apply {
                 position = GeoPoint(pos.latE7 / 1e7, pos.lonE7 / 1e7)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                title = (if (peer.memberId == follow) "→ " else "") + (peer.nickname ?: "member")
+                title = (if (isTarget) "→ " else "") + (peer.nickname ?: "member")
                 snippet = if (peer.viaMemberId != null) "relayed" else "direct"
-                setOnMarkerClickListener { _, _ -> onSelect(peer.memberId); true }
+                if (follow != null && !isTarget) {
+                    // While searching for someone, everyone else stays visible but greyed out.
+                    icon = icon?.mutate()?.apply {
+                        colorFilter = android.graphics.ColorMatrixColorFilter(
+                            android.graphics.ColorMatrix().apply { setSaturation(0f) },
+                        )
+                    }
+                    alpha = 0.45f
+                } else if (follow == null) {
+                    // With no target yet, tapping a member picks them; once set, taps only
+                    // show the info bubble so the target is not switched by accident.
+                    setOnMarkerClickListener { _, _ -> onSelect(peer.memberId); true }
+                }
             },
         )
     }

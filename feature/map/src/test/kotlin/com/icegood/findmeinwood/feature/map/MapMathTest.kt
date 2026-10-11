@@ -35,4 +35,32 @@ class MapMathTest {
         assertTrue(same in 89.9f..90.1f, "expected 90, got $same")
         assertTrue(blendHeading(null, 370f) in 9.9f..10.1f)
     }
+
+    @Test
+    fun `arrow ends on a visible target`() {
+        val e = arrowEnd(100f, 100f, 300f, 200f, 1000f, 800f, 10f)!!
+        assertTrue(!e.offScreen && e.x == 300f && e.y == 200f, "$e")
+    }
+
+    @Test
+    fun `arrow to an off-screen target stops on the edge in the right direction`() {
+        // Target far to the right: the tip lands on the right edge at the same height.
+        val right = arrowEnd(500f, 400f, 5000f, 400f, 1000f, 800f, 10f)!!
+        assertTrue(right.offScreen && right.x == 990f && right.y == 400f, "$right")
+        // Target up and to the left: tip on the top edge, left of me.
+        val up = arrowEnd(500f, 400f, 300f, -2000f, 1000f, 800f, 10f)!!
+        assertTrue(up.offScreen && up.y == 10f && up.x < 500f && up.x >= 10f, "$up")
+    }
+
+    @Test
+    fun `no arrow when the target is exactly here`() {
+        assertTrue(arrowEnd(50f, 50f, 50f, 50f, 100f, 100f, 5f) == null)
+    }
+
+    @Test
+    fun `distance label switches to km`() {
+        assertTrue(formatDistance(850.4) == "850 m")
+        // decimal separator follows the device locale
+        assertTrue(formatDistance(1530.0).matches(Regex("1[.,]5 km")), formatDistance(1530.0))
+    }
 }

@@ -157,6 +157,8 @@ class MainActivity : ComponentActivity() {
             )
         }
         var openChat by remember { mutableStateOf<String?>(null) }
+        // The member being searched for: shared by the map and the peer list, kept across tabs.
+        var findTarget by remember { mutableStateOf<com.icegood.findmeinwood.core.model.MemberId?>(null) }
         val profile by SessionBus.profile.collectAsState()
         val running by SessionBus.sessionRunning.collectAsState()
         val scope = rememberCoroutineScope()
@@ -167,7 +169,11 @@ class MainActivity : ComponentActivity() {
             // profile can go old -> new without an observed null, and the old repo would
             // keep sending into a stopped session.
             chatRepo.value = null
-            val p = profile ?: return@LaunchedEffect
+            val p = profile
+            if (p == null) {
+                findTarget = null // session over: that member is no longer tracked
+                return@LaunchedEffect
+            }
             // The service may still be starting: without retrying here the inbox is
             // never wired and every incoming chat message is dropped for the session.
             var manager = SessionService.activeManager
@@ -232,8 +238,17 @@ class MainActivity : ComponentActivity() {
                             Prefs.setTileSource(this@MainActivity, it.name)
                             mapTileSource = it
                         },
+                        findTarget = findTarget,
+                        onFindTargetChange = { findTarget = it },
                     )
-                    tab == "peers" -> com.icegood.findmeinwood.feature.map.PeerList(SessionBus.peers)
+                    tab == "peers" -> com.icegood.findmeinwood.feature.map.PeerList(
+                        SessionBus.peers,
+                        findTarget = findTarget,
+                        onFind = { id ->
+                            findTarget = id
+                            if (id != null) tab = "map" // go straight to the arrow
+                        },
+                    )
                     tab == "discover" -> DiscoverScreen(
                         context = this@MainActivity,
                         onJoin = { netId -> DiscoveryBridge.requestJoin(netId) },
