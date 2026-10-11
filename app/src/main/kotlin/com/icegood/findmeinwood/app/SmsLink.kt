@@ -36,7 +36,7 @@ internal class SmsBudget(private val maxPerHour: Int) {
     }
 }
 
-/** Sends LNP/1 SMS reports with the platform SMS stack (needs SEND_SMS). */
+/** Sends LNP/2 SMS reports with the platform SMS stack (needs SEND_SMS). */
 internal object SmsSender {
     private const val TAG = "FMIW-SMS"
 
@@ -64,7 +64,7 @@ internal object SmsSender {
 }
 
 /**
- * Incoming SMS on the LNP/1 SMS rung: position reports from members, decrypted with the
+ * Incoming SMS on the LNP/2 SMS link: position reports from members, decrypted with the
  * running network's key and fed to the session like beacons. Anything else is left alone.
  */
 class SmsLinkReceiver : BroadcastReceiver() {

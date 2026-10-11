@@ -62,38 +62,32 @@ Bluetooth — **so that** everyone stays connected with the least radio cost.
 - FR-3.4 A peer's position may arrive via a relay path; the UI may show "via B" when
   the direct edge is down. Peer staleness rules (FR-6.3) apply per member regardless
   of path.
-- FR-3.5 Transport choice per edge is negotiated between the two peers in-band by the
-  Link Negotiation Protocol (LNP/1, FR-3.6–3.9). No human agreement and no manual edge
-  selection is needed; the user only decides which transports this phone *offers*.
-- FR-3.6 LNP/1 — offers. Every member advertises the transports it can use for this
-  network as a list of offers inside its encrypted, signed beacon (`link.offers`):
-  `{t: BLUETOOTH|WIFI_DIRECT|LORA|SMS, addr?}`. `addr` carries what a peer needs to
-  reach us on that transport (SMS: our phone number). An offer exists only while the
-  transport is usable here (radio on, LoRa node paired, SMS permitted and enabled by
-  the user). Offers ride on beacons whenever they changed, whenever a peer's agreement
-  is pending, and on every 5th beacon otherwise; they are never sent in clear.
-- FR-3.7 LNP/1 — agreement. For a pair A,B the *ladder* is the standard rung order
-  BLUETOOTH, WIFI_DIRECT, LORA, SMS filtered to transports both offer. Both sides compute
-  it from the same two offer lists, so they derive the same ladder without a round trip.
-  Each side acknowledges it in its next beacons (`link.acks`: peer id prefix + CRC-32 of
-  the canonical ladder incl. addresses). The ladder is *agreed* once the peer's ack
-  matches our own hash. Free broadcast rungs (BLUETOOTH, WIFI_DIRECT) are always used;
-  a costly rung (LORA airtime, SMS money) is used for a peer only on an agreed ladder,
-  so nobody is ever texted without having offered the number for that.
-  Agreement is reached while peers still hear each other: after the radios are lost
-  there is no channel left to negotiate on, so the fallback must be settled in advance.
-- FR-3.8 LNP/1 — switching. Per peer the *active rung* is the cheapest rung on which an
-  authenticated frame was received *directly* (TTL not decremented) within that rung's
-  liveness window (BT/Wi-Fi Direct/LoRa: 3 beacon intervals; SMS: 2 SMS intervals).
-  Down-switch: when no free rung is alive, the next agreed costly rung becomes active
-  — both sides observe the same silence and step down independently and symmetrically.
-  Up-switch: any direct frame on a cheaper rung makes it active at once; costly sending
-  for that peer stops. The rung each peer is on is shown in the member list.
-- FR-3.9 LNP/1 — costly rung rate. On SMS each peer gets one position report
-  (the 47-byte encrypted SMS frame, `FMIW1:` + base64url) every 30 min,
-  bounded by a per-hour SMS budget (10/h). The SMS rung is offered as soon as the user
-  has entered this phone's number and SMS is permitted; there is no separate distress
-  mode, button or schedule — reaching a lost member is the protocol's normal job.
+- FR-3.5 The transport of each pair's link is negotiated in-band by the Link Negotiation
+  Protocol (LNP/2, FR-3.6–3.9). It is explicit, agreed state: it changes only through a
+  PROPOSE / ACCEPT exchange. There is no fallback — nothing switches on its own because
+  a link went quiet. The user only decides which transports this phone *offers*.
+- FR-3.6 LNP/2 — offers. Every member advertises the transports it can use for this
+  network inside its encrypted, signed beacon (`link.offers`): `{t: BLUETOOTH |
+  WIFI_DIRECT | LORA | SMS, addr?}`; `addr` is what a peer needs to reach us there (SMS:
+  our number). An offer exists only while usable here (radio on, LoRa node paired, SMS
+  permitted and own number entered). Link control rides on beacons when something
+  changed or is pending, and on every 5th beacon otherwise; never in clear.
+- FR-3.7 LNP/2 — proposals. A phone proposes a transport both peers offer
+  (`link.prop`: peer id prefix, transport, epoch = current epoch + 1):
+  on first contact (the rung the peer is heard on directly); when the current link is
+  weak (a missed beacon on it — SMS: a missed report): the next rung in the standard
+  order BLUETOOTH, WIFI_DIRECT, LORA, SMS; when a cheaper radio hears the peer directly
+  again: that rung. A proposal is repeated on 3 beacons and travels over whatever still
+  reaches the peer (the weak link, a relay — link control is signed by its author).
+- FR-3.8 LNP/2 — acceptance. The peer accepts a proposal for a transport it offers too
+  (`link.acc`, repeated on 3 beacons) and uses it from then on; the proposer switches
+  when the acceptance arrives. An unanswered proposal expires and the link stays as it
+  was — when nothing reaches the peer, nothing switches. Stale epochs are ignored;
+  simultaneous proposals: the higher epoch, then the lower member id, wins. The agreed
+  link of every member is shown in the member list.
+- FR-3.9 LNP/2 — SMS link. On an agreed SMS link each peer gets one position report
+  (the 47-byte encrypted SMS frame, `FMIW1:` + base64url) every 30 min, bounded by a
+  per-hour SMS budget (10/h). There is no separate distress mode, button or schedule.
 - FR-3.10 Relays and the messenger carrier (INTERNET, FR-9) are not rungs: relayed
   frames never count as direct hearing, and messenger hand-off stays user-initiated.
 

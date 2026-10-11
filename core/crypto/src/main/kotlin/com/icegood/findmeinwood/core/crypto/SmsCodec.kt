@@ -8,7 +8,7 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Position report for the LNP/1 SMS rung (FR-3.9), sized for one SMS — the one channel an
+ * Position report for the LNP/2 SMS link (FR-3.9), sized for one SMS — the one channel an
  * app can push through a satellite link (direct-to-cell / carrier satellite SMS), and
  * through a single bar of 2G.
  *

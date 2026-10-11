@@ -884,7 +884,7 @@ fun PeerList(
             val pos = peer.lastPosition
             val isTarget = peer.memberId == findTarget
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                val name = (if (isTarget) "→ " else "") + (peer.nickname ?: "member") + " (${viaLabel(peer.transport)})"
+                val name = (if (isTarget) "→ " else "") + (peer.nickname ?: "member") + " (${peer.link?.let { "link " + viaLabel(it) } ?: viaLabel(peer.transport)})"
                 if (pos == null || me == null) {
                     Text(
                         "$name — unlocated, last seen ${age(peer.lastSeenMs)} ago",
@@ -895,7 +895,8 @@ fun PeerList(
                 } else {
                     val (meters, bearing) = distanceBearing(me, pos.latE7, pos.lonE7)
                     Text(
-                        "$name — ${formatDistance(meters)}, bearing ${bearing.toInt()}° ${compass(bearing)}",
+                        "$name — ${formatDistance(meters)}${uncertainty(pos.accuracyCm / 100, me.accuracy.toInt())}, " +
+                            "bearing ${bearing.toInt()}° ${compass(bearing)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (findTarget != null && !isTarget) Color.Gray else Color.Unspecified,
                         modifier = Modifier.weight(1f),
@@ -929,7 +930,16 @@ fun PeerList(
     }
 }
 
-/** How the member is reached now (LNP/1 rung, or relays). */
+/**
+ * " (±N m)" when the two positions together are too rough for the distance to mean much
+ * (e.g. an indoor network fix of ±500 m), otherwise nothing.
+ */
+internal fun uncertainty(peerAccM: Int, myAccM: Int): String {
+    val total = peerAccM.coerceAtLeast(0) + myAccM.coerceAtLeast(0)
+    return if (total > 100) " (±${total} m)" else ""
+}
+
+/** How the member is reached now (LNP/2 rung, or relays). */
 internal fun viaLabel(t: com.icegood.findmeinwood.core.model.TransportId?): String = when (t) {
     null -> "via others"
     com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH -> "Bluetooth"
@@ -1180,7 +1190,7 @@ private fun renderMarkers(
                 position = GeoPoint(pos.latE7 / 1e7, pos.lonE7 / 1e7)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                 title = (if (isTarget) "→ " else "") + (peer.nickname ?: "member")
-                snippet = viaLabel(peer.transport)
+                snippet = peer.link?.let { "link " + viaLabel(it) } ?: viaLabel(peer.transport)
                 if (follow != null && !isTarget) {
                     // While searching for someone, everyone else stays visible but greyed out.
                     icon = icon?.mutate()?.apply {

@@ -63,4 +63,11 @@ class MapMathTest {
         // decimal separator follows the device locale
         assertTrue(formatDistance(1530.0).matches(Regex("1[.,]5 km")), formatDistance(1530.0))
     }
+
+    @Test
+    fun `distance uncertainty is shown only when the fixes are rough`() {
+        kotlin.test.assertEquals("", uncertainty(10, 15))
+        kotlin.test.assertEquals(" (±518 m)", uncertainty(500, 18))
+        kotlin.test.assertEquals("", uncertainty(-1, 0))
+    }
 }

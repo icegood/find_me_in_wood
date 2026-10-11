@@ -209,32 +209,45 @@ class SessionManagerBranchTest {
     }
 
     @Test
-    fun `negotiator hears direct frames, ignores relayed ones as links, and signs offers in beacons`() = runBlocking {
-        val links = LinkNegotiator(me, { now }, beaconIntervalMs = 10)
+    fun `negotiated link travels in signed beacons and is applied only on accept`() = runBlocking {
+        val links = LinkNegotiator(me, { now }, beaconIntervalMs = 10_000)
         links.setOffers(listOf(LinkOffer(TransportId.BLUETOOTH), LinkOffer(TransportId.SMS, "+1")))
         val switches = mutableListOf<LinkNegotiator.Switch>()
-        val m = manager(links = links, keepAliveMs = 10)
+        // Realistic cadence: a 10 ms beacon loop would use up the proposal's repeats at once.
+        val m = manager(links = links, keepAliveMs = 60_000)
         m.onLinkSwitch = { switches += it }
         m.start()
         try {
-            t.deliver(frame(seq = 6u, ttl = 2u, payload = validBeacon())) // relayed
+            val offers = com.icegood.findmeinwood.core.model.LinkCtl(offers = listOf(LinkOffer(TransportId.BLUETOOTH)))
+            t.deliver(frame(seq = 6u, ttl = 2u, payload = PayloadCodec.encode(BeaconPayload(link = offers)))) // relayed
             eventually { m.peerFlow.value.containsKey(other) }
             assertEquals(null, m.peerFlow.value[other]?.transport)
-            assertEquals(null, links.active(other))
-            t.deliver(frame(seq = 7u, payload = validBeacon())) // direct
-            eventually { links.active(other) == TransportId.BLUETOOTH }
-            assertEquals(TransportId.BLUETOOTH, switches.last().to)
-            now += 1_000 // silent; no agreed fallback -> no rung
-            eventually { links.active(other) == null }
+            assertEquals(null, links.proposing(other), "relayed frames do not count as hearing a rung")
+            t.deliver(frame(seq = 7u, payload = PayloadCodec.encode(BeaconPayload(link = offers)))) // direct
+            eventually { links.proposing(other) == TransportId.BLUETOOTH }
+            assertEquals(null, links.link(other), "proposed, not yet agreed")
 
             m.sendBeaconSigned(BeaconPayload())
-            val sent = FrameCodec.decode(t.sentHistory.last())
-            val plain = AesGcmAead.open(profile.trafficKey, sent.ciphertext, FrameCodec.aad(sent.networkId, sent.senderId, sent.seq, sent.sentAtMs))
-            assertEquals("+1", PayloadCodec.decode(plain).link?.offers?.last()?.addr)
+            val prop = FrameCodec.decode(t.sentHistory.last()).let {
+                PayloadCodec.decode(AesGcmAead.open(profile.trafficKey, it.ciphertext, FrameCodec.aad(it.networkId, it.senderId, it.seq, it.sentAtMs)))
+            }.link!!.also { assertEquals("+1", it.offers.last().addr) }.prop.single()
+            assertEquals(TransportId.BLUETOOTH, prop.t)
+
+            val accept = offers.copy(acc = listOf(com.icegood.findmeinwood.core.model.LinkProp(me.bytes.copyOf(4), prop.t, prop.e)))
+            t.deliver(frame(seq = 9u, payload = PayloadCodec.encode(BeaconPayload(link = accept))))
+            eventually { m.peerFlow.value[other]?.link == TransportId.BLUETOOTH }
+            assertEquals(TransportId.BLUETOOTH, switches.single().to)
+
+            // The same frame again (as over a second radio) is dropped as a replay but still
+            // counts as hearing the peer: the link stays agreed, nothing is proposed.
+            t.deliver(frame(seq = 9u, payload = PayloadCodec.encode(BeaconPayload(link = accept))))
+            eventually { m.diagnostics.value.dropped >= 1 }
+            assertEquals(null, links.proposing(other))
+
 
             // A name in the peer's link control becomes its nickname.
             val named = PayloadCodec.encode(BeaconPayload(link = com.icegood.findmeinwood.core.model.LinkCtl(name = "Ira")))
-            t.deliver(frame(seq = 8u, payload = named))
+            t.deliver(frame(seq = 10u, payload = named))
             eventually { m.peerFlow.value[other]?.nickname == "Ira" }
         } finally { m.stop() }
     }

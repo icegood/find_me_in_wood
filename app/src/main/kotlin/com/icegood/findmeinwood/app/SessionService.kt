@@ -138,7 +138,7 @@ class SessionService : Service() {
         val manager = SessionManager(
             profile, transports, fixes,
             clock, scope = scope, keepAliveMs = deltaMs,
-            // LNP/1: offers, agreed fallback ladder and the active rung per peer.
+            // LNP/2: offers and the explicitly agreed link per peer.
             links = if (listen) null else LinkNegotiator(
                 profile.myMemberId, clock, beaconIntervalMs = deltaMs,
                 smsIntervalMs = SMS_INTERVAL_MS,
@@ -254,7 +254,7 @@ class SessionService : Service() {
         SessionBus.publishJoinOutcome(outcome)
     }
 
-    // ------------------------------------------------------------------ LNP/1
+    // ------------------------------------------------------------------ LNP/2
 
     /** Last SMS position report per peer (FR-3.9 rate). */
     private val smsSentAt = HashMap<MemberId, Long>()
@@ -401,7 +401,7 @@ class SessionService : Service() {
         private const val CHANNEL = "session"
         private const val NOTIFICATION_ID = 1
         const val ACTION_STOP = "com.icegood.findmeinwood.action.STOP"
-        /** LNP/1 SMS rung cadence (FR-3.9): one position SMS per lost member per 30 min. */
+        /** LNP/2 SMS link cadence (FR-3.9): one position SMS per peer on an SMS link per 30 min. */
         const val SMS_INTERVAL_MS = 30 * 60_000L
         const val ACTION_LISTEN = "com.icegood.findmeinwood.action.LISTEN"
         const val EXTRA_NAME = "name"

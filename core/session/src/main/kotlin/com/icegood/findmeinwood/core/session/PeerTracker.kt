@@ -15,6 +15,8 @@ data class PeerState(
     val verified: Boolean = true,
     /** Transport of the last frame heard directly from the peer; null when only relayed. */
     val transport: com.icegood.findmeinwood.core.model.TransportId? = null,
+    /** Link transport agreed with the peer (LNP/2); null until agreed. */
+    val link: com.icegood.findmeinwood.core.model.TransportId? = null,
 )
 
 /** Pure-Kotlin peer table (FR-6.1/6.3): staleness + purge, injectable clock. */
@@ -40,10 +42,17 @@ class PeerTracker(
             viaMemberId = cur?.viaMemberId,
             verified = cur?.verified ?: true,
             transport = transport,
+            link = cur?.link,
         ))
     }
 
-    /** Display name announced by the peer (LNP/1 link control). */
+    /** The agreed link changed (LNP/2). */
+    fun setLink(member: MemberId, link: com.icegood.findmeinwood.core.model.TransportId?) {
+        val cur = peers.value[member] ?: return
+        if (cur.link != link) peers.value = peers.value + (member to cur.copy(link = link))
+    }
+
+    /** Display name announced by the peer (LNP/2 link control). */
     fun setNickname(member: MemberId, name: String) {
         val cur = peers.value[member] ?: return
         if (cur.nickname != name) peers.value = peers.value + (member to cur.copy(nickname = name))

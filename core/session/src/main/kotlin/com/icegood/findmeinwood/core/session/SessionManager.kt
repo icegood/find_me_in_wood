@@ -41,7 +41,7 @@ class SessionManager(
     private val clock: () -> Long,
     private val aead: Aead = AesGcmAead,
     private val relayEnabled: Boolean = true,
-    /** LNP/1 link negotiation (FR-3.5–3.10); null = broadcast only, no negotiation. */
+    /** LNP/2 link negotiation (FR-3.5–3.10); null = broadcast only, no negotiation. */
     val links: LinkNegotiator? = null,
     private val scope: CoroutineScope,
     private val keepAliveMs: Long = KEEP_ALIVE_MS,
@@ -78,7 +78,7 @@ class SessionManager(
     /** Decrypted payload of every authenticated incoming frame, with sender (chat etc.). */
     var onFrameReceived: ((ByteArray, MemberId) -> Unit)? = null
 
-    /** A peer's active rung changed (LNP/1 FR-3.8). */
+    /** The agreed link to a peer changed (LNP/2 FR-3.8). */
     var onLinkSwitch: ((LinkNegotiator.Switch) -> Unit)? = null
 
     /** US-8: cleartext management frames (HELLO / join handshake) as raw wire bytes. */
@@ -93,7 +93,10 @@ class SessionManager(
 
     fun edges(): List<LinkNegotiator.LinkView> = links?.all() ?: emptyList()
 
-    private fun announce(switches: List<LinkNegotiator.Switch>) = switches.forEach { onLinkSwitch?.invoke(it) }
+    private fun announce(switches: List<LinkNegotiator.Switch>) = switches.forEach { sw ->
+        tracker.setLink(sw.peer, sw.to)
+        onLinkSwitch?.invoke(sw)
+    }
 
     /**
      * A position report that arrived by SMS (FR-3.9): fed to the tracker like a beacon and
@@ -158,7 +161,7 @@ class SessionManager(
             while (true) {
                 delay(keepAliveMs)
                 tracker.tick()
-                links?.let { announce(it.tick()) }
+                links?.tick()
             }
         }
     }
@@ -256,6 +259,9 @@ class SessionManager(
         // first would let a forged frame with a huge seq lock the real sender out.
         if (!replay.accept(f.senderId.bytes, f.seq, f.sentAtMs)) {
             bump { it.copy(dropped = it.dropped + 1) }
+            // The same frame over a second radio is a duplicate, but it still proves that
+            // radio reaches the peer — without this the slower radio never counts as heard.
+            if (f.ttl == INITIAL_TTL) links?.let { announce(it.onFrame(f.senderId, ev.source, direct = true, ctl = null)) }
             return
         }
         // Chat messages are not beacons: route them to the app instead of dropping
