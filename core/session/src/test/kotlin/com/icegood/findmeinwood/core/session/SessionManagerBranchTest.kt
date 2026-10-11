@@ -9,6 +9,7 @@ import com.icegood.findmeinwood.core.model.BeaconPosition
 import com.icegood.findmeinwood.core.model.EncryptedFrame
 import com.icegood.findmeinwood.core.model.GnssFix
 import com.icegood.findmeinwood.core.model.JoinPolicy
+import com.icegood.findmeinwood.core.model.LinkOffer
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.NetworkId
 import com.icegood.findmeinwood.core.model.NetworkProfile
@@ -43,11 +44,11 @@ class SessionManagerBranchTest {
     private fun manager(
         transports: List<FakeTransport> = listOf(t),
         relayEnabled: Boolean = true,
-        edgeManager: EdgeManager? = null,
+        links: LinkNegotiator? = null,
         keepAliveMs: Long = 10,
     ) = SessionManager(
         profile, transports, flowOf(), { now },
-        relayEnabled = relayEnabled, edgeManager = edgeManager, scope = scope,
+        relayEnabled = relayEnabled, links = links, scope = scope,
         keepAliveMs = keepAliveMs,
     )
 
@@ -195,46 +196,59 @@ class SessionManagerBranchTest {
     }
 
     @Test
-    fun `edge views empty without edge manager and set is safe`() = runBlocking {
+    fun `no negotiator means no link views and beacons without link control`() = runBlocking {
         val m = manager()
         m.start()
         try {
             assertTrue(m.edges().isEmpty())
-            m.setEdgeTransport(other, TransportId.LORA) // must not throw
+            t.deliver(frame(seq = 5u, payload = validBeacon()))
+            eventually { m.peerFlow.value.containsKey(other) }
+            assertEquals(TransportId.BLUETOOTH, m.peerFlow.value[other]?.transport)
             assertTrue(m.edges().isEmpty())
         } finally { m.stop() }
     }
 
     @Test
-    fun `edge manager tracks waiting and up states via session`() = runBlocking {
-        val em = EdgeManager(me, { now })
-        val m = manager(edgeManager = em)
+    fun `negotiator hears direct frames, ignores relayed ones as links, and signs offers in beacons`() = runBlocking {
+        val links = LinkNegotiator(me, { now }, beaconIntervalMs = 10)
+        links.setOffers(listOf(LinkOffer(TransportId.BLUETOOTH), LinkOffer(TransportId.SMS, "+1")))
+        val switches = mutableListOf<LinkNegotiator.Switch>()
+        val m = manager(links = links, keepAliveMs = 10)
+        m.onLinkSwitch = { switches += it }
         m.start()
         try {
-            m.setEdgeTransport(other, TransportId.WIFI_DIRECT)
-            assertEquals(EdgeManager.State.WAITING_PEER, m.edges().single().state)
-            t.deliver(frame(seq = 5u, payload = validBeacon()))
-            eventually { m.edges().any { it.state == EdgeManager.State.UP } }
-            assertEquals(TransportId.BLUETOOTH, m.edges().single().transport)
+            t.deliver(frame(seq = 6u, ttl = 2u, payload = validBeacon())) // relayed
+            eventually { m.peerFlow.value.containsKey(other) }
+            assertEquals(null, m.peerFlow.value[other]?.transport)
+            assertEquals(null, links.active(other))
+            t.deliver(frame(seq = 7u, payload = validBeacon())) // direct
+            eventually { links.active(other) == TransportId.BLUETOOTH }
+            assertEquals(TransportId.BLUETOOTH, switches.last().to)
+            now += 1_000 // silent; no agreed fallback -> no rung
+            eventually { links.active(other) == null }
+
+            m.sendBeaconSigned(BeaconPayload())
+            val sent = FrameCodec.decode(t.sentHistory.last())
+            val plain = AesGcmAead.open(profile.trafficKey, sent.ciphertext, FrameCodec.aad(sent.networkId, sent.senderId, sent.seq, sent.sentAtMs))
+            assertEquals("+1", PayloadCodec.decode(plain).link?.offers?.last()?.addr)
         } finally { m.stop() }
     }
 
     @Test
-    fun `stale edges fire onEdgeDown with failover candidates`() = runBlocking {
-        val em = EdgeManager(me, { now })
-        var downPeer: MemberId? = null
-        var candidates: List<TransportId> = emptyList()
-        val wfd = FakeTransport(TransportId.WIFI_DIRECT)
-        val m = manager(transports = listOf(t, wfd), edgeManager = em, keepAliveMs = 10)
-        m.onEdgeDown = { peer, c -> downPeer = peer; candidates = c }
+    fun `sms reports reach the tracker only for members already met`() = runBlocking {
+        val links = LinkNegotiator(me, { now }, beaconIntervalMs = 10)
+        val m = manager(links = links)
         m.start()
-        m.setEdgeTransport(other, TransportId.LORA)
-        wfd.deliver(frame(seq = 6u, payload = validBeacon()))
-        eventually { em.edge(other)?.state == EdgeManager.State.UP }
-        now += EdgeManager.KEEP_ALIVE_MS * 3 + 5 // go stale
-        eventually { downPeer == other }
-        assertEquals(listOf(TransportId.BLUETOOTH), candidates.filter { it != TransportId.INTERNET })
-        m.stop()
+        try {
+            assertEquals(null, m.acceptSmsReport(other.bytes.copyOf(8), 10u, now, BeaconPosition(1, 2, 300, 0), 50, sos = true))
+            t.deliver(frame(seq = 5u, payload = validBeacon()))
+            eventually { m.peerFlow.value.containsKey(other) }
+            assertEquals(other, m.acceptSmsReport(other.bytes.copyOf(8), 10u, now, BeaconPosition(7, 8, 300, 0), 50, sos = true))
+            val p = m.peerFlow.value[other]!!
+            assertEquals(7, p.lastPosition?.latE7)
+            assertTrue(p.sos)
+            assertEquals(TransportId.SMS, p.transport)
+        } finally { m.stop() }
     }
 
     @Test

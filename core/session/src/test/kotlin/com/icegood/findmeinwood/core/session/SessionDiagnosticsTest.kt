@@ -63,11 +63,11 @@ class SessionDiagnosticsTest {
         val cB = FakeTransport(TransportId.BLUETOOTH)
         pump(aL, bL); pump(bL, aL); pump(bB, cB); pump(cB, bB)
 
-        val edgesB = EdgeManager(b.profile.myMemberId, { now })
+        val linksB = LinkNegotiator(b.profile.myMemberId, { now }, beaconIntervalMs = 60_000)
         val mA = SessionManager(a.profile, listOf(aL), flowOf(), { now }, scope = scope)
         val mB = SessionManager(
             b.profile, listOf(bL, bB), flowOf(), { now },
-            edgeManager = edgesB, scope = scope,
+            links = linksB, scope = scope,
         )
         val mC = SessionManager(c.profile, listOf(cB), flowOf(), { now }, scope = scope)
         mA.start(); mB.start(); mC.start()
@@ -89,11 +89,10 @@ class SessionDiagnosticsTest {
             mB.acceptExternalWire(badWire, TransportId.LORA)
             eventually { assertEquals(1, mB.diagnostics.value.authFailed) }
 
-            // edge manager saw A on LORA
-            assertEquals(
-                TransportId.LORA,
-                edgesB.all().first { it.peerId == a.memberId }.transport,
-            )
+            // B heard A directly on LoRa; C only through B's relay
+            assertEquals(TransportId.LORA, mB.peerFlow.value[a.memberId]?.transport)
+            assertEquals(null, mC.peerFlow.value[a.memberId]?.transport)
+            assertTrue(linksB.all().any { it.peer == a.memberId })
         } finally { mA.stop(); mB.stop(); mC.stop(); scope.cancel() }
     }
 }

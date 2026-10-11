@@ -8,13 +8,14 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * SOS report sized for one SMS — the one channel an app can push through a satellite
+ * Position / SOS report sized for one SMS — the one channel an app can push through a satellite
  * link (direct-to-cell / carrier satellite SMS), and through a single bar of 2G.
  *
  * Text form (GSM-7 safe, ~72 chars, one SMS): `FMIW-SOS:` + base64url(frame)
  *
  * Frame, 47 bytes:
- *   0  flags     1   high nibble = version (1), bit0 = SOS active, bit1 = cancelled
+ *   0  flags     1   high nibble = version (1), bit0 = SOS active, bit1 = cancelled;
+ *                    neither = routine position report on the LNP/1 SMS rung (FR-3.9)
  *   1  netTag    2   first bytes of the network id (which key to try)
  *   3  sender    8   first bytes of the sender's member id
  *  11  seq       4   u32, strictly increasing per sender

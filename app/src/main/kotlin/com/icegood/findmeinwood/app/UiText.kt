@@ -5,12 +5,16 @@ import com.icegood.findmeinwood.transport.api.RadioState
 
 /** Plain-language status strings for the screens; pure, unit-tested on the JVM. */
 internal object UiText {
-    private fun name(t: TransportId) = when (t) {
+    fun name(t: TransportId) = when (t) {
         TransportId.BLUETOOTH -> "Bluetooth"
         TransportId.WIFI_DIRECT -> "Wi-Fi Direct"
         TransportId.LORA -> "LoRa"
         TransportId.INTERNET -> "Messenger"
+        TransportId.SMS -> "SMS"
     }
+
+    /** How a member is currently reached, for the member list. */
+    fun via(t: TransportId?): String = if (t == null) "via other members" else "via ${name(t)}"
 
     private fun state(s: RadioState) = when (s) {
         RadioState.READY -> "connected"
@@ -26,7 +30,7 @@ internal object UiText {
      */
     fun radios(states: Map<TransportId, RadioState>): List<String> =
         states.entries
-            .filter { (t, s) -> t != TransportId.INTERNET && (t != TransportId.LORA || s == RadioState.READY) }
+            .filter { (t, s) -> t != TransportId.INTERNET && t != TransportId.SMS && (t != TransportId.LORA || s == RadioState.READY) }
             .sortedBy { it.key.ordinal.let { o -> if (it.key == TransportId.BLUETOOTH) -1 else o } }
             .map { (t, s) -> "${name(t)}: ${state(s)}" }
 }

@@ -218,8 +218,9 @@ internal object SosNotify {
 }
 
 /**
- * Incoming SMS: picks out SOS frames and decrypts them against every stored network. Works
- * without a running session — an SOS must get through even if the app was closed.
+ * Incoming SMS: picks out SMS frames (LNP/1 position reports and SOS) and decrypts them
+ * against every stored network. Reports feed the running session; SOS also raises an
+ * alert, even without a running session — it must get through with the app closed.
  */
 class SmsSosReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -240,6 +241,17 @@ class SmsSosReceiver : BroadcastReceiver() {
             if (!SosCodec.networkTag(profile.networkId).contentEquals(tag)) continue
             val r = SosCodec.decode(frame, profile.trafficKey) ?: continue
             if (r.isFrom(profile.myMemberId)) return // our own report echoed back
+            // LNP/1 SMS rung: the running session takes it like a beacon (map, member list).
+            if (SessionService.activeNetworkId == profile.networkId) {
+                val known = r.latE7 != 0 || r.lonE7 != 0
+                SessionService.activeManager?.acceptSmsReport(
+                    r.senderPrefix, r.seq, r.timeS * 1000,
+                    if (known) com.icegood.findmeinwood.core.model.BeaconPosition(r.latE7, r.lonE7, r.accuracyM * 100, 0) else null,
+                    r.batteryPct.takeIf { it <= 100 }, sos = r.active && !r.cancelled,
+                )
+            }
+            // Routine position reports are not alerts.
+            if (!r.active && !r.cancelled) return
             val alert = SosAlert(
                 senderHex = r.senderPrefix.joinToString("") { "%02x".format(it) },
                 networkName = profile.name,

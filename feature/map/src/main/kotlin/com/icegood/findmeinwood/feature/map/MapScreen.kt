@@ -917,7 +917,7 @@ fun PeerList(
             val pos = peer.lastPosition
             val isTarget = peer.memberId == findTarget
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                val name = (if (isTarget) "→ " else "") + (peer.nickname ?: "member")
+                val name = (if (isTarget) "→ " else "") + (peer.nickname ?: "member") + " (${viaLabel(peer.transport)})"
                 if (pos == null || me == null) {
                     Text(
                         "$name — unlocated, last seen ${age(peer.lastSeenMs)} ago",
@@ -942,6 +942,16 @@ fun PeerList(
             }
         }
     }
+}
+
+/** How the member is reached now (LNP/1 rung, or relays). */
+internal fun viaLabel(t: com.icegood.findmeinwood.core.model.TransportId?): String = when (t) {
+    null -> "via others"
+    com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH -> "Bluetooth"
+    com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT -> "Wi-Fi Direct"
+    com.icegood.findmeinwood.core.model.TransportId.LORA -> "LoRa"
+    com.icegood.findmeinwood.core.model.TransportId.SMS -> "SMS"
+    com.icegood.findmeinwood.core.model.TransportId.INTERNET -> "messenger"
 }
 
 private fun age(lastSeenMs: Long): String {
@@ -1186,7 +1196,7 @@ private fun renderMarkers(
                 position = GeoPoint(pos.latE7 / 1e7, pos.lonE7 / 1e7)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                 title = (if (isTarget) "→ " else "") + (peer.nickname ?: "member")
-                snippet = if (peer.viaMemberId != null) "relayed" else "direct"
+                snippet = viaLabel(peer.transport)
                 if (follow != null && !isTarget) {
                     // While searching for someone, everyone else stays visible but greyed out.
                     icon = icon?.mutate()?.apply {

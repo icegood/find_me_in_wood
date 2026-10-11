@@ -801,6 +801,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                SmsLinkCard(snackbar, uiScope)
                 SosSettingsCard(snackbar, uiScope)
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -905,6 +906,64 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
+     * LNP/1 SMS rung: this phone offers SMS to members; when Bluetooth and Wi-Fi Direct lose
+     * someone, positions go by SMS (possibly via satellite) until the radios hear them again.
+     */
+    @Composable
+    private fun SmsLinkCard(snackbar: SnackbarHostState, uiScope: kotlinx.coroutines.CoroutineScope) {
+        var enabled by remember { mutableStateOf(Prefs.smsLinkEnabled(this@MainActivity)) }
+        var number by remember { mutableStateOf(Prefs.myPhoneNumber(this@MainActivity)) }
+        var interval by remember { mutableStateOf(Prefs.smsLinkIntervalMin(this@MainActivity).toString()) }
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("SMS when out of radio range", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                    androidx.compose.material3.Switch(checked = enabled, onCheckedChange = {
+                        enabled = it
+                        Prefs.setSmsLinkEnabled(this@MainActivity, it)
+                        if (it && !sosPermissionsGranted()) sosPermissionLauncher.launch(sosPermissions)
+                    })
+                }
+                Text(
+                    "Phones agree on this automatically while they are near each other. When " +
+                        "Bluetooth and Wi-Fi Direct lose someone who also turned this on, your " +
+                        "position goes to them by encrypted SMS (also via satellite where the " +
+                        "carrier supports it) until the radios find them again. Standard SMS " +
+                        "prices apply; at most 10 per hour.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedTextField(
+                    value = number, onValueChange = { number = it },
+                    label = { Text("This phone's number") },
+                    placeholder = { Text("+380…") },
+                    supportingText = { Text("shared only with members of your networks") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = interval, onValueChange = { interval = it.filter(Char::isDigit) },
+                    label = { Text("One SMS per member every (minutes, ${Prefs.SMS_LINK_MIN_INTERVAL_MIN}–${Prefs.SMS_LINK_MAX_INTERVAL_MIN})") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Button(onClick = {
+                    Prefs.setMyPhoneNumber(this@MainActivity, number)
+                    number = Prefs.myPhoneNumber(this@MainActivity)
+                    interval.toIntOrNull()?.let { Prefs.setSmsLinkIntervalMin(this@MainActivity, it) }
+                    interval = Prefs.smsLinkIntervalMin(this@MainActivity).toString()
+                    uiScope.launch {
+                        snackbar.showSnackbar(
+                            if (enabled && number.isEmpty()) "Enter this phone's number to offer SMS" else "Saved",
+                        )
+                    }
+                }) { Text("Save") }
+            }
+        }
+    }
+
+    /**
      * SOS recipients. Member numbers get the encrypted one-SMS report (their app decodes
      * it); emergency contacts get plain text with a maps link (readable by the carrier).
      */
@@ -926,7 +985,8 @@ class MainActivity : ComponentActivity() {
                 )
                 OutlinedTextField(
                     value = members, onValueChange = { members = it },
-                    label = { Text("Members' phones (encrypted)") },
+                    label = { Text("Extra members' phones (encrypted)") },
+                    supportingText = { Text("members with SMS fallback on are included automatically") },
                     placeholder = { Text("+380…, +380…") },
                     modifier = Modifier.fillMaxWidth(),
                 )

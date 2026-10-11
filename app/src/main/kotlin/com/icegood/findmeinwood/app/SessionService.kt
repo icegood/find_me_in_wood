@@ -20,7 +20,8 @@ import com.icegood.findmeinwood.core.model.TransportId
 import com.icegood.findmeinwood.core.session.GnssSource
 import com.icegood.findmeinwood.core.crypto.MgmtCodec
 import com.icegood.findmeinwood.core.session.DiscoveryManager
-import com.icegood.findmeinwood.core.session.EdgeManager
+import com.icegood.findmeinwood.core.session.LinkNegotiator
+import com.icegood.findmeinwood.core.model.LinkOffer
 import com.icegood.findmeinwood.core.session.JoinOutcome
 import com.icegood.findmeinwood.core.session.SessionManager
 import com.icegood.findmeinwood.transport.api.Transport
@@ -120,6 +121,7 @@ class SessionService : Service() {
         listening = listen
 
         activeProfile = profile
+        activeNetworkId = if (listen) null else profile.networkId
         val deltaMs = Prefs.intervalMs(this)
         val gnss: GnssSource = AndroidGnssSource(this, deltaMs)
         // Latest own fix, for the debug link log's distance-to-peer figures.
@@ -144,15 +146,18 @@ class SessionService : Service() {
         val manager = SessionManager(
             profile, transports, fixes,
             clock, scope = scope, keepAliveMs = deltaMs,
-            // Per-peer transport + up/down state: shown in the debug link log.
-            edgeManager = EdgeManager(profile.myMemberId, clock),
+            // LNP/1: offers, agreed fallback ladder and the active rung per peer.
+            links = if (listen) null else LinkNegotiator(
+                profile.myMemberId, clock, beaconIntervalMs = deltaMs,
+                smsIntervalMs = Prefs.smsLinkIntervalMin(this) * 60_000L,
+            ),
             signer = identityPair,
             beaconsEnabled = !listen,
         )
         linkLog = (if (listen) null else LinkLog.open(this))?.also { log ->
             linkLogFile = "Download/${LinkLog.FOLDER}/${log.fileName}"
             val sampler = LinkLogSampler(this, log, manager, bluetooth, wifiDirect, { lastFix }, deltaMs)
-            manager.onEdgeDown = sampler::onEdgeDown
+            manager.onLinkSwitch = sampler::onLinkSwitch
             sampler.start(scope, deltaMs)
         }
         DiscoveryBridge.onRequestJoin = { netId ->
@@ -250,6 +255,7 @@ class SessionService : Service() {
                 }
             }
         }
+        manager.links?.let { links -> runLinks(manager, links) }
         // On Restart the old transports may still be releasing their radios; starting
         // the new ones before that finishes would fight over the same GATT server/link.
         val previous = stopping
@@ -283,6 +289,77 @@ class SessionService : Service() {
             if (stored != null && listening) start(this, stored)
         }
         SessionBus.publishJoinOutcome(outcome)
+    }
+
+    // ------------------------------------------------------------------ LNP/1
+
+    /** Last SMS position report per peer (FR-3.9 rate). */
+    private val smsSentAt = HashMap<MemberId, Long>()
+    /** SMS link budget, separate from SOS so routine reports never starve an SOS. */
+    private val smsLinkBudget = SmsBudget(maxPerHour = 10)
+
+    /**
+     * Keeps this phone's offers current (radio on/off, LoRa node, SMS allowed) and sends a
+     * position SMS to every peer whose active rung is SMS, once per SMS interval.
+     */
+    private fun runLinks(manager: SessionManager, links: LinkNegotiator) {
+        smsSentAt.clear()
+        scope.launch {
+            while (true) {
+                links.setOffers(currentOffers(manager))
+                val now = System.currentTimeMillis()
+                val interval = Prefs.smsLinkIntervalMin(this@SessionService) * 60_000L
+                for ((peer, addr) in links.peersOn(TransportId.SMS)) {
+                    if (addr == null || now - (smsSentAt[peer] ?: 0L) < interval) continue
+                    if (!smsLinkBudget.tryTake(now)) break
+                    smsSentAt[peer] = now
+                    val sent = SosSms.send(this@SessionService, listOf(addr), positionSms(manager, sos = false, cancelled = false))
+                    linkLog?.write("sms_report") {
+                        put("peer", peer.bytes.take(4).joinToString("") { "%02x".format(it) })
+                        put("handedToModem", sent)
+                        put("satellite", SosSms.onSatellite(this@SessionService))
+                    }
+                }
+                delay(10_000)
+            }
+        }
+    }
+
+    private fun currentOffers(manager: SessionManager): List<LinkOffer> = buildList {
+        val states = manager.radioStates.value
+        val btOn = runCatching {
+            getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled == true
+        }.getOrDefault(false)
+        val wifiOn = runCatching {
+            getSystemService(android.net.wifi.WifiManager::class.java)?.isWifiEnabled == true
+        }.getOrDefault(false)
+        if (btOn) add(LinkOffer(TransportId.BLUETOOTH))
+        if (wifiOn) add(LinkOffer(TransportId.WIFI_DIRECT))
+        if (states[TransportId.LORA] == com.icegood.findmeinwood.transport.api.RadioState.READY) add(LinkOffer(TransportId.LORA))
+        val number = Prefs.myPhoneNumber(this@SessionService)
+        if (Prefs.smsLinkEnabled(this@SessionService) && number.isNotEmpty() && smsPermitted()) {
+            add(LinkOffer(TransportId.SMS, number))
+        }
+    }
+
+    private fun smsPermitted() = listOf(android.Manifest.permission.SEND_SMS, android.Manifest.permission.RECEIVE_SMS).all {
+        checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    /** The 47-byte encrypted SMS frame (FR-10): routine position, SOS or SOS cancel. */
+    private fun positionSms(manager: SessionManager, sos: Boolean, cancelled: Boolean): String {
+        val profile = activeProfile!!
+        val now = System.currentTimeMillis()
+        val fix = lastFix ?: lastKnownFix()
+        return SosCodec.encode(
+            profile.trafficKey, profile.networkId, profile.myMemberId, manager.nextSeq(),
+            active = sos, cancelled = cancelled,
+            timeS = (fix?.epochMs ?: now) / 1000,
+            latE7 = fix?.let { (it.lat * 1e7).toInt() } ?: 0,
+            lonE7 = fix?.let { (it.lon * 1e7).toInt() } ?: 0,
+            accuracyM = fix?.accuracyM?.toInt() ?: 0xFFFF,
+            batteryPct = batteryPct(),
+        )
     }
 
     // ------------------------------------------------------------------ SOS
@@ -345,7 +422,12 @@ class SessionService : Service() {
 
     /** One SMS to each recipient; returns a problem description, or null when sent. */
     private fun sendSosRound(manager: SessionManager, cancelled: Boolean): String? {
-        val members = SosLogic.parseNumbers(Prefs.sosMemberNumbers(this))
+        // Members who agreed the SMS rung (LNP/1) are reached automatically; the manual
+        // list adds anyone else.
+        val members = (
+            SosLogic.parseNumbers(Prefs.sosMemberNumbers(this)) +
+                (manager.links?.agreedAddresses(TransportId.SMS)?.map { it.second } ?: emptyList())
+            ).distinct()
         val contacts = SosLogic.parseNumbers(Prefs.sosContactNumbers(this))
         if (members.isEmpty() && contacts.isEmpty()) return "no SOS phone numbers in Settings — mesh only"
         if (checkSelfPermission(android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -358,16 +440,7 @@ class SessionService : Service() {
         val profile = activeProfile ?: return "no network"
         var sent = 0
         if (members.isNotEmpty()) {
-            val frame = SosCodec.encode(
-                profile.trafficKey, profile.networkId, profile.myMemberId, manager.nextSeq(),
-                active = !cancelled, cancelled = cancelled,
-                timeS = (fix?.epochMs ?: now) / 1000,
-                latE7 = fix?.let { (it.lat * 1e7).toInt() } ?: 0,
-                lonE7 = fix?.let { (it.lon * 1e7).toInt() } ?: 0,
-                accuracyM = fix?.accuracyM?.toInt() ?: 0xFFFF,
-                batteryPct = battery,
-            )
-            sent += SosSms.send(this, members, frame)
+            sent += SosSms.send(this, members, positionSms(manager, sos = !cancelled, cancelled = cancelled))
         }
         if (contacts.isNotEmpty()) {
             val name = Prefs.currentDisplayName(this) ?: "A find-me-in-wood user"
@@ -406,6 +479,7 @@ class SessionService : Service() {
         }
         linkLog = null
         activeManager = null
+        activeNetworkId = null
         activeWifiDirect = null
         activeDiscovery = null
         DiscoveryBridge.onRequestJoin = null
@@ -482,6 +556,10 @@ class SessionService : Service() {
             private set
 
         @Volatile var activeManager: SessionManager? = null
+
+        /** Network of the running session (null while only listening), for incoming SMS. */
+        @Volatile var activeNetworkId: com.icegood.findmeinwood.core.model.NetworkId? = null
+            private set
         @Volatile var activeDiscovery: DiscoveryManager? = null
             private set
 

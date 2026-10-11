@@ -1,6 +1,6 @@
 package com.icegood.findmeinwood.core.model
 
-enum class TransportId { WIFI_DIRECT, BLUETOOTH, LORA, INTERNET }
+enum class TransportId { WIFI_DIRECT, BLUETOOTH, LORA, INTERNET, SMS }
 
 /** Explicit UI theme: follow the system, or force light / dark regardless of it. */
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
@@ -55,6 +55,31 @@ data class BeaconPayload(
     val pub: ByteArray? = null,
     /** Sender is in SOS mode (needs help). Absent = false, so normal beacons stay small. */
     val sos: Boolean? = null,
+    /** LNP/1 link negotiation (FR-3.6–3.9); absent on most beacons to keep them small. */
+    val link: LinkCtl? = null,
+)
+
+/** LNP/1: a transport this member can use for the network, and how to reach it there. */
+@kotlinx.serialization.Serializable
+data class LinkOffer(
+    val t: TransportId,
+    /** What a peer needs to reach us on [t] (SMS: our phone number); null when nothing. */
+    val addr: String? = null,
+)
+
+/** LNP/1: agreement on the ladder with one peer, by hash of the canonical ladder. */
+@kotlinx.serialization.Serializable
+data class LinkAck(
+    /** First 4 bytes of the peer's member id. */
+    val p: ByteArray,
+    val h: Int,
+)
+
+@kotlinx.serialization.Serializable
+data class LinkCtl(
+    val v: Int = 1,
+    val offers: List<LinkOffer> = emptyList(),
+    val acks: List<LinkAck> = emptyList(),
 )
 
 @kotlinx.serialization.Serializable

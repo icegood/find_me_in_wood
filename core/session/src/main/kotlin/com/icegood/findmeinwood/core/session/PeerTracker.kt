@@ -15,6 +15,8 @@ data class PeerState(
     val verified: Boolean = true,
     /** The peer's latest beacon says it is in SOS mode. */
     val sos: Boolean = false,
+    /** Transport of the last frame heard directly from the peer; null when only relayed. */
+    val transport: com.icegood.findmeinwood.core.model.TransportId? = null,
 )
 
 /** Pure-Kotlin peer table (FR-6.1/6.3): staleness + purge, injectable clock. */
@@ -27,7 +29,7 @@ class PeerTracker(
     private val peers = MutableStateFlow<Map<MemberId, PeerState>>(emptyMap())
     val peersFlow: StateFlow<Map<MemberId, PeerState>> = peers
 
-    fun onBeacon(b: DecryptedBeacon) {
+    fun onBeacon(b: DecryptedBeacon, transport: com.icegood.findmeinwood.core.model.TransportId? = null) {
         val now = nowMs()
         val cur = peers.value[b.senderId]
         if (cur != null && b.seq <= cur.lastSeq) return
@@ -40,6 +42,7 @@ class PeerTracker(
             viaMemberId = cur?.viaMemberId,
             verified = cur?.verified ?: true,
             sos = b.payload.sos == true,
+            transport = transport,
         ))
     }
 

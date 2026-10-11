@@ -15,7 +15,7 @@ class TransportTypesTest {
     @Test
     fun `all transports ids and radio states exist`() {
         assertEquals(
-            setOf("WIFI_DIRECT", "BLUETOOTH", "LORA", "INTERNET"),
+            setOf("WIFI_DIRECT", "BLUETOOTH", "LORA", "INTERNET", "SMS"),
             TransportId.entries.map { it.name }.toSet(),
         )
         assertEquals(

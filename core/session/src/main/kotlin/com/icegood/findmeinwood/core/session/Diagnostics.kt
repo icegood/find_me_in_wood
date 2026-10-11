@@ -12,10 +12,3 @@ data class Diagnostics(
     val authFailed: Int = 0,
     val dropped: Int = 0,
 )
-
-data class EdgeView(
-    val peerId: MemberId,
-    val transport: com.icegood.findmeinwood.core.model.TransportId?,
-    val state: EdgeManager.State?,
-    val lastSeenMs: Long,
-)

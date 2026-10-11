@@ -62,19 +62,40 @@ Bluetooth — **so that** everyone stays connected with the least radio cost.
 - FR-3.4 A peer's position may arrive via a relay path; the UI may show "via B" when
   the direct edge is down. Peer staleness rules (FR-6.3) apply per member regardless
   of path.
-- FR-3.5 Transport choice per edge is manual in v1 (members agree, e.g. "A and B both
-  switch LoRa on"); automatic selection by measured RTT/RSSI is a v2 goal.
-- FR-3.6 Edge transport changes are agreed between the two members out-of-band first
-  (cell call, in person — "switch us to LoRa"), then each side selects the new transport
-  for that edge in the UI. Both devices attempt to bring it up; the first AEAD frame
-  received on it confirms the switch. Until then the edge shows "waiting for peer".
-- FR-3.6a Failover: if the selected edge transport dies (peer silent ≥ 3 keep-alive
-  windows) and no coordination channel exists, both devices automatically attempt their
-  other provisioned transports for that edge (retry with backoff). The edge re-homes to
-  the first transport on which a peer AEAD frame arrives; no HELLO or management frame
-  is involved — periodic beacons themselves are the discovery. Attempt order: last
-  working transport first, then remaining by battery cost (BT/WiFi-Direct before LoRa).
-  A transport is only attempted if provisioned for this network (e.g. node ready).
+- FR-3.5 Transport choice per edge is negotiated between the two peers in-band by the
+  Link Negotiation Protocol (LNP/1, FR-3.6–3.9). No human agreement and no manual edge
+  selection is needed; the user only decides which transports this phone *offers*.
+- FR-3.6 LNP/1 — offers. Every member advertises the transports it can use for this
+  network as a list of offers inside its encrypted, signed beacon (`link.offers`):
+  `{t: BLUETOOTH|WIFI_DIRECT|LORA|SMS, addr?}`. `addr` carries what a peer needs to
+  reach us on that transport (SMS: our phone number). An offer exists only while the
+  transport is usable here (radio on, LoRa node paired, SMS permitted and enabled by
+  the user). Offers ride on beacons whenever they changed, whenever a peer's agreement
+  is pending, and on every 5th beacon otherwise; they are never sent in clear.
+- FR-3.7 LNP/1 — agreement. For a pair A,B the *ladder* is the standard rung order
+  BLUETOOTH, WIFI_DIRECT, LORA, SMS filtered to transports both offer. Both sides compute
+  it from the same two offer lists, so they derive the same ladder without a round trip.
+  Each side acknowledges it in its next beacons (`link.acks`: peer id prefix + CRC-32 of
+  the canonical ladder incl. addresses). The ladder is *agreed* once the peer's ack
+  matches our own hash. Free broadcast rungs (BLUETOOTH, WIFI_DIRECT) are always used;
+  a costly rung (LORA airtime, SMS money) is used for a peer only on an agreed ladder,
+  so nobody is ever texted without having offered the number for that.
+  Agreement is reached while peers still hear each other: after the radios are lost
+  there is no channel left to negotiate on, so the fallback must be settled in advance.
+- FR-3.8 LNP/1 — switching. Per peer the *active rung* is the cheapest rung on which an
+  authenticated frame was received *directly* (TTL not decremented) within that rung's
+  liveness window (BT/Wi-Fi Direct/LoRa: 3 beacon intervals; SMS: 2 SMS intervals).
+  Down-switch: when no free rung is alive, the next agreed costly rung becomes active
+  — both sides observe the same silence and step down independently and symmetrically.
+  Up-switch: any direct frame on a cheaper rung makes it active at once; costly sending
+  for that peer stops. The rung each peer is on is shown in the member list.
+- FR-3.9 LNP/1 — costly rung rate. On SMS each peer gets one position report
+  (the 47-byte SMS frame of FR-10) every SMS interval (user setting, default 30 min),
+  bounded by a per-hour SMS budget. SOS is a priority flag on the same channel: while
+  SOS is on, reports go to every agreed SMS address at the SOS interval regardless of
+  rung, plus the manually listed emergency numbers.
+- FR-3.10 Relays and the messenger carrier (INTERNET, FR-9) are not rungs: relayed
+  frames never count as direct hearing, and messenger hand-off stays user-initiated.
 
 **Acceptance:** A (far, LoRa node), B (LoRa node + Bluetooth), C (near B, Bluetooth):
 C sees A's position via B's relay within two beacon intervals; B sees both directly;
@@ -190,7 +211,7 @@ the stranger appears on everyone's member list within one beacon interval.
   the frame (AEAD + replay), and feeds the tracker exactly like radio frames. Invalid
   frames are dropped with the auth-fail counter.
 - FR-9.4 The channel appears as transport `INTERNET` in the edge UI and diagnostics;
-  it is never auto-selected (FR-3.6 human agreement still applies).
+  it is never auto-selected (FR-3.10: not a negotiated rung).
 
 **Acceptance:** A (internet, Viber) and B (no internet, in the field): A shares an
 envelope to B's contact; B shares it into the app; B's map shows A within seconds and

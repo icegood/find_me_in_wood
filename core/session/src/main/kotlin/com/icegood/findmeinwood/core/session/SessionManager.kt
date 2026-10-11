@@ -41,7 +41,8 @@ class SessionManager(
     private val clock: () -> Long,
     private val aead: Aead = AesGcmAead,
     private val relayEnabled: Boolean = true,
-    private val edgeManager: EdgeManager? = null,
+    /** LNP/1 link negotiation (FR-3.5–3.10); null = broadcast only, no negotiation. */
+    val links: LinkNegotiator? = null,
     private val scope: CoroutineScope,
     private val keepAliveMs: Long = KEEP_ALIVE_MS,
     /** Device identity used to sign beacons (NFR-3); null disables origin auth. */
@@ -80,8 +81,8 @@ class SessionManager(
     /** Decrypted payload of every authenticated incoming frame, with sender (chat etc.). */
     var onFrameReceived: ((ByteArray, MemberId) -> Unit)? = null
 
-    /** Called when an edge goes DOWN; candidates per FR-3.6a for auto-failover. */
-    var onEdgeDown: ((MemberId, List<TransportId>) -> Unit)? = null
+    /** A peer's active rung changed (LNP/1 FR-3.8). */
+    var onLinkSwitch: ((LinkNegotiator.Switch) -> Unit)? = null
 
     /** US-8: cleartext management frames (HELLO / join handshake) as raw wire bytes. */
     var onMgmtFrame: ((ByteArray, TransportId) -> Unit)? = null
@@ -93,13 +94,29 @@ class SessionManager(
         diag.value = transform(diag.value)
     }
 
-    fun edges(): List<EdgeView> = edgeManager?.all()?.map {
-        EdgeView(it.peerId, it.transport, it.state, it.lastSeenMs)
-    } ?: emptyList()
+    fun edges(): List<LinkNegotiator.LinkView> = links?.all() ?: emptyList()
 
-    /** Human-agreed per-edge transport change (FR-3.6). */
-    fun setEdgeTransport(peerId: MemberId, transport: TransportId) {
-        edgeManager?.setTransport(peerId, transport)
+    private fun announce(switches: List<LinkNegotiator.Switch>) = switches.forEach { onLinkSwitch?.invoke(it) }
+
+    /**
+     * A position report that arrived by SMS (FR-3.9): fed to the tracker like a beacon and
+     * counted as hearing the peer on the SMS rung. SMS carries only an 8-byte sender
+     * prefix, so it must belong to a member already met; the frame was authenticated with
+     * the network key by the caller. Returns the member, or null when unknown.
+     */
+    fun acceptSmsReport(
+        senderPrefix: ByteArray, seq: UInt, sentAtMs: Long,
+        position: com.icegood.findmeinwood.core.model.BeaconPosition?, batteryPct: Int?, sos: Boolean,
+    ): MemberId? {
+        val member = (tracker.peersFlow.value.keys + (links?.all()?.map { it.peer } ?: emptyList()))
+            .firstOrNull { it.bytes.copyOf(8).contentEquals(senderPrefix) } ?: return null
+        tracker.onBeacon(
+            DecryptedBeacon(member, seq, sentAtMs, BeaconPayload(position = position, batteryPct = batteryPct, sos = sos.takeIf { it })),
+            TransportId.SMS,
+        )
+        links?.let { announce(it.onFrame(member, TransportId.SMS, direct = true, ctl = null)) }
+        bump { it.copy(received = it.received + 1) }
+        return member
     }
 
     /** Sends an already-encoded management frame on every transport (no AEAD). */
@@ -144,10 +161,7 @@ class SessionManager(
             while (true) {
                 delay(keepAliveMs)
                 tracker.tick()
-                edgeManager?.tick()?.forEach { peer ->
-                    val candidates = edgeManager.failoverOrder(peer, transports.map { it.id }.toSet())
-                    onEdgeDown?.invoke(peer, candidates)
-                }
+                links?.let { announce(it.tick()) }
             }
         }
     }
@@ -168,7 +182,9 @@ class SessionManager(
      * NFR-3: sends a beacon signed by the device identity. The signed bytes bind the
      * sequence number and timestamp, so a captured beacon cannot be replayed or re-attributed.
      */
-    suspend fun sendBeaconSigned(payload: BeaconPayload) {
+    suspend fun sendBeaconSigned(beacon: BeaconPayload) {
+        // Link control is part of the signed payload, so offers cannot be forged by relays.
+        val payload = beacon.copy(link = links?.outgoing())
         val s = (seq.getAndIncrement()).toUInt()
         val sentAt = clock()
         val signed = signer?.let { Identity.sign(it, signedBeaconBytes(s, sentAt, payload)) }
@@ -247,6 +263,8 @@ class SessionManager(
         }
         // Chat messages are not beacons: route them to the app instead of dropping
         // them as an "undecodable beacon". They still take part in relaying below.
+        // Relayed frames have a decremented TTL: they do not prove a direct link (FR-3.10).
+        val direct = f.ttl == INITIAL_TTL
         if (PayloadCodec.tryDecodeChat(plain) == null) {
             val payload = try {
                 PayloadCodec.decode(plain)
@@ -258,11 +276,13 @@ class SessionManager(
                 bump { it.copy(authFailed = it.authFailed + 1) }
                 return
             }
-            tracker.onBeacon(DecryptedBeacon(f.senderId, f.seq, f.sentAtMs, payload))
+            tracker.onBeacon(DecryptedBeacon(f.senderId, f.seq, f.sentAtMs, payload), ev.source.takeIf { direct })
+            links?.let { announce(it.onFrame(f.senderId, ev.source, direct, payload.link)) }
+        } else {
+            links?.let { announce(it.onFrame(f.senderId, ev.source, direct, null)) }
         }
         bump { it.copy(received = it.received + 1) }
         onFrameReceived?.invoke(plain, f.senderId)
-        edgeManager?.onFrameFrom(f.senderId, ev.source)
         if (relayEnabled && f.ttl > 1u) {
             val relayed = f.copy(ttl = (f.ttl - 1u).toUByte())
             val wire = FrameCodec.encode(relayed)

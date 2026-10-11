@@ -38,7 +38,7 @@ import java.util.Locale
  * ([BuildConfig.DEBUG] is a compile-time constant, so R8 strips the logging).
  *
  * Events: session_start/stop, snapshot (every [SAMPLE_MS]), radio (state changes),
- * peer_lost / peer_back (from [LinkWatch]), edge_down.
+ * peer_lost / peer_back (from [LinkWatch]), link_switch (LNP/1), sms_report.
  */
 internal class LinkLog private constructor(private val out: OutputStream, val fileName: String) {
 
@@ -142,17 +142,20 @@ internal class LinkLogSampler(
         }
     }
 
-    fun onEdgeDown(peer: MemberId, candidates: List<com.icegood.findmeinwood.core.model.TransportId>) {
-        log.write("edge_down") {
-            put("peer", peer.short())
-            put("failoverCandidates", candidates.joinToString())
+    fun onLinkSwitch(sw: com.icegood.findmeinwood.core.session.LinkNegotiator.Switch) {
+        log.write("link_switch") {
+            put("peer", sw.peer.short())
+            put("from", sw.from?.name)
+            put("to", sw.to?.name ?: "none")
+            put("ladder", manager.links?.ladder(sw.peer)?.joinToString())
+            put("agreed", manager.links?.agreed(sw.peer))
         }
     }
 
     private fun sample() {
         val nowMs = System.currentTimeMillis()
         val fix = lastFix()
-        val edges = manager.edges().associateBy { it.peerId }
+        val edges = manager.edges().associateBy { it.peer }
         val peers = manager.peerFlow.value
         val rssi = bluetooth.rssiByLink()
         val samples = peers.values.map { p ->
@@ -166,7 +169,7 @@ internal class LinkLogSampler(
                 id = p.memberId.short(),
                 silentMs = nowMs - p.lastSeenMs,
                 distanceM = distance,
-                transport = edges[p.memberId]?.transport?.name,
+                transport = (edges[p.memberId]?.active ?: p.transport)?.name,
             )
         }
         val d = manager.diagnostics.value
@@ -212,7 +215,9 @@ internal class LinkLogSampler(
                             put("silentS", s.silentMs / 1000)
                             put("distM", s.distanceM?.let { Math.round(it) })
                             put("via", s.transport)
-                            put("edge", edges.values.firstOrNull { it.peerId.short() == s.id }?.state?.name)
+                            val link = edges.values.firstOrNull { it.peer.short() == s.id }
+                            put("ladder", link?.ladder?.joinToString())
+                            put("agreed", link?.agreed)
                         },
                     )
                 }

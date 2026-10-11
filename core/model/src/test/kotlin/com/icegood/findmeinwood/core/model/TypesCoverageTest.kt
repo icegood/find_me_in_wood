@@ -9,7 +9,7 @@ import kotlin.test.assertNull
 class TypesCoverageTest {
     @Test
     fun `transport id and join policy enumerations`() {
-        assertEquals(4, TransportId.entries.size)
+        assertEquals(5, TransportId.entries.size)
         assertEquals(3, JoinPolicy.entries.size)
     }
 
