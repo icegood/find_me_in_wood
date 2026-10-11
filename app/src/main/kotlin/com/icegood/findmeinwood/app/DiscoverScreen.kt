@@ -119,10 +119,16 @@ fun DiscoverScreen(
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
                     when (result) {
-                        is JoinOutcome.Joined -> Text(
-                            "Joined “${result.name}”. Check that the member who let you in sees " +
-                                "the same code: ${result.sas}",
-                        )
+                        is JoinOutcome.Joined -> Column {
+                            Text(
+                                "Joined “${result.name}”. Check that the member who let you in sees " +
+                                    "the same code: ${result.sas}",
+                            )
+                            TextButton(onClick = {
+                                Prefs.setUnverified(context, ProfileStore.networkIdOf(result.secret).bytes.joinToString("") { "%02x".format(it) }, false)
+                                SessionBus.publishJoinOutcome(null)
+                            }) { Text("The codes matched") }
+                        }
                         is JoinOutcome.Rejected -> Text("Not let in: ${result.reason}")
                     }
                 }

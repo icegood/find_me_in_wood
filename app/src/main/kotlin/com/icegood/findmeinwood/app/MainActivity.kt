@@ -77,7 +77,22 @@ class MainActivity : ComponentActivity() {
     private val sosPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             sosGranted.value = sosPermissionsGranted()
+            // SOS asked for before the permissions existed: send it now (mesh-only if denied).
+            if (sosWaitingForPermission) {
+                sosWaitingForPermission = false
+                startSosNow()
+            }
         }
+    private var sosWaitingForPermission = false
+
+    private fun startSosNow() {
+        val started = SessionService.startSos(this, ProfileStore.load(this).firstOrNull())
+        if (!started) {
+            android.widget.Toast.makeText(
+                this, "SOS needs a network: create or join one in Networks first", android.widget.Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
     private val shareTransport by lazy { ShareTransport(this) }
     private val authManager by lazy { AuthManager(this) }
     /** Set when opened from an SOS notification: jump to the map. */
@@ -271,14 +286,11 @@ class MainActivity : ComponentActivity() {
                         onFindTargetChange = { findTarget = it },
                         sos = com.icegood.findmeinwood.feature.map.SosUi(sosState.active, sosStatusText(sosState)),
                         onSosStart = {
-                            if (!sosPermissionsGranted()) sosPermissionLauncher.launch(sosPermissions)
-                            val started = SessionService.startSos(
-                                this@MainActivity, ProfileStore.load(this@MainActivity).firstOrNull(),
-                            )
-                            if (!started) {
-                                android.widget.Toast.makeText(
-                                    this@MainActivity, "Create or join a network first", android.widget.Toast.LENGTH_LONG,
-                                ).show()
+                            if (sosPermissionsGranted()) {
+                                startSosNow()
+                            } else {
+                                sosWaitingForPermission = true
+                                sosPermissionLauncher.launch(sosPermissions)
                             }
                         },
                         onSosStop = { SessionService.stopSos(this@MainActivity) },
@@ -296,6 +308,12 @@ class MainActivity : ComponentActivity() {
                     )
                     tab == "peers" -> com.icegood.findmeinwood.feature.map.PeerList(
                         SessionBus.peers,
+                        emptyText = if (profile == null) {
+                            "No network running. Start one in Networks to see its members here."
+                        } else {
+                            "No members heard yet. They need “${profile?.name}” started and to be " +
+                                "within Bluetooth / Wi-Fi range (or reachable through another member)."
+                        },
                         findTarget = findTarget,
                         onFind = { id ->
                             findTarget = id
@@ -324,18 +342,15 @@ class MainActivity : ComponentActivity() {
         val running by SessionBus.sessionRunning.collectAsState()
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Chat", style = MaterialTheme.typography.headlineSmall)
-            if (running) {
-                Text(
-                    "Waiting to collect peers…",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            } else {
-                Text(
-                    "Start a network session to enable mesh chat.\n" +
-                    "Chat messages are relayed through all connected peers via BLE, WiFi Direct, and LoRa.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
+            Text(
+                if (running && !SessionBus.listening.collectAsState().value) {
+                    "Opening chat…"
+                } else {
+                    "Start a network in Networks to chat with its members. Messages hop " +
+                        "from phone to phone over Bluetooth and Wi-Fi Direct — no internet needed."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 
@@ -347,11 +362,16 @@ class MainActivity : ComponentActivity() {
         var showJoin by remember { mutableStateOf(false) }
         /** Network whose password is being shown for sharing. */
         var sharing by remember { mutableStateOf<StoredProfile?>(null) }
+        var deleting by remember { mutableStateOf<StoredProfile?>(null) }
+        /** Bumped to re-read the "unverified" flags after the user confirms a code. */
+        var verifyTick by remember { mutableStateOf(0) }
+        val current by SessionBus.profile.collectAsState()
+        val runningId = current?.networkId?.bytes?.joinToString("") { "%02x".format(it) }
         var createError by remember { mutableStateOf<String?>(null) }
         val snackbar = remember { SnackbarHostState() }
         val uiScope = rememberCoroutineScope()
         val lastWire by SessionBus.lastWireFrame.collectAsState()
-        val running by SessionBus.sessionRunning.collectAsState()
+        val listening by SessionBus.listening.collectAsState()
         val radios by SessionBus.radioStates.collectAsState()
 
         Scaffold(
@@ -379,33 +399,44 @@ class MainActivity : ComponentActivity() {
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     profiles.forEach { p ->
+                        val isRunning = runningId == p.networkIdHex
+                        val unverified = verifyTick >= 0 && Prefs.unverified(this@MainActivity, p.networkIdHex)
                         Card(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(p.name, style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    "${p.policy} · ${p.myMemberIdHex.take(8)}…" +
-                                        (if (Prefs.unverified(this@MainActivity, p.networkIdHex)) " · unverified" else ""),
-                                    style = MaterialTheme.typography.labelSmall,
+                                    if (isRunning) "● running — members nearby can see and find you" else "not running",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(onClick = {
-                                        if (!granted()) { requestRadioPermissions(); return@Button }
-                                        SessionService.start(this@MainActivity, p)
-                                    }) { Text(if (running) "Restart" else "Start") }
-                                    OutlinedButton(onClick = { SessionService.stop(this@MainActivity) }) {
-                                        Text("Stop")
-                                    }
+                                if (unverified) {
+                                    Text(
+                                        "Joined without a password: check that the member who let you in " +
+                                            "saw the same 6-digit code as you.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
                                     TextButton(onClick = {
-                                        runBlocking { ProfileStore.remove(this@MainActivity, p.networkIdHex) }
-                                        profiles = ProfileStore.load(this@MainActivity)
-                                    }) { Text("Delete") }
+                                        Prefs.setUnverified(this@MainActivity, p.networkIdHex, false)
+                                        verifyTick++
+                                    }) { Text("The codes matched") }
                                 }
-                                OutlinedButton(onClick = { sharing = p }) { Text("Invite (show password)") }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    if (isRunning) {
+                                        OutlinedButton(onClick = { SessionService.stop(this@MainActivity) }) { Text("Stop") }
+                                    } else {
+                                        Button(onClick = {
+                                            if (!granted()) { requestRadioPermissions(); return@Button }
+                                            SessionService.start(this@MainActivity, p)
+                                        }) { Text(if (runningId != null) "Switch to this" else "Start") }
+                                    }
+                                    OutlinedButton(onClick = { sharing = p }) { Text("Invite") }
+                                    TextButton(onClick = { deleting = p }) { Text("Delete") }
+                                }
                             }
                         }
                     }
                 }
-                OutlinedButton(
+                if (runningId != null) OutlinedButton(
                     onClick = {
                         val wire = SessionBus.lastWireFrame.value
                         uiScope.launch {
@@ -419,20 +450,19 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     },
-                    enabled = lastWire != null && running,
+                    enabled = lastWire != null && runningId != null,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Share position via Viber…") }
+                ) { Text("Send my position via messenger…") }
                 Text(
-                    "session: " + if (running) "RUNNING" else "stopped",
+                    when {
+                        runningId != null -> "Radios"
+                        listening -> "Looking for networks to join (see Discover)"
+                        else -> "Nothing running: start a network to be found"
+                    },
                     style = MaterialTheme.typography.labelMedium,
                 )
-                if (radios.isNotEmpty()) {
-                    Text(
-                        radios.entries.sortedBy { it.key.name }
-                            .joinToString(" · ") { (t, st) -> "${t.name} ${st.name.lowercase()}" },
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+                UiText.radios(radios).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                if (runningId != null || listening) RadioSwitches(radios)
             }
         }
 
@@ -478,8 +508,67 @@ class MainActivity : ComponentActivity() {
                 },
             )
         }
+        deleting?.let { p ->
+            AlertDialog(
+                onDismissRequest = { deleting = null },
+                title = { Text("Delete “${p.name}”?") },
+                text = {
+                    Text(
+                        "This phone leaves the network and forgets its password. To come back you " +
+                            "need the password again or a member to let you in.",
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (runningId == p.networkIdHex) SessionService.stop(this@MainActivity)
+                        runBlocking { ProfileStore.remove(this@MainActivity, p.networkIdHex) }
+                        Prefs.setSecretFor(this@MainActivity, p.networkIdHex, null)
+                        profiles = ProfileStore.load(this@MainActivity)
+                        deleting = null
+                    }) { Text("Delete") }
+                },
+                dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
+            )
+        }
         sharing?.let { p ->
             InviteDialog(p, Prefs.secretFor(this, p.networkIdHex)) { sharing = null }
+        }
+    }
+
+    /**
+     * A radio that is switched off is the usual reason nobody is found: offer to turn it on
+     * right here. Re-checked every few seconds, since the user flips it in system UI.
+     */
+    @Composable
+    private fun RadioSwitches(radios: Map<com.icegood.findmeinwood.core.model.TransportId, com.icegood.findmeinwood.transport.api.RadioState>) {
+        var tick by remember { mutableStateOf(0) }
+        LaunchedEffect(Unit) { while (true) { delay(3_000); tick++ } }
+        val btOff = tick >= 0 && runCatching {
+            getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled == false
+        }.getOrDefault(false)
+        val wifiOff = tick >= 0 && runCatching {
+            getSystemService(android.net.wifi.WifiManager::class.java)?.isWifiEnabled == false
+        }.getOrDefault(false)
+        if (btOff) {
+            OutlinedButton(onClick = {
+                runCatching {
+                    startActivity(android.content.Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE))
+                }.onFailure { startActivity(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)) }
+            }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Bluetooth") }
+        }
+        if (wifiOff) {
+            Text(
+                "Wi-Fi is off: Wi-Fi Direct (longer range, photos) cannot work. No Wi-Fi network is needed, only Wi-Fi on.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            OutlinedButton(onClick = {
+                startActivity(
+                    android.content.Intent(
+                        if (Build.VERSION.SDK_INT >= 29) android.provider.Settings.Panel.ACTION_WIFI
+                        else android.provider.Settings.ACTION_WIFI_SETTINGS,
+                    ),
+                )
+            }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Wi-Fi") }
         }
     }
 
@@ -656,13 +745,9 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         Text(
-                            "on the map, frame an area and press ↓ to save it for offline use, then switch to OFFLINE.",
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
+                            "To save an area: on the map press ↓, drag a rectangle and download it. " +
+                                "Without internet, choose OFFLINE on the map.",
+                            style = MaterialTheme.typography.bodySmall,
                         )
                         regions.forEach { r ->
                             Row(
@@ -755,7 +840,7 @@ class MainActivity : ComponentActivity() {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Beacon interval", style = MaterialTheme.typography.titleSmall)
-                        Text("every ${intervalMs / 1000}s — position is sent automatically (clipboard for messengers)",
+                        Text("every ${intervalMs / 1000}s your position goes to members nearby; shorter = fresher, longer = less battery",
                             style = MaterialTheme.typography.bodySmall)
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),

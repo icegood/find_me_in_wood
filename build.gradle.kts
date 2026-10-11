@@ -172,6 +172,7 @@ val gateIncludes = listOf(
     "com/icegood/findmeinwood/app/LinkWatch*",
     "com/icegood/findmeinwood/app/SosLogic*",
     "com/icegood/findmeinwood/app/SmsBudget*",
+    "com/icegood/findmeinwood/app/UiText*",
     "com/icegood/findmeinwood/core/auth/**",
     "com/icegood/findmeinwood/core/chat/**",
     "com/icegood/findmeinwood/core/p2p/**",

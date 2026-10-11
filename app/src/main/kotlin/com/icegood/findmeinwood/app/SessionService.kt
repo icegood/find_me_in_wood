@@ -155,8 +155,6 @@ class SessionService : Service() {
             manager.onEdgeDown = sampler::onEdgeDown
             sampler.start(scope, deltaMs)
         }
-        // Automatic handoff (FR-9.2): newest envelope goes to the clipboard every
-        // delta, silently — the user pastes it into the messenger, no UI is raised.
         DiscoveryBridge.onRequestJoin = { netId ->
             val wire = discovery.buildJoinRequest(netId, Prefs.currentDisplayName(this@SessionService))
             scope.launch { manager.sendMgmt(wire) }
@@ -205,8 +203,10 @@ class SessionService : Service() {
             manager.radioStates.collect { SessionBus.publishRadioStates(it) }
         }
         manager.onFrameSent = { wire ->
+            // Not copied to the clipboard any more: that silently replaced whatever the user
+            // had copied (a network password, say) every beacon. "Send my position via
+            // messenger" in Networks shares the latest beacon on request instead.
             SessionBus.publish(profile, manager.peerFlow.value, wire)
-            clipboard(this, ShareTransport.encodeEnvelope(wire))
         }
         ShareInbox.sink = { wire ->
             scope.launch { manager.acceptExternalWire(wire, TransportId.INTERNET) }
@@ -429,13 +429,6 @@ class SessionService : Service() {
         // diagnostics, radio states, discovery — otherwise the screens keep showing
         // stale "data" text after the user turns everything off.
         SessionBus.clear()
-    }
-
-    private fun clipboard(ctx: Context, envelope: String) {
-        runCatching {
-            val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            cm.setPrimaryClip(android.content.ClipData.newPlainText("find-me-in-wood beacon", envelope))
-        }
     }
 
     private fun buildNotification(listen: Boolean): Notification {

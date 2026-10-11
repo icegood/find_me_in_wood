@@ -430,3 +430,29 @@ class SosLogicTest {
         assertTrue(b.tryTake(3_600_000), "an hour later the first round has expired")
     }
 }
+
+class UiTextTest {
+    @Test
+    fun `radios read as plain words, optional ones only when working`() {
+        val lines = UiText.radios(
+            mapOf(
+                com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT to com.icegood.findmeinwood.transport.api.RadioState.LINK_DOWN,
+                com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH to com.icegood.findmeinwood.transport.api.RadioState.READY,
+                com.icegood.findmeinwood.core.model.TransportId.LORA to com.icegood.findmeinwood.transport.api.RadioState.SCANNING,
+                com.icegood.findmeinwood.core.model.TransportId.INTERNET to com.icegood.findmeinwood.transport.api.RadioState.STOPPED,
+            ),
+        )
+        assertEquals(listOf("Bluetooth: connected", "Wi-Fi Direct: off or unavailable"), lines)
+        val lora = UiText.radios(
+            mapOf(
+                com.icegood.findmeinwood.core.model.TransportId.LORA to com.icegood.findmeinwood.transport.api.RadioState.READY,
+                com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH to com.icegood.findmeinwood.transport.api.RadioState.SCANNING,
+            ),
+        )
+        assertEquals(listOf("Bluetooth: searching", "LoRa: connected"), lora)
+        assertEquals(
+            emptyList(),
+            UiText.radios(mapOf(com.icegood.findmeinwood.core.model.TransportId.INTERNET to com.icegood.findmeinwood.transport.api.RadioState.READY)),
+        )
+    }
+}

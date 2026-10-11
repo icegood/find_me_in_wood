@@ -164,6 +164,18 @@ internal fun arrowEnd(
 internal fun formatDistance(meters: Double): String =
     if (meters >= 1000) "%.1f km".format(meters / 1000) else "${meters.toInt()} m"
 
+private fun sourceLabel(s: TileSource) = when (s) {
+    TileSource.OFFLINE -> "Offline"
+    TileSource.OSM -> "Streets"
+    TileSource.SATELLITE -> "Satellite"
+}
+
+private fun sourceHint(s: TileSource) = when (s) {
+    TileSource.OFFLINE -> "areas saved with ↓ and places already viewed — no internet needed"
+    TileSource.OSM -> "OpenStreetMap, needs internet"
+    TileSource.SATELLITE -> "imagery, needs internet (USA only for now)"
+}
+
 private fun compass(bearing: Double): String {
     val dirs = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
     return dirs[((bearing + 22.5) / 45).toInt() % 8]
@@ -326,6 +338,7 @@ fun MapScreen(
             DisposableEffect(mapView) {
                 mapView.onResume()
                 onDispose {
+                    saveLastView(context, mapView)
                     mapView.onPause()
                     mapView.onDetach()
                 }
@@ -529,10 +542,10 @@ fun MapScreen(
             }
         }
 
-        Card(Modifier.padding(12.dp).align(Alignment.TopStart)) {
+        Card(Modifier.padding(12.dp).align(Alignment.TopStart).fillMaxWidth()) {
             Text(
-                "${p?.name ?: "no session"} · members ${ps.size + 1} · located ${ps.values.count { it.lastPosition != null }}" +
-                    " · me ${if (me != null) "fix ±${me.accuracy.toInt()} m" else "no fix"}",
+                "${p?.name ?: "No network running"} · ${ps.size} other${if (ps.size == 1) "" else "s"} heard" +
+                    " · ${if (me != null) "GPS ±${me.accuracy.toInt()} m" else "waiting for GPS"}",
                 Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.labelMedium,
             )
@@ -550,21 +563,23 @@ fun MapScreen(
             )
         }
 
-        Card(Modifier.padding(12.dp).align(Alignment.TopEnd)) {
-            Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Tiles", style = MaterialTheme.typography.labelSmall)
-                Text(
-                    if (tileSource == TileSource.OFFLINE) "showing $providerLabel from cache" else providerLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                )
+        // One small chip instead of a panel of buttons that covered the status line and compass.
+        Box(Modifier.padding(top = 80.dp, end = 12.dp).align(Alignment.TopEnd)) {
+            var open by remember { mutableStateOf(false) }
+            androidx.compose.material3.FilledTonalButton(onClick = { open = true }) {
+                Text("Map: ${sourceLabel(tileSource)} ▾", style = MaterialTheme.typography.labelMedium)
+            }
+            androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                 TileSource.entries.forEach { src ->
-                    if (src == tileSource) {
-                        Button(onClick = { }) { Text(src.name, style = MaterialTheme.typography.labelSmall) }
-                    } else {
-                        OutlinedButton(onClick = { onTileSourceChange(src) }) {
-                            Text(src.name, style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text((if (src == tileSource) "✓ " else "") + sourceLabel(src))
+                                Text(sourceHint(src), style = MaterialTheme.typography.labelSmall)
+                            }
+                        },
+                        onClick = { open = false; onTileSourceChange(src) },
+                    )
                 }
             }
         }
@@ -874,9 +889,10 @@ fun PeerList(
     modifier: Modifier = Modifier,
     findTarget: MemberId? = null,
     onFind: (MemberId?) -> Unit = {},
+    emptyText: String = "No members heard yet.",
 ) {
     val me = rememberDeviceFix(LocalContext.current)?.location
-    PeerList(peers, me, modifier, findTarget, onFind)
+    PeerList(peers, me, modifier, findTarget, onFind, emptyText)
 }
 
 /** FR-6.4: mapless alternative — distance and bearing to each peer. */
@@ -887,12 +903,15 @@ fun PeerList(
     modifier: Modifier = Modifier,
     findTarget: MemberId? = null,
     onFind: (MemberId?) -> Unit = {},
+    emptyText: String = "No members heard yet.",
 ) {
     val ps by peers.collectAsState()
     Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Peers", style = MaterialTheme.typography.titleMedium)
+        Text("Members", style = MaterialTheme.typography.titleMedium)
         if (ps.isEmpty()) {
-            Text("No peers seen yet.", style = MaterialTheme.typography.bodySmall)
+            Text(emptyText, style = MaterialTheme.typography.bodySmall)
+        } else {
+            Text("Tap Find to get an arrow and distance to someone on the map.", style = MaterialTheme.typography.bodySmall)
         }
         ps.values.forEach { peer ->
             val pos = peer.lastPosition
@@ -928,6 +947,36 @@ fun PeerList(
 private fun age(lastSeenMs: Long): String {
     val s = (System.currentTimeMillis() - lastSeenMs).coerceAtLeast(0) / 1000
     return if (s < 60) "${s}s" else "${s / 60}m"
+}
+
+private data class LastView(val lat: Double, val lon: Double, val zoom: Double)
+
+private fun lastView(context: Context): LastView? {
+    val prefs = context.getSharedPreferences("map_view", Context.MODE_PRIVATE)
+    if (prefs.contains("lat")) {
+        return LastView(
+            prefs.getFloat("lat", 0f).toDouble(),
+            prefs.getFloat("lon", 0f).toDouble(),
+            prefs.getFloat("zoom", INITIAL_ZOOM.toFloat()).toDouble(),
+        )
+    }
+    // First run: whatever location the phone already knows (no new fix is requested).
+    val lm = context.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager ?: return null
+    val known = runCatching {
+        lm.getProviders(true).mapNotNull { lm.getLastKnownLocation(it) }.maxByOrNull { it.time }
+    }.getOrNull() ?: return null
+    return LastView(known.latitude, known.longitude, INITIAL_ZOOM)
+}
+
+private fun saveLastView(context: Context, mv: MapView) {
+    val c = mv.mapCenter
+    // A never-laid-out view still sits at 0,0: nothing worth remembering.
+    if (c.latitude == 0.0 && c.longitude == 0.0) return
+    context.getSharedPreferences("map_view", Context.MODE_PRIVATE).edit()
+        .putFloat("lat", c.latitude.toFloat())
+        .putFloat("lon", c.longitude.toFloat())
+        .putFloat("zoom", mv.zoomLevelDouble.toFloat())
+        .apply()
 }
 
 private fun createMapView(
@@ -972,7 +1021,11 @@ private fun createMapView(
         setBackgroundColor(if (isDarkTheme) 0xFF1A1A1A.toInt() else android.graphics.Color.WHITE)
         setMultiTouchControls(true)
         setBuiltInZoomControls(false)
-        controller.setZoom(INITIAL_ZOOM)
+        // Open where the map was last left (or at the last known location), not at 0°,0°
+        // in the ocean while waiting for the first GPS fix.
+        val last = lastView(context)
+        controller.setZoom(last?.zoom ?: INITIAL_ZOOM)
+        last?.let { controller.setCenter(GeoPoint(it.lat, it.lon)) }
         // Bottom-left scale bar (theme-aware colors).
         val barText = if (isDarkTheme) 0xFFDDDDDD.toInt() else 0xFF222222.toInt()
         overlays.add(
@@ -988,6 +1041,8 @@ private fun createMapView(
                     textSize = 13f * resources.displayMetrics.scaledDensity
                 })
                 setBarPaint(android.graphics.Paint().apply {
+                    // Default FILL style closes the bar path into a solid black box.
+                    style = android.graphics.Paint.Style.STROKE
                     color = barText
                     strokeWidth = 3f * resources.displayMetrics.density
                 })
