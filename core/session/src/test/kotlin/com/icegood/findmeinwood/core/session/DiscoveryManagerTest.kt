@@ -38,6 +38,15 @@ class DiscoveryManagerTest {
     private fun manager(policy: JoinPolicy, id: MemberId, pair: java.security.KeyPair) =
         DiscoveryManager(profile(policy, id), pair, { now }, helloIntervalMs = 15_000)
 
+    /** A device with no network yet: listens on a throwaway one and never advertises it. */
+    private fun listener(id: MemberId, pair: java.security.KeyPair): DiscoveryManager {
+        val own = NetworkKeysFactory.derive("listener-${id.bytes[0]}".toByteArray())
+        return DiscoveryManager(
+            profile(JoinPolicy.CODE, id).copy(networkId = own.networkId, trafficKey = own.trafficKey),
+            pair, { now }, advertise = false,
+        )
+    }
+
     @Test
     fun `hello is emitted only when due and hides CODE networks`() {
         val (id, pair) = member()
@@ -50,7 +59,7 @@ class DiscoveryManagerTest {
 
         // peer receives it and lists the network
         val (peerId, peerPair) = member()
-        val peer = manager(JoinPolicy.PRIVATE, peerId, peerPair)
+        val peer = listener(peerId, peerPair)
         val frame = MgmtCodec.decode(first)
         peer.pinKey(id, pair.public)
         peer.onMgmtFrame(frame)
@@ -61,7 +70,7 @@ class DiscoveryManagerTest {
 
         // CODE networks are never advertised
         val hidden = manager(JoinPolicy.CODE, id, pair)
-        val peer2 = manager(JoinPolicy.PRIVATE, peerId, peerPair)
+        val peer2 = listener(peerId, peerPair)
         peer2.pinKey(id, pair.public)
         peer2.onMgmtFrame(MgmtCodec.decode(hidden.buildHello(emptyList())))
         assertTrue(peer2.discovered.value.isEmpty())
@@ -71,7 +80,7 @@ class DiscoveryManagerTest {
     fun `stale networks are pruned`() {
         val (id, pair) = member()
         val m = manager(JoinPolicy.OPEN, id, pair)
-        val peer = manager(JoinPolicy.OPEN, MemberId(ByteArray(32)), Identity.generate()).apply {
+        val peer = listener(MemberId(ByteArray(32)), Identity.generate()).apply {
             pinKey(id, pair.public)
         }
         peer.onMgmtFrame(MgmtCodec.decode(m.buildHello(emptyList())))
@@ -86,7 +95,7 @@ class DiscoveryManagerTest {
         val (ownerId, ownerPair) = member()
         val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair)
         val (joinerId, joinerPair) = member()
-        val joiner = manager(JoinPolicy.PRIVATE, joinerId, joinerPair)
+        val joiner = listener(joinerId, joinerPair)
 
         val req = joiner.buildJoinRequest(keys.networkId, "Misha")
         owner.pinKey(joinerId, joinerPair.public)
@@ -105,7 +114,7 @@ class DiscoveryManagerTest {
         val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair)
         owner.ownerSecret = "discovery-net"
         val (joinerId, joinerPair) = member()
-        val joiner = manager(JoinPolicy.PRIVATE, joinerId, joinerPair)
+        val joiner = listener(joinerId, joinerPair)
 
         val req = joiner.buildJoinRequest(keys.networkId, "Misha")
         owner.pinKey(joinerId, joinerPair.public)
@@ -133,7 +142,7 @@ class DiscoveryManagerTest {
         val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair)
         owner.ownerSecret = "discovery-net"
         val (joinerId, joinerPair) = member()
-        val joiner = manager(JoinPolicy.OPEN, joinerId, joinerPair)
+        val joiner = listener(joinerId, joinerPair)
 
         owner.pinKey(joinerId, joinerPair.public)
         owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)))
@@ -150,7 +159,7 @@ class DiscoveryManagerTest {
         val (ownerId, ownerPair) = member()
         val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair)
         val (joinerId, joinerPair) = member()
-        val joiner = manager(JoinPolicy.PRIVATE, joinerId, joinerPair)
+        val joiner = listener(joinerId, joinerPair)
 
         owner.pinKey(joinerId, joinerPair.public)
         owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)))
@@ -180,7 +189,7 @@ class DiscoveryManagerTest {
         val (ownerId, ownerPair) = member()
         val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair)
         val (joinerId, joinerPair) = member()
-        val joiner = manager(JoinPolicy.PRIVATE, joinerId, joinerPair)
+        val joiner = listener(joinerId, joinerPair)
         owner.pinKey(joinerId, joinerPair.public)
         owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(NetworkId(ByteArray(8) { 9 }), null)))
         assertTrue(owner.pendingJoins.value.isEmpty())
@@ -192,7 +201,7 @@ class DiscoveryManagerTest {
         val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair)
         owner.ownerSecret = "attacker-network-secret"
         val (joinerId, joinerPair) = member()
-        val joiner = manager(JoinPolicy.OPEN, joinerId, joinerPair)
+        val joiner = listener(joinerId, joinerPair)
 
         // Owner answers a request; the joiner, however, asked to join a different network.
         owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)))
@@ -208,7 +217,7 @@ class DiscoveryManagerTest {
         val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair)
         owner.ownerSecret = "discovery-net"
         val (joinerId, joinerPair) = member()
-        val joiner = manager(JoinPolicy.OPEN, joinerId, joinerPair)
+        val joiner = listener(joinerId, joinerPair)
         owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)))
         assertNotNull(owner.approve(joinerId))
         assertEquals(null, owner.approve(joinerId))
@@ -219,7 +228,7 @@ class DiscoveryManagerTest {
         val (ownerId, ownerPair) = member()
         val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair)
         val (joinerId, joinerPair) = member()
-        val joiner = manager(JoinPolicy.PRIVATE, joinerId, joinerPair)
+        val joiner = listener(joinerId, joinerPair)
         val signed = MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null))
         owner.onMgmtFrame(signed.copy(signature = ByteArray(0)))
         assertTrue(owner.pendingJoins.value.isEmpty(), "empty signature must not count as valid")
@@ -242,7 +251,7 @@ class DiscoveryManagerTest {
     }
 
     @Test
-    fun `join answers are only accepted from the advertised owner`() {
+    fun `join answers are only accepted from devices advertising the network`() {
         val (ownerId, ownerPair) = member()
         val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair).apply { ownerSecret = "discovery-net" }
         val (rogueId, roguePair) = member()
@@ -251,7 +260,7 @@ class DiscoveryManagerTest {
             roguePair, { now },
         ).apply { ownerSecret = "rogue-secret" }
         val (joinerId, joinerPair) = member()
-        val joiner = manager(JoinPolicy.OPEN, joinerId, joinerPair)
+        val joiner = listener(joinerId, joinerPair)
 
         joiner.onMgmtFrame(MgmtCodec.decode(owner.buildHello(emptyList())))
         val req = MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null))
@@ -259,12 +268,39 @@ class DiscoveryManagerTest {
         rogue.onMgmtFrame(req)
 
         joiner.onMgmtFrame(MgmtCodec.decode(rogue.approve(joinerId)!!))
-        assertNull(joiner.outcome.value, "a reply from a non-owner must be ignored")
+        assertNull(joiner.outcome.value, "a reply from a device that never advertised must be ignored")
         joiner.onMgmtFrame(MgmtCodec.decode(rogue.reject(joinerId)))
-        assertNull(joiner.outcome.value, "a reject from a non-owner must be ignored")
+        assertNull(joiner.outcome.value, "a reject from a device that never advertised must be ignored")
 
         joiner.onMgmtFrame(MgmtCodec.decode(owner.approve(joinerId)!!))
         assertEquals("discovery-net", (joiner.outcome.value as JoinOutcome.Joined).secret)
+    }
+
+    @Test
+    fun `any advertising member may answer, not only the owner`() {
+        val (ownerId, ownerPair) = member()
+        val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair)
+        val (memberId, memberPair) = member()
+        // A member that joined earlier holds the secret and advertises the same network.
+        val other = manager(JoinPolicy.PRIVATE, memberId, memberPair).apply { ownerSecret = "discovery-net" }
+        val (joinerId, joinerPair) = member()
+        val joiner = listener(joinerId, joinerPair)
+        joiner.onMgmtFrame(MgmtCodec.decode(owner.buildHello(emptyList())))
+        joiner.onMgmtFrame(MgmtCodec.decode(other.buildHello(emptyList())))
+
+        other.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, "Misha")))
+        joiner.onMgmtFrame(MgmtCodec.decode(other.approve(joinerId)!!))
+        assertEquals("discovery-net", (joiner.outcome.value as JoinOutcome.Joined).secret)
+    }
+
+    @Test
+    fun `own network is not listed and a listener never advertises`() {
+        val (aId, aPair) = member()
+        val (bId, bPair) = member()
+        val b = manager(JoinPolicy.PRIVATE, bId, bPair)
+        b.onMgmtFrame(MgmtCodec.decode(manager(JoinPolicy.PRIVATE, aId, aPair).buildHello(emptyList())))
+        assertTrue(b.discovered.value.isEmpty())
+        assertFalse(listener(aId, aPair).helloDue())
     }
 
     @Test
@@ -273,7 +309,7 @@ class DiscoveryManagerTest {
         // Answers for keys.networkId but hands out a secret that derives a different network.
         val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair).apply { ownerSecret = "not-this-network" }
         val (joinerId, joinerPair) = member()
-        val joiner = manager(JoinPolicy.OPEN, joinerId, joinerPair)
+        val joiner = listener(joinerId, joinerPair)
         owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)))
         joiner.onMgmtFrame(MgmtCodec.decode(owner.approve(joinerId)!!))
         assertEquals(null, joiner.outcome.value)

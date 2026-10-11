@@ -8,60 +8,122 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.icegood.findmeinwood.core.model.DiscoveredNetwork
 import com.icegood.findmeinwood.core.model.JoinPolicy
-import com.icegood.findmeinwood.core.model.NetworkId
+import com.icegood.findmeinwood.core.session.JoinOutcome
 
 /**
- * FR-8.2/FR-8.3: networks heard around us with name, owner and policy — never a member
- * count. OPEN networks warn that the secret is readable by anyone in range.
+ * FR-8.2/FR-8.3: networks heard around us. Joining one takes only its password (typed
+ * here and checked against the network on the spot), or a member nearby can let us in
+ * without it. Works with no network of our own: [onListen] runs the radios just to listen.
  */
 @Composable
-fun DiscoverScreen(context: android.content.Context, onJoin: (NetworkId) -> Unit) {
+fun DiscoverScreen(
+    context: android.content.Context,
+    onListen: () -> Unit,
+    onStart: (StoredProfile) -> Unit,
+) {
     val discovered by SessionBus.discovered.collectAsState()
     val pending by SessionBus.pendingJoins.collectAsState()
     val sas by SessionBus.ownerSas.collectAsState()
     val note by SessionBus.ownerNote.collectAsState()
     val outcome by SessionBus.joinOutcome.collectAsState()
+    val running by SessionBus.sessionRunning.collectAsState()
+    val listening by SessionBus.listening.collectAsState()
+    val current by SessionBus.profile.collectAsState()
+    var passwordFor by remember { mutableStateOf<DiscoveredNetwork?>(null) }
+    var asked by remember { mutableStateOf<String?>(null) }
 
     Column(
         Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Networks around you", style = MaterialTheme.typography.titleMedium)
-        if (discovered.isEmpty()) {
-            Text(
-                "Listening for HELLO frames… (start a session so your phone can hear others)",
+        when {
+            !running -> {
+                Text(
+                    "Turn on the radios to see networks nearby. A network shows up only while " +
+                        "at least one of its members has it started.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Button(onClick = onListen, modifier = Modifier.fillMaxWidth()) { Text("Look for networks") }
+            }
+            listening -> Text(
+                "Looking… networks appear within about 15 seconds.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            else -> Text(
+                "Listening while “${current?.name ?: "your network"}” runs.",
                 style = MaterialTheme.typography.bodySmall,
             )
         }
+
+        val mine = ProfileStore.load(context).associateBy { it.networkIdHex }
         discovered.forEach { net ->
+            val stored = mine[net.networkId.bytes.joinToString("") { "%02x".format(it) }]
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(net.name ?: "(hidden)", style = MaterialTheme.typography.titleMedium)
-                    Text("policy ${net.policy} · transports ${net.activeTransports.joinToString()}",
-                        style = MaterialTheme.typography.labelSmall)
+                    Text(net.name ?: "(unnamed)", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "heard via " + net.activeTransports.joinToString { it.name.lowercase().replace('_', ' ') },
+                        style = MaterialTheme.typography.labelSmall,
+                    )
                     if (net.policy == JoinPolicy.OPEN) {
                         Text(
-                            "OPEN: the network secret is readable by anyone in range.",
+                            "OPEN: anyone nearby who asks gets the password.",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = {
-                            onJoin(net.networkId)
-                        }) { Text("Ask to join") }
+                    if (stored != null) {
+                        Text("You are a member.", style = MaterialTheme.typography.bodySmall)
+                        Button(onClick = { onStart(stored) }) { Text("Start") }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { passwordFor = net }) { Text("Enter password") }
+                            OutlinedButton(onClick = {
+                                DiscoveryBridge.requestJoin(net.networkId)
+                                asked = net.name ?: "the network"
+                            }) { Text("Ask a member") }
+                        }
+                        if (asked != null && asked == (net.name ?: "the network")) {
+                            Text(
+                                "Asked. A member nearby must open Discover and tap Accept.",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        outcome?.let { result ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    when (result) {
+                        is JoinOutcome.Joined -> Text(
+                            "Joined “${result.name}”. Check that the member who let you in sees " +
+                                "the same code: ${result.sas}",
+                        )
+                        is JoinOutcome.Rejected -> Text("Not let in: ${result.reason}")
                     }
                 }
             }
@@ -69,18 +131,19 @@ fun DiscoverScreen(context: android.content.Context, onJoin: (NetworkId) -> Unit
 
         if (sas != null || note != null) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                sas?.let { Text("SAS $it — compare with the joiner", style = MaterialTheme.typography.bodyMedium) }
+                sas?.let { Text("Code $it — the person joining must see the same", style = MaterialTheme.typography.bodyMedium) }
                 note?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
         }
         if (pending.isNotEmpty()) {
-            Text("Join requests (you are the owner)", style = MaterialTheme.typography.titleMedium)
+            Text("Asking to join “${current?.name ?: "your network"}”", style = MaterialTheme.typography.titleMedium)
             pending.forEach { req ->
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(req.joinerNick ?: "member ${req.joinerId.hex().take(8)}",
-                            style = MaterialTheme.typography.titleSmall)
-
+                        Text(
+                            req.joinerNick ?: "device ${req.joinerId.bytes.take(4).joinToString("") { "%02x".format(it) }}",
+                            style = MaterialTheme.typography.titleSmall,
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { DiscoveryBridge.approve(req.joinerId) }) { Text("Accept") }
                             OutlinedButton(onClick = { DiscoveryBridge.reject(req.joinerId) }) { Text("Reject") }
@@ -89,35 +152,71 @@ fun DiscoverScreen(context: android.content.Context, onJoin: (NetworkId) -> Unit
                 }
             }
         }
+    }
 
-        outcome?.let { result ->
-            LaunchedEffect(result) {
-                when (result) {
-                    is com.icegood.findmeinwood.core.session.JoinOutcome.Joined -> {
-                        val joined = ProfileStore.join(ProfileStore.joinCodeOf(result.name, result.secret))
-                        if (joined is JoinResult.Ok) {
-                            ProfileStore.add(context, joined.profile)
-                            Prefs.setSecretFor(context, joined.profile.networkIdHex, result.secret)
-                            // FR-8.4: unverified until the human compares the SAS
-                            Prefs.setUnverified(context, joined.profile.networkIdHex, true)
-                        }
+    passwordFor?.let { net ->
+        PasswordDialog(
+            title = "Join “${net.name ?: "network"}”",
+            onDismiss = { passwordFor = null },
+            onJoin = { password ->
+                when (val r = ProfileStore.join(net.name ?: "network", password, expected = net.networkId)) {
+                    is JoinResult.Ok -> {
+                        ProfileStore.add(context, r.profile)
+                        Prefs.setSecretFor(context, r.profile.networkIdHex, password)
+                        passwordFor = null
+                        onStart(r.profile)
+                        null
                     }
-                    is com.icegood.findmeinwood.core.session.JoinOutcome.Rejected -> Unit
+                    is JoinResult.Error -> r.message
                 }
-            }
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp)) {
-                    when (result) {
-                        is com.icegood.findmeinwood.core.session.JoinOutcome.Joined ->
-                            Text("Joined “${result.name}” — SAS ${result.sas} (compare with the owner)")
-                        is com.icegood.findmeinwood.core.session.JoinOutcome.Rejected ->
-                            Text("Join rejected: ${result.reason}")
-                    }
-                }
-            }
-        }
+            },
+        )
     }
 }
 
-private fun com.icegood.findmeinwood.core.model.MemberId.hex(): String =
-    bytes.joinToString("") { "%02x".format(it) }
+/** Password entry; [onJoin] returns an error to show, or null when done. */
+@Composable
+internal fun PasswordDialog(
+    title: String,
+    onDismiss: () -> Unit,
+    askName: Boolean = false,
+    onJoin: (String) -> String?,
+    onJoinNamed: ((String, String) -> String?)? = null,
+) {
+    var name by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var show by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (askName) {
+                    OutlinedTextField(
+                        value = name, onValueChange = { name = it; error = null },
+                        label = { Text("Network name (your label)") }, singleLine = true,
+                    )
+                }
+                OutlinedTextField(
+                    value = password, onValueChange = { password = it; error = null },
+                    label = { Text("Password") }, singleLine = true,
+                    visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = { TextButton(onClick = { show = !show }) { Text(if (show) "Hide" else "Show") } },
+                )
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = password.isNotEmpty() && (!askName || name.isNotBlank()),
+                onClick = {
+                    // Keyboards like to append a space; no password starts or ends with one.
+                    val pw = password.trim()
+                    error = if (askName) onJoinNamed?.invoke(name.trim(), pw) else onJoin(pw)
+                },
+            ) { Text("Join") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}

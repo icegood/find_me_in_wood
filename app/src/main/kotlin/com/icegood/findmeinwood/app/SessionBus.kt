@@ -76,6 +76,11 @@ object SessionBus {
 
     fun setSessionRunning(running: Boolean) { _sessionRunning.value = running }
 
+    /** True while the session only looks for networks to join (no network of our own). */
+    private val _listening = MutableStateFlow(false)
+    val listening: StateFlow<Boolean> = _listening
+    fun setListening(value: Boolean) { _listening.value = value }
+
     suspend fun publishIncoming(payload: ByteArray, sender: MemberId) {
         _incomingPayloads.emit(payload to sender)
     }
@@ -101,6 +106,7 @@ object SessionBus {
         _lastWireFrame.value = null
         _diagnostics.value = Diagnostics()
         _sessionRunning.value = false
+        _listening.value = false
         _discovered.value = emptyList()
         _pendingJoins.value = emptyList()
         _ownerSas.value = null

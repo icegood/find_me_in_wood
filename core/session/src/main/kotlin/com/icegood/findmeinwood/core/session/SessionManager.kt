@@ -46,6 +46,8 @@ class SessionManager(
     private val keepAliveMs: Long = KEEP_ALIVE_MS,
     /** Device identity used to sign beacons (NFR-3); null disables origin auth. */
     private val signer: java.security.KeyPair? = null,
+    /** False while only listening for networks to join: radios run, no beacons go out. */
+    private val beaconsEnabled: Boolean = true,
 ) {
     companion object {
         const val INITIAL_TTL: UByte = 3u
@@ -130,7 +132,7 @@ class SessionManager(
                 }
             }
         }
-        jobs += scope.launch {
+        if (beaconsEnabled) jobs += scope.launch {
             BeaconScheduler(keepAliveMs, clock)
                 .commands(fixes)
                 .collect {

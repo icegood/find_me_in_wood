@@ -26,7 +26,7 @@ data class StoredProfile(
 )
 
 sealed interface CreateResult {
-    data class Ok(val profile: StoredProfile, val joinCode: String) : CreateResult
+    data class Ok(val profile: StoredProfile, val password: String) : CreateResult
     data class Error(val message: String) : CreateResult
 }
 
@@ -78,51 +78,42 @@ object ProfileStore {
         policy = p.policy,
     )
 
-    /** FR-1.1: derive keys from secret, generate per-network identity. */
-    fun create(name: String, passphrase: String?): CreateResult {
+    /** FR-1.1: derive keys from the password, generate a per-network identity. */
+    fun create(name: String, password: String?): CreateResult {
         if (name.length !in 1..64) {
             return CreateResult.Error("Name must be 1–64 characters")
         }
-        // '#' separates the join code fields (name#secret#vtag): it would make the code unjoinable.
-        if ('#' in name) return CreateResult.Error("Name must not contain '#'")
-        val supplied = passphrase?.takeIf { it.isNotEmpty() }
-        if (supplied != null && '#' in supplied) return CreateResult.Error("Passphrase must not contain '#'")
-        // FR-2.3: user passphrases must be strong; generated ones are >=128-bit.
+        val supplied = password?.trim()?.takeIf { it.isNotEmpty() }
+        // FR-2.3: user passwords must be strong; generated ones are >=128-bit.
         if (supplied != null && !strongEnough(supplied)) {
-            return CreateResult.Error("Passphrase too weak: use 16+ characters or 6+ words")
+            return CreateResult.Error("Password too weak: use 16+ characters or 6+ words")
         }
         val secret = supplied ?: generateSecret()
-        return CreateResult.Ok(storedFor(name, secret), "$name#$secret#${verifyTagOf(secret).hex()}")
+        return CreateResult.Ok(storedFor(name, secret), secret)
     }
 
     /**
-     * FR-2.1/FR-2.3: join from a `name#secret#vtag` string. The verification tag is
-     * checked offline, so a wrong secret fails before any radio traffic.
+     * FR-2.1: join with just the network password. The network id is derived from the
+     * password, so when the network was heard on the radio ([expected]) a wrong password
+     * is caught right here, before any traffic; [name] is only a local label.
      */
-    fun join(code: String): JoinResult {
-        val parts = code.trim().split("#")
-        if (parts.size != 3) return JoinResult.Error("Join code must look like name#secret#vtag")
-        val (name, secret, vtag) = parts
+    fun join(name: String, password: String, expected: NetworkId? = null): JoinResult {
         if (name.length !in 1..64) return JoinResult.Error("Name must be 1–64 characters")
-        if (vtag.length != 8 || vtag.any { it !in '0'..'9' && it !in 'a'..'f' }) {
-            return JoinResult.Error("Join code has a malformed verification tag")
+        if (password.isEmpty()) return JoinResult.Error("Enter the network password")
+        if (expected != null && networkIdOf(password) != expected) {
+            return JoinResult.Error("Wrong password for “$name”")
         }
-        if (!verifyTagOf(secret).hex().equals(vtag, ignoreCase = true)) {
-            return JoinResult.Error("Wrong secret for this network (verification tag mismatch)")
-        }
-        return JoinResult.Ok(storedFor(name, secret))
+        return JoinResult.Ok(storedFor(name, password))
     }
 
-    /** Rebuilds the join code for a secret learned through the on-radio handshake. */
-    fun joinCodeOf(name: String, secret: String): String = "$name#$secret#${verifyTagOf(secret).hex()}"
+    /** The network a password belongs to (the id is derived from it). */
+    fun networkIdOf(password: String): NetworkId = NetworkKeysFactory.derive(password.toByteArray()).networkId
 
     /** FR-2.3: >=6 words or >=16 characters. */
     internal fun strongEnough(secret: String): Boolean {
         val words = secret.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
         return words.size >= 6 || secret.length >= 16
     }
-
-    private fun verifyTagOf(secret: String) = NetworkKeysFactory.derive(secret.toByteArray()).verifyTag
 
     private fun storedFor(name: String, secret: String): StoredProfile {
         val keys = NetworkKeysFactory.derive(secret.toByteArray())

@@ -304,7 +304,8 @@ class MainActivity : ComponentActivity() {
                     )
                     tab == "discover" -> DiscoverScreen(
                         context = this@MainActivity,
-                        onJoin = { netId -> DiscoveryBridge.requestJoin(netId) },
+                        onListen = { if (granted()) SessionService.listen(this@MainActivity) else requestRadioPermissions() },
+                        onStart = { p -> if (granted()) SessionService.start(this@MainActivity, p) else requestRadioPermissions() },
                     )
                     tab == "settings" -> SettingsScreen(
                         themeMode = themeMode,
@@ -344,7 +345,8 @@ class MainActivity : ComponentActivity() {
         var profiles by remember { mutableStateOf(ProfileStore.load(this)) }
         var showCreate by remember { mutableStateOf(false) }
         var showJoin by remember { mutableStateOf(false) }
-        var joinCode by remember { mutableStateOf<String?>(null) }
+        /** Network whose password is being shown for sharing. */
+        var sharing by remember { mutableStateOf<StoredProfile?>(null) }
         var createError by remember { mutableStateOf<String?>(null) }
         val snackbar = remember { SnackbarHostState() }
         val uiScope = rememberCoroutineScope()
@@ -367,7 +369,7 @@ class MainActivity : ComponentActivity() {
                 OutlinedButton(
                     onClick = { showJoin = true; createError = null },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Join network") }
+                ) { Text("Join by password") }
                 createError?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
@@ -383,7 +385,7 @@ class MainActivity : ComponentActivity() {
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(onClick = {
-                                        if (!granted()) return@Button
+                                        if (!granted()) { requestRadioPermissions(); return@Button }
                                         SessionService.start(this@MainActivity, p)
                                     }) { Text(if (running) "Restart" else "Start") }
                                     OutlinedButton(onClick = { SessionService.stop(this@MainActivity) }) {
@@ -394,6 +396,7 @@ class MainActivity : ComponentActivity() {
                                         profiles = ProfileStore.load(this@MainActivity)
                                     }) { Text("Delete") }
                                 }
+                                OutlinedButton(onClick = { sharing = p }) { Text("Invite (show password)") }
                             }
                         }
                     }
@@ -436,11 +439,11 @@ class MainActivity : ComponentActivity() {
                     when (val r = ProfileStore.create(name, passphrase)) {
                         is CreateResult.Ok -> {
                             ProfileStore.add(this, r.profile)
-                            Prefs.setSecretFor(this, r.profile.networkIdHex, r.joinCode.split("#")[1])
+                            Prefs.setSecretFor(this, r.profile.networkIdHex, r.password)
                             profiles = ProfileStore.load(this)
                             showCreate = false
                             createError = null
-                            joinCode = r.joinCode
+                            sharing = r.profile
                         }
                         is CreateResult.Error -> createError = r.message
                     }
@@ -448,32 +451,74 @@ class MainActivity : ComponentActivity() {
             )
         }
         if (showJoin) {
-            JoinDialog(
+            PasswordDialog(
+                title = "Join by password",
+                askName = true,
                 onDismiss = { showJoin = false },
-                onJoin = { code ->
-                    when (val r = ProfileStore.join(code)) {
+                onJoin = { null },
+                onJoinNamed = { name, password ->
+                    // If the network is around, take its real name and catch a mistyped password.
+                    val heard = SessionBus.discovered.value
+                        .firstOrNull { it.networkId == ProfileStore.networkIdOf(password) }
+                    when (val r = ProfileStore.join(heard?.name ?: name, password)) {
                         is JoinResult.Ok -> {
                             ProfileStore.add(this, r.profile)
-                            Prefs.setSecretFor(this, r.profile.networkIdHex, code.split("#")[1])
+                            Prefs.setSecretFor(this, r.profile.networkIdHex, password)
                             profiles = ProfileStore.load(this)
                             showJoin = false
                             createError = null
+                            null
                         }
-                        is JoinResult.Error -> createError = r.message
+                        is JoinResult.Error -> r.message
                     }
                 },
             )
         }
-        joinCode?.let { code ->
-            AlertDialog(
-                onDismissRequest = { joinCode = null },
-                confirmButton = { TextButton(onClick = { joinCode = null }) { Text("OK") } },
-                title = { Text("Share the join code") },
-                text = {
-                    Text("Give this to members in person:\n\n$code\n\nIt is shown once — the secret is not stored.")
-                },
-            )
+        sharing?.let { p ->
+            InviteDialog(p, Prefs.secretFor(this, p.networkIdHex)) { sharing = null }
         }
+    }
+
+    /** Shows a network's password, to read out or send to someone who should join. */
+    @Composable
+    private fun InviteDialog(p: StoredProfile, password: String?, onDismiss: () -> Unit) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Invite to “${p.name}”") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (password == null) {
+                        Text("This phone does not have the password of this network.")
+                    } else {
+                        Text("Password", style = MaterialTheme.typography.labelMedium)
+                        androidx.compose.foundation.text.selection.SelectionContainer {
+                            Text(password, style = MaterialTheme.typography.titleLarge)
+                        }
+                        Text(
+                            "The other phone opens Discover, taps Look for networks, picks " +
+                                "“${p.name}” and enters this password. This network must be started here " +
+                                "so it can be seen. Out of range: Networks → Join by password.\n\n" +
+                                "Or skip the password: they tap Ask a member and you tap Accept in Discover.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (password != null) {
+                    TextButton(onClick = {
+                        val send = android.content.Intent(android.content.Intent.ACTION_SEND)
+                            .setType("text/plain")
+                            .putExtra(
+                                android.content.Intent.EXTRA_TEXT,
+                                "find me in wood — network “${p.name}”, password: $password",
+                            )
+                        startActivity(android.content.Intent.createChooser(send, "Send password"))
+                    }) { Text("Send…") }
+                }
+            },
+            dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        )
     }
 
     /** Dedicated settings screen: theme, tile API keys and device/beacon options. */
@@ -870,31 +915,6 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun JoinDialog(onDismiss: () -> Unit, onJoin: (String) -> Unit) {
-        var code by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text("Join network") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Paste the join code you were given (name#secret#vtag).",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    OutlinedTextField(
-                        value = code, onValueChange = { code = it },
-                        label = { Text("Join code") }, singleLine = true,
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(enabled = code.isNotBlank(), onClick = { onJoin(code.trim()) }) { Text("Join") }
-            },
-            dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-        )
-    }
-
-    @Composable
     private fun CreateDialog(onDismiss: () -> Unit, onCreate: (String, String) -> Unit) {
         var name by remember { mutableStateOf("") }
         var pass by remember { mutableStateOf("") }
@@ -909,7 +929,7 @@ class MainActivity : ComponentActivity() {
                     )
                     OutlinedTextField(
                         value = pass, onValueChange = { pass = it },
-                        label = { Text("Passphrase (empty = generate)") }, singleLine = true,
+                        label = { Text("Password (empty = generate one)") }, singleLine = true,
                     )
                 }
             },
@@ -926,6 +946,8 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_OPEN_SOS = "open_sos"
     }
+
+    private fun requestRadioPermissions() = permissionLauncher.launch(permissions.toTypedArray())
 
     private fun granted(): Boolean = permissions.all {
         checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED

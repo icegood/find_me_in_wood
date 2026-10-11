@@ -21,6 +21,7 @@ import com.icegood.findmeinwood.core.session.GnssSource
 import com.icegood.findmeinwood.core.crypto.MgmtCodec
 import com.icegood.findmeinwood.core.session.DiscoveryManager
 import com.icegood.findmeinwood.core.session.EdgeManager
+import com.icegood.findmeinwood.core.session.JoinOutcome
 import com.icegood.findmeinwood.core.session.SessionManager
 import com.icegood.findmeinwood.transport.api.Transport
 import com.icegood.findmeinwood.transport.bluetooth.BluetoothTransport
@@ -68,13 +69,24 @@ class SessionService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_SOS_STOP -> stopSos(sendCancel = true)
-            ACTION_SOS_START -> if (session != null) startSos() else {
+            ACTION_SOS_START -> if (session != null && !listening) startSos() else {
                 startSession(intent)
                 if (session != null) startSos()
             }
+            ACTION_LISTEN -> if (session == null) startListening()
             else -> startSession(intent)
         }
         return START_STICKY
+    }
+
+    /**
+     * No network yet: run the radios on a throwaway network that is never saved, sends no
+     * beacons and advertises nothing, only to hear other networks' HELLOs and to carry
+     * the join handshake. A successful join switches to the joined network.
+     */
+    private fun startListening() {
+        val throwaway = (ProfileStore.create("listening", null) as CreateResult.Ok).profile
+        runSession(ProfileStore.toProfile(throwaway).copy(policy = JoinPolicy.CODE), listen = true)
     }
 
     private fun startSession(intent: Intent?) {
@@ -84,13 +96,6 @@ class SessionService : Service() {
             stopSelf()
             return
         }
-        // "Start" while a session is live restarts it (and "Restart" in the UI is
-        // no longer a silent no-op). stopSession hands the old scope to its background
-        // shutdown and installs a fresh one, which also covers Stop -> Start on the
-        // same service instance, where session is already null.
-        if (session != null) stopSession()
-        startForeground(NOTIFICATION_ID, buildNotification())
-
         val name = intent.getStringExtra(EXTRA_NAME) ?: "network"
         val profile = NetworkProfile(
             name = name,
@@ -102,6 +107,17 @@ class SessionService : Service() {
                 runCatching { JoinPolicy.valueOf(it) }.getOrNull()
             } ?: JoinPolicy.PRIVATE,
         )
+        runSession(profile, listen = false)
+    }
+
+    private fun runSession(profile: NetworkProfile, listen: Boolean) {
+        // "Start" while a session is live restarts it (and "Restart" in the UI is
+        // no longer a silent no-op). stopSession hands the old scope to its background
+        // shutdown and installs a fresh one, which also covers Stop -> Start on the
+        // same service instance, where session is already null.
+        if (session != null) stopSession()
+        startForeground(NOTIFICATION_ID, buildNotification(listen))
+        listening = listen
 
         activeProfile = profile
         val deltaMs = Prefs.intervalMs(this)
@@ -122,7 +138,7 @@ class SessionService : Service() {
             ShareTransport(this),
         )
         val identityPair = IdentityHolder.keyPair(this)
-        val discovery = DiscoveryManager(profile, identityPair, { System.currentTimeMillis() })
+        val discovery = DiscoveryManager(profile, identityPair, { System.currentTimeMillis() }, advertise = !listen)
         discovery.ownerSecret = Prefs.secretFor(this, profile.networkId.bytes.joinToString("") { "%02x".format(it) })
         val clock = { System.currentTimeMillis() }
         val manager = SessionManager(
@@ -131,8 +147,9 @@ class SessionService : Service() {
             // Per-peer transport + up/down state: shown in the debug link log.
             edgeManager = EdgeManager(profile.myMemberId, clock),
             signer = identityPair,
+            beaconsEnabled = !listen,
         )
-        linkLog = LinkLog.open(this)?.also { log ->
+        linkLog = (if (listen) null else LinkLog.open(this))?.also { log ->
             linkLogFile = "Download/${LinkLog.FOLDER}/${log.fileName}"
             val sampler = LinkLogSampler(this, log, manager, bluetooth, wifiDirect, { lastFix }, deltaMs)
             manager.onEdgeDown = sampler::onEdgeDown
@@ -165,8 +182,7 @@ class SessionService : Service() {
             runCatching { discovery.onMgmtFrame(MgmtCodec.decode(wire)) }
             SessionBus.publishPending(discovery.pendingJoins.value)
             SessionBus.publishDiscovered(discovery.discovered.value)
-            val outcome = discovery.outcome.value
-            if (outcome != null) SessionBus.publishJoinOutcome(outcome)
+            discovery.outcome.value?.let(::onJoinOutcome)
             discovery.clearOutcome()
         }
         scope.launch {
@@ -178,8 +194,8 @@ class SessionService : Service() {
                 }
                 SessionBus.publishDiscovered(discovery.discovered.value)
                 SessionBus.publishPending(discovery.pendingJoins.value)
-                val outcome = discovery.outcome.value
-                if (outcome != null) { SessionBus.publishJoinOutcome(outcome); discovery.clearOutcome() }
+                discovery.outcome.value?.let(::onJoinOutcome)
+                discovery.clearOutcome()
             }
         }
         scope.launch {
@@ -198,7 +214,8 @@ class SessionService : Service() {
         manager.onFrameReceived = { plain, sender ->
             scope.launch { SessionBus.publishIncoming(plain, sender) }
         }
-        scope.launch {
+        // The throwaway listening network is not a network the screens should show.
+        if (!listen) scope.launch {
             manager.peerFlow.collect { peers -> SessionBus.publish(profile, peers, SessionBus.lastWireFrame.value) }
         }
         scope.launch {
@@ -246,6 +263,26 @@ class SessionService : Service() {
         activeDiscovery = discovery
         isRunning = true
         SessionBus.setSessionRunning(true)
+        SessionBus.setListening(listen)
+    }
+
+    /**
+     * Saved here, not in a screen, so a join approved while the app is in the background
+     * is not lost. When we were only listening, the joined network starts right away.
+     */
+    private fun onJoinOutcome(outcome: JoinOutcome) {
+        if (outcome is JoinOutcome.Joined) {
+            val id = ProfileStore.networkIdOf(outcome.secret).bytes.joinToString("") { "%02x".format(it) }
+            val existing = ProfileStore.load(this).firstOrNull { it.networkIdHex == id }
+            val stored = existing ?: (ProfileStore.join(outcome.name, outcome.secret) as? JoinResult.Ok)?.profile?.also {
+                ProfileStore.add(this, it)
+                Prefs.setSecretFor(this, it.networkIdHex, outcome.secret)
+                // FR-8.4: unverified until the human compares the SAS
+                Prefs.setUnverified(this, it.networkIdHex, true)
+            }
+            if (stored != null && listening) start(this, stored)
+        }
+        SessionBus.publishJoinOutcome(outcome)
     }
 
     // ------------------------------------------------------------------ SOS
@@ -387,6 +424,7 @@ class SessionService : Service() {
             runCatching { s?.stop() }
         }
         isRunning = false
+        listening = false
         // Wipe all session-scoped state: peers, the beacon buffer (lastWireFrame),
         // diagnostics, radio states, discovery — otherwise the screens keep showing
         // stale "data" text after the user turns everything off.
@@ -400,7 +438,7 @@ class SessionService : Service() {
         }
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(listen: Boolean): Notification {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= 26) {
             nm.createNotificationChannel(
@@ -415,7 +453,7 @@ class SessionService : Service() {
         return builder
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
             .setContentTitle("find me in wood")
-            .setContentText("Network session active")
+            .setContentText(if (listen) "Looking for networks to join" else "Network session active")
             .setOngoing(true)
             .build()
     }
@@ -431,6 +469,7 @@ class SessionService : Service() {
         const val ACTION_STOP = "com.icegood.findmeinwood.action.STOP"
         const val ACTION_SOS_START = "com.icegood.findmeinwood.action.SOS_START"
         const val ACTION_SOS_STOP = "com.icegood.findmeinwood.action.SOS_STOP"
+        const val ACTION_LISTEN = "com.icegood.findmeinwood.action.LISTEN"
         const val EXTRA_NAME = "name"
         const val EXTRA_NETWORK_ID = "networkId"
         const val EXTRA_TRAFFIC_KEY = "trafficKey"
@@ -439,6 +478,10 @@ class SessionService : Service() {
         const val EXTRA_POLICY = "policy"
 
         @Volatile var isRunning: Boolean = false
+            private set
+
+        /** Running only to find networks to join (no network of our own yet). */
+        @Volatile var listening: Boolean = false
             private set
 
         /** Debug builds: where the current session's link log is written (persists after stop). */
@@ -477,14 +520,20 @@ class SessionService : Service() {
          * first — SOS needs the network keys and wants the mesh beacons too.
          */
         fun startSos(context: Context, fallback: StoredProfile?): Boolean {
-            if (activeManager == null && fallback == null) return false
-            val i = if (activeManager != null) {
+            if ((activeManager == null || listening) && fallback == null) return false
+            val i = if (activeManager != null && !listening) {
                 Intent(context, SessionService::class.java)
             } else {
                 intentFor(context, fallback!!)
             }.setAction(ACTION_SOS_START)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)
             return true
+        }
+
+        /** Starts listening for networks to join; no-op while a session already runs. */
+        fun listen(context: Context) {
+            val i = Intent(context, SessionService::class.java).setAction(ACTION_LISTEN)
+            if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)
         }
 
         fun stopSos(context: Context) {

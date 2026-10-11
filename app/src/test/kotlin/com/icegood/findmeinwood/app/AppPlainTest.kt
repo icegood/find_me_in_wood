@@ -45,12 +45,10 @@ class SessionBusTest {
     }
 
     @Test
-    fun `join code is rebuilt from a secret learned over the air`() {
+    fun `a secret learned over the air joins the same network`() {
         val created = ProfileStore.create("wood", null) as CreateResult.Ok
-        val secret = created.joinCode.split("#")[1]
-        val rebuilt = ProfileStore.joinCodeOf("wood", secret)
-        assertEquals(created.joinCode, rebuilt)
-        assertTrue(ProfileStore.join(rebuilt) is JoinResult.Ok)
+        val joined = ProfileStore.join("wood", created.password) as JoinResult.Ok
+        assertEquals(created.profile.networkIdHex, joined.profile.networkIdHex)
     }
 
     @Test
@@ -118,21 +116,19 @@ class ProfileStoreDirTest {
     )
 
     @Test
-    fun `create derives join code with given passphrase`() {
-        val r = ProfileStore.create("wood", "correct horse battery") as CreateResult.Ok
+    fun `create derives the network from the given password`() {
+        val r = ProfileStore.create("wood", " correct horse battery staple again ") as CreateResult.Ok
         assertEquals("wood", r.profile.name)
         assertEquals(64, r.profile.trafficKeyHex.length)
-        assertTrue(r.joinCode.startsWith("wood#correct horse battery#"))
-        assertEquals(3, r.joinCode.split("#").size)
+        assertEquals("correct horse battery staple again", r.password, "surrounding spaces are dropped")
         assertEquals(16, r.profile.networkIdHex.length) // 8 bytes as hex
     }
 
     @Test
     fun `create generates a 130 bit secret when omitted`() {
         val r = ProfileStore.create("wood", null) as CreateResult.Ok
-        val secret = r.joinCode.split("#")[1]
-        assertEquals(26, secret.length) // 26 chars x 5 bits = 130 bits (FR-2.3)
-        assertTrue(secret.all { it in "abcdefghjkmnpqrstuvwxyz23456789" })
+        assertEquals(26, r.password.length) // 26 chars x 5 bits = 130 bits (FR-2.3)
+        assertTrue(r.password.all { it in "abcdefghjkmnpqrstuvwxyz23456789" })
     }
 
     @Test
@@ -151,24 +147,24 @@ class ProfileStoreDirTest {
     }
 
     @Test
-    fun `join with correct code derives the same network`() {
+    fun `join with the password derives the same network`() {
         val r = ProfileStore.create("wood", null) as CreateResult.Ok
-        val joined = ProfileStore.join(r.joinCode) as JoinResult.Ok
+        val joined = ProfileStore.join("my label", r.password) as JoinResult.Ok
         assertEquals(r.profile.networkIdHex, joined.profile.networkIdHex)
         assertEquals(r.profile.trafficKeyHex, joined.profile.trafficKeyHex)
-        assertEquals(r.profile.vtagHex, joined.profile.vtagHex)
+        assertEquals("my label", joined.profile.name)
         // each member keeps its own identity
         assertTrue(joined.profile.myMemberIdHex != r.profile.myMemberIdHex)
     }
 
     @Test
-    fun `join with wrong secret fails on vtag before any radio`() {
+    fun `wrong password for a network heard nearby fails before any radio`() {
         val r = ProfileStore.create("wood", null) as CreateResult.Ok
-        val parts = r.joinCode.split("#")
-        val bad = "${parts[0]}#${parts[1]}x#${parts[2]}"
-        assertTrue(ProfileStore.join(bad) is JoinResult.Error)
-        assertTrue(ProfileStore.join("garbage") is JoinResult.Error)
-        assertTrue(ProfileStore.join("a#b#nothex") is JoinResult.Error)
+        val heard = ProfileStore.networkIdOf(r.password)
+        assertTrue(ProfileStore.join("wood", r.password + "x", expected = heard) is JoinResult.Error)
+        assertTrue(ProfileStore.join("wood", r.password, expected = heard) is JoinResult.Ok)
+        assertTrue(ProfileStore.join("wood", "") is JoinResult.Error)
+        assertTrue(ProfileStore.join("", r.password) is JoinResult.Error)
     }
 
     @Test
@@ -243,13 +239,11 @@ class ProfileStoreDirTest {
     }
 }
 
-class JoinCodeSeparatorTest {
+class NetworkNameTest {
     @Test
-    fun `hash in name or passphrase is rejected so join codes stay parseable`() {
-        assertTrue(ProfileStore.create("camp#1", null) is CreateResult.Error)
-        assertTrue(ProfileStore.create("camp", "a#very#long#passphrase#here") is CreateResult.Error)
-        val ok = ProfileStore.create("camp", null) as CreateResult.Ok
-        assertTrue(ProfileStore.join(ok.joinCode) is JoinResult.Ok)
+    fun `any characters are fine in names and passwords now that there is no join code`() {
+        val ok = ProfileStore.create("camp#1", "a#very#long#passphrase#here") as CreateResult.Ok
+        assertEquals("camp#1", (ProfileStore.join("camp#1", ok.password) as JoinResult.Ok).profile.name)
     }
 }
 

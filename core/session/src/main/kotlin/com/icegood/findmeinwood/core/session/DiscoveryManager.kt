@@ -35,7 +35,8 @@ sealed interface JoinOutcome {
  * Pure Kotlin. Every frame carries the sender's device public key and is signed with
  * it; unsigned or badly signed frames are dropped. Keys are pinned to a member id on
  * first sight (trust-on-first-use), and any later frame from that id under a different
- * key is dropped. Join replies are only accepted from the owner the request targeted.
+ * key is dropped. Join replies are only accepted from a device that advertised the
+ * network we asked for (every member holds the secret, so any of them may answer).
  *
  * Key exchange: the joiner sends an ephemeral public key in JOIN_REQ; the owner answers
  * with its own ephemeral public key in JOIN_ACCEPT, so both sides derive the same ECDH
@@ -47,6 +48,8 @@ class DiscoveryManager(
     private val nowMs: () -> Long,
     private val helloIntervalMs: Long = 15_000,
     private val staleAfterMs: Long = 90_000,
+    /** False while only listening for networks to join: no HELLO of our own. */
+    private val advertise: Boolean = true,
 ) {
     // Mutators are @Synchronized: the app calls them from every transport collector (IO)
     // and from UI callbacks at the same time, and the state below is plain HashMaps.
@@ -75,8 +78,8 @@ class DiscoveryManager(
     private var myEphemeral: KeyPair? = null
     /** Network our outstanding JOIN_REQ targets: answers for any other network are ignored. */
     private var requestedNetworkId: NetworkId? = null
-    /** Owner advertised for [requestedNetworkId]; only it may accept or reject the request. */
-    private var requestedOwnerId: MemberId? = null
+    /** Devices that sent HELLO per network: only they may answer a join request for it. */
+    private val advertisers = HashMap<NetworkId, MutableSet<MemberId>>()
 
     private class JoinRequest(
         val joinerPub: ByteArray,
@@ -90,7 +93,7 @@ class DiscoveryManager(
 
     // ----------------------------------------------------------------- outgoing
 
-    fun helloDue(now: Long = nowMs()): Boolean = now - lastHelloAtMs >= helloIntervalMs
+    fun helloDue(now: Long = nowMs()): Boolean = advertise && now - lastHelloAtMs >= helloIntervalMs
 
     @Synchronized
     fun buildHello(activeTransports: List<TransportId>): ByteArray {
@@ -109,7 +112,6 @@ class DiscoveryManager(
     fun buildJoinRequest(peerNetworkId: NetworkId, joinerNick: String?): ByteArray {
         val ephemeral = JoinCrypto.ephemeralKeyPair().also { myEphemeral = it }
         requestedNetworkId = peerNetworkId
-        requestedOwnerId = _discovered.value.firstOrNull { it.networkId == peerNetworkId }?.ownerMemberId
         val payload = JoinRequestPayload(joinerPubkey = ephemeral.public.encoded, joinerNick = joinerNick)
         return send(MgmtType.JOIN_REQ, peerNetworkId, PayloadCodec.encodeJoinRequest(payload))
     }
@@ -174,6 +176,8 @@ class DiscoveryManager(
     private fun onHello(frame: MgmtFrame) {
         val payload = runCatching { PayloadCodec.decodeHello(frame.payload) }.getOrNull() ?: return
         if (payload.policy == JoinPolicy.CODE) return // hidden: never listed
+        if (frame.networkId == profile.networkId) return // our own network: nothing to join
+        advertisers.getOrPut(frame.networkId) { HashSet() } += frame.senderId
         val entry = DiscoveredNetwork(
             networkId = frame.networkId,
             name = payload.name,
@@ -223,7 +227,6 @@ class DiscoveryManager(
         // exactly the network we asked for, which nobody without the real secret can fake.
         if (NetworkKeysFactory.derive(secret.toByteArray()).networkId != frame.networkId) return
         requestedNetworkId = null
-        requestedOwnerId = null
         myEphemeral = null
         _outcome.value = JoinOutcome.Joined(payload.name, secret, sas)
     }
@@ -231,7 +234,6 @@ class DiscoveryManager(
     private fun onJoinReject(frame: MgmtFrame) {
         if (!isAnswerToMyRequest(frame)) return
         requestedNetworkId = null
-        requestedOwnerId = null
         myEphemeral = null
         val payload = runCatching { PayloadCodec.decodeJoinReject(frame.payload) }.getOrNull()
         _outcome.value = JoinOutcome.Rejected(payload?.reason ?: "rejected by owner")
@@ -239,8 +241,8 @@ class DiscoveryManager(
 
     private fun isAnswerToMyRequest(frame: MgmtFrame): Boolean {
         if (frame.networkId != requestedNetworkId) return false
-        val owner = requestedOwnerId ?: return true // network was never advertised to us
-        return frame.senderId == owner
+        val known = advertisers[frame.networkId] ?: return true // never advertised to us
+        return frame.senderId in known
     }
 
     @Synchronized
