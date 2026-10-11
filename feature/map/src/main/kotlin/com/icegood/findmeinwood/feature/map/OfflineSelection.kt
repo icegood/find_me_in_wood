@@ -98,7 +98,6 @@ fun estimateTiles(bbox: BoundingBox, zoomMin: Int, zoomMax: Int): Long {
  */
 fun clampZoomRange(
     providerMaxZoom: Int,
-    currentZoom: Int,
     requestedMin: Int,
     requestedMax: Int,
     bbox: BoundingBox,
@@ -111,9 +110,9 @@ fun clampZoomRange(
     var max = top
     while (min < max && estimateTiles(bbox, min, max) > maxTiles) max--
     if (estimateTiles(bbox, min, max) > maxTiles) min = max
-    // Never ask for a deeper zoom than the user is actually looking at: the extra levels
-    // are invisible on screen and dominate the tile count.
-    if (max > currentZoom && min <= currentZoom) max = currentZoom.coerceAtLeast(min)
+    // Deliberately not capped at the zoom currently on screen: an offline area is picked
+    // zoomed out (to frame a big chunk) but used zoomed in, on foot. The tile budget
+    // above is what keeps the request sane.
     return min..max
 }
 

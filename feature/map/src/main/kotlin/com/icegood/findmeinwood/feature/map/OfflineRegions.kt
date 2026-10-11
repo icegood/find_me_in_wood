@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.os.Handler
 import android.os.Looper
 import org.osmdroid.config.Configuration
+import org.osmdroid.config.IConfigurationProvider
 import org.osmdroid.tileprovider.cachemanager.CacheManager
 import org.osmdroid.tileprovider.modules.SqlTileWriter
 import org.osmdroid.util.BoundingBox
@@ -36,6 +37,25 @@ data class ProviderStat(
     val tileCount: Int,
     val sizeBytes: Long,
 )
+
+/** Upper bound for the tile cache (cache.db) before osmdroid starts trimming it. */
+private const val TILE_CACHE_MAX_BYTES = 4L shl 30 // 4 GB
+private const val TILE_CACHE_TRIM_BYTES = 3L shl 30
+
+/**
+ * One place for osmdroid's global configuration (paths, user agent, cache size).
+ *
+ * osmdroid's defaults (600 MB, trimmed to 500 MB, oldest tiles first) silently evict saved
+ * offline areas once a few big ones exist, so the cache is allowed to grow much larger;
+ * osmdroid still caps it by the free space on the device.
+ */
+internal fun configureOsmdroid(ctx: Context): IConfigurationProvider = Configuration.getInstance().apply {
+    userAgentValue = ctx.packageName
+    osmdroidBasePath = File(ctx.filesDir, "osmdroid")
+    osmdroidTileCache = File(osmdroidBasePath, "tiles")
+    tileFileSystemCacheMaxBytes = TILE_CACHE_MAX_BYTES
+    tileFileSystemCacheTrimBytes = TILE_CACHE_TRIM_BYTES
+}
 
 /** Persistent store + cache helpers for the offline map areas. */
 object OfflineRegions {
@@ -202,12 +222,7 @@ object OfflineRegions {
         }
     }
 
-    private fun cacheDir(ctx: Context): File {
-        val cfg = Configuration.getInstance()
-        cfg.osmdroidBasePath = File(ctx.filesDir, "osmdroid")
-        cfg.osmdroidTileCache = File(cfg.osmdroidBasePath, "tiles")
-        return cfg.osmdroidTileCache
-    }
+    private fun cacheDir(ctx: Context): File = configureOsmdroid(ctx).osmdroidTileCache
 
     // '|' is the field separator: a user-typed name containing it made the record
     // undecodable, and load() then silently dropped the area.

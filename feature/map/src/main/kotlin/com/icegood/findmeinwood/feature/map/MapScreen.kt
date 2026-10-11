@@ -72,7 +72,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.flow.StateFlow
 import org.osmdroid.api.IGeoPoint
-import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
@@ -81,7 +80,7 @@ import org.osmdroid.tileprovider.MapTileProviderBasic
 import org.osmdroid.tileprovider.cachemanager.CacheManager
 import org.osmdroid.tileprovider.modules.MBTilesFileArchive
 import org.osmdroid.tileprovider.modules.MapTileFileArchiveProvider
-import org.osmdroid.tileprovider.modules.MapTileFilesystemProvider
+import org.osmdroid.tileprovider.modules.MapTileSqlCacheProvider
 import org.osmdroid.tileprovider.modules.MapTileModuleProviderBase
 import org.osmdroid.tileprovider.modules.SqlTileWriter
 import org.osmdroid.tileprovider.tilesource.XYTileSource
@@ -186,10 +185,12 @@ private fun OfflineAreaDialog(
     var name by remember(bbox) { mutableStateOf(initialName) }
     // Default to the level the user is actually looking at: deeper levels are invisible and
     // would dominate the tile count, so the slider starts there rather than at the max.
-    var zoomMax by remember(bbox, currentZoom) { mutableIntStateOf(currentZoom.coerceIn(MIN_ZOOM, PROVIDER_MAX_ZOOM)) }
-    val range = remember(bbox, zoomMax, currentZoom) {
-        clampZoomRange(PROVIDER_MAX_ZOOM, currentZoom, MIN_ZOOM, zoomMax, bbox)
+    // Default to walking detail even when the area was framed zoomed out; the tile budget
+    // trims it back if the area is too big for that.
+    var zoomMax by remember(bbox, currentZoom) {
+        mutableIntStateOf(currentZoom.coerceAtLeast(DETAIL_ZOOM).coerceIn(MIN_ZOOM, PROVIDER_MAX_ZOOM))
     }
+    val range = remember(bbox, zoomMax) { clampZoomRange(PROVIDER_MAX_ZOOM, MIN_ZOOM, zoomMax, bbox) }
     val tiles = remember(bbox, range) { estimateTiles(bbox, range.first, range.last) }
     val zoomCapped = zoomMax > range.last
 
@@ -223,7 +224,7 @@ private fun OfflineAreaDialog(
                 }
                 Text(
                     "zoom ${range.first}–${range.last} · ${estimateLabel(tiles)}" +
-                        if (zoomCapped) "\nlimited to zoom ${range.last} (deeper levels are off-screen or too many tiles)" else "",
+                        if (zoomCapped) "\nlimited to zoom ${range.last}: deeper levels exceed $MAX_TILES_PER_AREA tiles" else "",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -238,6 +239,8 @@ private fun OfflineAreaDialog(
 }
 
 private const val MIN_ZOOM = 8
+/** Street/trail detail needed on foot; the default deepest level of an offline area. */
+private const val DETAIL_ZOOM = 17
 private const val INITIAL_ZOOM = 15.0
 private const val PROVIDER_MAX_ZOOM = 19
 
@@ -571,7 +574,9 @@ fun MapScreen(
                         style = MaterialTheme.typography.bodySmall,
                     )
                     if (area != null) {
-                        val preview = clampZoomRange(PROVIDER_MAX_ZOOM, mapZoom, MIN_ZOOM, mapZoom, area)
+                        val preview = clampZoomRange(
+                            PROVIDER_MAX_ZOOM, MIN_ZOOM, mapZoom.coerceAtLeast(DETAIL_ZOOM), area,
+                        )
                         Text(
                             "zoom ${preview.first}–${preview.last} · ${estimateLabel(estimateTiles(area, preview.first, preview.last))}",
                             style = MaterialTheme.typography.labelSmall,
@@ -687,10 +692,7 @@ fun startOfflineDownload(
     Thread {
         var ui = DownloadUi(title)
         try {
-            val cfg = Configuration.getInstance()
-            cfg.userAgentValue = context.packageName
-            cfg.osmdroidBasePath = File(context.filesDir, "osmdroid")
-            cfg.osmdroidTileCache = File(cfg.osmdroidBasePath, "tiles")
+            configureOsmdroid(context)
             // The key is part of the URL, never the source name, so it can't affect cache identity.
             val cm = CacheManager(buildTileSource(provider, apiKey), SqlTileWriter(), zoomMin, zoomMax)
             val total = cm.possibleTilesInArea(area, zoomMin, zoomMax)
@@ -720,7 +722,9 @@ fun startOfflineDownload(
                             onProgress(ui, cm)
                         }
                     }
-                    override fun onTaskComplete() = saveRegion { ui.copy(done = ui.total, finished = true) }
+                    override fun onTaskComplete() = saveRegion {
+                        ui.copy(title = "Saved \"$name\" for offline use", done = ui.total, finished = true)
+                    }
                     // osmdroid passes the number of failed tile downloads, not an error code.
                     override fun onTaskFailed(errors: Int) = saveRegion {
                         ui.copy(
@@ -893,10 +897,7 @@ private fun createMapView(
     provider: TileProvider,
     apiKey: String,
 ): MapView {
-    val cfg = Configuration.getInstance()
-    cfg.userAgentValue = context.packageName
-    cfg.osmdroidBasePath = File(context.filesDir, "osmdroid")
-    cfg.osmdroidTileCache = File(cfg.osmdroidBasePath, "tiles")
+    configureOsmdroid(context)
 
     val archive = context.getExternalFilesDir(null)?.let { File(it, "maps/offline.mbtiles") }
     val haveArchive = archive?.exists() == true
@@ -910,16 +911,18 @@ private fun createMapView(
         if (source == TileSource.OFFLINE) {
             val src = XYTileSource("mbtiles", 0, 19, 256, ".png", arrayOf())
             val providers = mutableListOf<MapTileModuleProviderBase>()
-            // MBTiles archive takes priority, then the on-device tile cache so
-            // anything previously downloaded with the network is still usable
-            // while fully offline.
+            // MBTiles archive takes priority, then the on-device tile cache so saved
+            // offline areas (and anything viewed online) are usable while fully offline.
+            // Downloads and online browsing both go to osmdroid's SQLite cache (cache.db),
+            // so that is what must be read here — the folder-based filesystem provider
+            // never sees those tiles and the map stayed an empty grid.
             if (haveArchive) {
                 providers += MapTileFileArchiveProvider(
                     SimpleRegisterReceiver(context), src,
                     arrayOf(MBTilesFileArchive.getDatabaseFileArchive(archive!!)),
                 )
             }
-            providers += MapTileFilesystemProvider(SimpleRegisterReceiver(context), tiles)
+            providers += MapTileSqlCacheProvider(SimpleRegisterReceiver(context), tiles)
             tileProvider = MapTileProviderArray(tiles, SimpleRegisterReceiver(context), providers.toTypedArray())
             setUseDataConnection(false)
         } else {

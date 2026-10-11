@@ -88,14 +88,14 @@ class OfflineSelectionTest {
     @Test
     fun `clamped zoom range never exceeds the provider maximum`() {
         val bb = BoundingBox(50.02, 30.02, 50.0, 30.0)
-        val r = clampZoomRange(providerMaxZoom = 17, currentZoom = 17, requestedMin = 10, requestedMax = 19, bbox = bb)
+        val r = clampZoomRange(providerMaxZoom = 17, requestedMin = 10, requestedMax = 19, bbox = bb)
         assertTrue(r.last <= 17, "got $r")
     }
 
     @Test
     fun `clamped zoom range is empty-safe and ordered`() {
         val bb = BoundingBox(50.02, 30.02, 50.0, 30.0)
-        val r = clampZoomRange(providerMaxZoom = 19, currentZoom = 17, requestedMin = 15, requestedMax = 12, bbox = bb)
+        val r = clampZoomRange(providerMaxZoom = 19, requestedMin = 15, requestedMax = 12, bbox = bb)
         assertTrue(r.first <= r.last, "got $r")
         assertTrue(r.first >= MIN_ZOOM_FLOOR, "got $r")
     }
@@ -105,7 +105,7 @@ class OfflineSelectionTest {
         // A deliberately oversized request must come back affordable, not stay at 0..19.
         val wide = BoundingBox(51.0, 31.0, 50.0, 30.0)
         val r = clampZoomRange(
-            providerMaxZoom = 19, currentZoom = 19, requestedMin = 8, requestedMax = 19, bbox = wide,
+            providerMaxZoom = 19, requestedMin = 8, requestedMax = 19, bbox = wide,
         )
         val exact = (r.first..r.last).sumOf { estimateTilesAtZoom(wide, it) }
         assertTrue(exact <= MAX_TILES_PER_AREA, "got $r with $exact tiles")
@@ -113,10 +113,12 @@ class OfflineSelectionTest {
     }
 
     @Test
-    fun `zoom range does not go deeper than the current view`() {
-        val bb = BoundingBox(50.02, 30.02, 50.0, 30.0)
-        val r = clampZoomRange(providerMaxZoom = 19, currentZoom = 14, requestedMin = 10, requestedMax = 19, bbox = bb)
-        assertTrue(r.last <= 14, "should not fetch invisible levels, got $r")
+    fun `a big area framed zoomed out still gets walking detail when it fits the budget`() {
+        // ~4.5 x 4.5 km, the kind of chunk picked at zoom 13-14 and used on foot at 17.
+        val bb = BoundingBox(50.02, 30.06, 49.98, 30.0)
+        val r = clampZoomRange(providerMaxZoom = 19, requestedMin = 8, requestedMax = 17, bbox = bb)
+        assertEquals(17, r.last, "got $r")
+        assertTrue(estimateTiles(bb, r.first, r.last) <= MAX_TILES_PER_AREA)
     }
 
     @Test
