@@ -16,8 +16,8 @@ android {
         applicationId = "com.icegood.findmeinwoods"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1"
+        versionCode = 2
+        versionName = "0.2.0"
 
         val googleClientId = (project.findProperty("google.webClientId") as String?)
             ?: properties["google.webClientId"] as String? ?: ""
@@ -52,6 +52,12 @@ android {
         }
     }
     buildTypes {
+        debug {
+            // Debug builds carry the field-test link log. Signing them with the same key
+            // lets them install over a release build (and vice versa) without an
+            // uninstall wiping app data. Without keystore.properties: AGP's debug key.
+            signingConfigs.findByName("release")?.let { signingConfig = it }
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
