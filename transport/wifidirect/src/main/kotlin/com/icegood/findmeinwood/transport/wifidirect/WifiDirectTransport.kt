@@ -31,9 +31,15 @@ import kotlinx.coroutines.launch
  * framing [u32be len][frame], one socket per peer, send fans out.
  *
  * Decision logic only — every framework call goes through [WifiDirectWiring], which
- * is why group formation is testable as plain JVM. Roles: [setPreferGroupOwner]
- * makes this device host the group (createGroup, TCP server, 192.168.49.1);
- * otherwise it joins as a client and dials the owner.
+ * is why group formation is testable as plain JVM.
+ *
+ * The group runs under [GroupCredentials] derived from the network's secret: members
+ * join it with name + passphrase (a WPA2 login, not an invitation), so no system dialog
+ * appears on either phone and devices outside the network are never contacted. Roles:
+ * a phone first tries to join for a randomised window; if no member hosts yet it hosts
+ * itself. A host nobody joins gives the group up after a while and tries joining again,
+ * which resolves two phones that started hosting at the same time. [setPreferGroupOwner]
+ * makes this phone always host.
  */
 class WifiDirectTransport(
     private val context: Context,
@@ -56,6 +62,14 @@ class WifiDirectTransport(
     private var lastDiscoverAtMs = 0L
     private var createPending = false
     private var createRequestedAtMs = 0L
+    private var joinPending = false
+    private var joinRequestedAtMs = 0L
+    /** Group credentials of this network; null = no secret, so no group at all. */
+    @Volatile private var creds: GroupCredentials? = null
+    /** Until then try joining a member's group; afterwards host one. */
+    private var hostAfterMs = 0L
+    /** Since when this phone hosts a group nobody joined. */
+    private var hostingAloneSinceMs = 0L
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var channel: WifiP2pManager.Channel? = null
@@ -69,7 +83,7 @@ class WifiDirectTransport(
     /** Host the group: this device owns 192.168.49.1 and peers join it. */
     fun setPreferGroupOwner(v: Boolean) {
         preferOwner = v
-        if (v && running) createGroup()
+        if (v && running) formGroup()
     }
 
     fun isGroupOwner(): Boolean = preferOwner
@@ -81,6 +95,8 @@ class WifiDirectTransport(
         if (!running) {
             running = true
             startMs = System.currentTimeMillis()
+            creds = config.groupSecret?.let { GroupCredentials.from(it) }
+            hostAfterMs = startMs + joinWindowMs()
             try {
                 channel = wiring.initialize()
                 // No channel = no P2P (missing permission, Wi-Fi off, unsupported):
@@ -89,9 +105,8 @@ class WifiDirectTransport(
                 registerReceiver()
                 startAcceptLoop()
                 discover()
-                requestPeerList()
                 requestConnectionInfo()
-                if (preferOwner) createGroup()
+                formGroup()
                 startPoll()
                 emit(RadioState.SCANNING)
             } catch (e: Exception) {
@@ -144,15 +159,11 @@ class WifiDirectTransport(
         if (receiver != null) return
         receiver = wiring.register(
             onWifiState = { on -> if (!on) dropGroup() },
-            onPeers = { requestPeerList() },
+            onPeers = {},
             onConnection = { requestConnectionInfo() },
         )
     }
 
-    /**
-     * Discovery also makes this device visible: a host that does not scan is never
-     * found by its peers, so both roles scan — only dialing is host-forbidden.
-     */
     /**
      * A discovery window lasts ~120 s: re-arming it every poll only yields BUSY,
      * which used to be reported as a dead link.
@@ -178,9 +189,11 @@ class WifiDirectTransport(
                 expirePending()
                 if (!groupFormed) {
                     if (channel == null) channel = wiring.initialize() // self-heal
-                    if (preferOwner) createGroup() else discover()
+                    discover()
+                    formGroup()
+                } else {
+                    yieldIdleHost()
                 }
-                requestPeerList()
                 requestConnectionInfo()
                 // A disabled/ignoring P2P stack never answers: say so instead of
                 // advertising a scan that is not happening (FR-3.6a failover).
@@ -210,44 +223,68 @@ class WifiDirectTransport(
         }
     }
 
+    /** Join a member's group, or host one once the join window is over (or by preference). */
+    private fun formGroup() {
+        if (creds == null || groupFormed) return
+        if (preferOwner || System.currentTimeMillis() >= hostAfterMs) createGroup() else joinGroup()
+    }
+
+    private fun joinGroup() {
+        val c = creds ?: return
+        if (joinPending && System.currentTimeMillis() - joinRequestedAtMs < PENDING_TIMEOUT_MS) return
+        joinPending = true
+        joinRequestedAtMs = System.currentTimeMillis()
+        wiring.join(channel, c) { result ->
+            if (result != P2pResult.OK) joinPending = false
+            requestConnectionInfo()
+        }
+    }
+
     private fun createGroup() {
+        val c = creds ?: return
         if (createPending && System.currentTimeMillis() - createRequestedAtMs < PENDING_TIMEOUT_MS) return
         createPending = true
         createRequestedAtMs = System.currentTimeMillis()
-        wiring.createGroup(channel) {
+        wiring.createGroup(channel, c) {
             createPending = false
             requestConnectionInfo()
         }
     }
 
+    /**
+     * A host nobody joined for a while gives the group up and goes back to joining: when
+     * two phones started hosting at once, one of them ends up in the other's group.
+     */
+    private fun yieldIdleHost() {
+        if (preferOwner || !isOwnerNow || sockets.isNotEmpty()) {
+            hostingAloneSinceMs = 0L
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (hostingAloneSinceMs == 0L) hostingAloneSinceMs = now
+        if (now - hostingAloneSinceMs >= hostIdleMs()) {
+            hostingAloneSinceMs = 0L
+            wiring.removeGroup(channel)
+            dropGroup()
+            hostAfterMs = now + joinWindowMs()
+        }
+    }
+
+    @Volatile private var isOwnerNow = false
+
+    /** Randomised so two phones do not keep making the same choice at the same moment. */
+    private fun joinWindowMs() = JOIN_WINDOW_MS + Random.nextLong(JOIN_WINDOW_MS)
+    private fun hostIdleMs() = HOST_IDLE_MS + Random.nextLong(HOST_IDLE_MS)
+
     private fun dropGroup() {
         if (!groupFormed && !ready) return
+        joinPending = false
+        isOwnerNow = false
         groupFormed = false
         ready = false
         sockets.values.forEach { runCatching { it.close() } }
         sockets.clear()
         emit(RadioState.LINK_DOWN)
-    }
-
-    private fun requestPeerList() {
-        // A formed group is complete: as owner peers dial us, as client we joined it.
-        if (groupFormed) return
-        wiring.requestPeers(channel) { peers ->
-            if (!running || groupFormed) return@requestPeers
-            peers.forEach { key ->
-                if (sockets.containsKey(key) || !connecting.add(key)) return@forEach
-                // The host does not dial out: it created the group, peers join it.
-                if (preferOwner) {
-                    connecting.remove(key)
-                    return@forEach
-                }
-                requestedAt[key] = System.currentTimeMillis()
-                wiring.connect(channel, key, Random.nextInt(16)) { result ->
-                    requestedAt.remove(key)
-                    if (result != P2pResult.OK) connecting.remove(key)
-                }
-            }
-        }
     }
 
     private fun requestConnectionInfo() {
@@ -258,6 +295,8 @@ class WifiDirectTransport(
                 return@requestConnectionInfo
             }
             groupFormed = true
+            joinPending = false
+            isOwnerNow = info.isOwner
             startAcceptLoop()
             if (!ready) { ready = true; emit(RadioState.READY) }
             if (!info.isOwner) {
@@ -289,6 +328,7 @@ class WifiDirectTransport(
             dead
         }
         if (createPending && now - createRequestedAtMs > PENDING_TIMEOUT_MS) createPending = false
+        if (joinPending && now - joinRequestedAtMs > PENDING_TIMEOUT_MS) joinPending = false
     }
 
     private fun registerSocket(s: Socket) {
@@ -322,6 +362,10 @@ class WifiDirectTransport(
         internal const val DISCOVER_INTERVAL_MS = 60_000L
         internal const val PENDING_TIMEOUT_MS = 30_000L
         private const val POLL_MS = 10_000L
+        /** Base time a phone tries to join before hosting itself (randomised up to 2x). */
+        internal var JOIN_WINDOW_MS = 20_000L
+        /** Base time a host stays alone before giving the group up (randomised up to 2x). */
+        internal var HOST_IDLE_MS = 60_000L
         private const val CONNECT_TIMEOUT_MS = 5_000
     }
 }

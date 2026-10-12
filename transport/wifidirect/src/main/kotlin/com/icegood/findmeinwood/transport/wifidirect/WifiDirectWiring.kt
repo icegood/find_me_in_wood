@@ -16,6 +16,23 @@ import java.net.Socket
 /** Outcome of a P2P request: BUSY means "already running", not a failure. */
 enum class P2pResult { OK, BUSY, FAILED }
 
+/**
+ * Credentials of the network's Wi-Fi Direct group, derived from a secret only members know.
+ * Joining with them is a WPA2 login, not an invitation: neither phone shows a dialog, and
+ * phones outside the network cannot join.
+ */
+data class GroupCredentials(val networkName: String, val passphrase: String) {
+    companion object {
+        /** Android requires "DIRECT-" + two characters; the passphrase must be 8–63 chars. */
+        fun from(secret: ByteArray): GroupCredentials {
+            require(secret.size >= 20) { "secret too short" }
+            val tag = secret.copyOfRange(0, 4).joinToString("") { "%02x".format(it) }
+            val pass = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(secret.copyOfRange(4, 20))
+            return GroupCredentials("DIRECT-fm-$tag", pass)
+        }
+    }
+}
+
 /** Group state as reported by the framework (kept free of platform value types). */
 data class GroupInfo(
     val formed: Boolean,
@@ -73,28 +90,38 @@ open class WifiDirectWiring(private val context: Context) {
         }
     }
 
-    @Suppress("DEPRECATION")
-    open fun connect(
+    /** Joins the group with [creds] (no invitation, so no dialog on either phone). */
+    open fun join(
         channel: WifiP2pManager.Channel?,
-        address: String,
-        ownerIntent: Int,
+        creds: GroupCredentials,
         done: (P2pResult) -> Unit,
     ) {
         val m = manager ?: return
         val ch = channel ?: return
         runCatching {
-            val config = WifiP2pConfig().apply {
-                deviceAddress = address
-                groupOwnerIntent = ownerIntent
-            }
+            val config = WifiP2pConfig.Builder()
+                .setNetworkName(creds.networkName)
+                .setPassphrase(creds.passphrase)
+                .build()
             m.connect(ch, config, action(done))
         }.onFailure { done(P2pResult.FAILED) }
     }
 
-    open fun createGroup(channel: WifiP2pManager.Channel?, done: (P2pResult) -> Unit) {
+    /** Hosts the group under [creds], so members can join it without a dialog. */
+    open fun createGroup(
+        channel: WifiP2pManager.Channel?,
+        creds: GroupCredentials,
+        done: (P2pResult) -> Unit,
+    ) {
         val m = manager ?: return
         val ch = channel ?: return
-        runCatching { m.createGroup(ch, action(done)) }.onFailure { done(P2pResult.FAILED) }
+        runCatching {
+            val config = WifiP2pConfig.Builder()
+                .setNetworkName(creds.networkName)
+                .setPassphrase(creds.passphrase)
+                .build()
+            m.createGroup(ch, config, action(done))
+        }.onFailure { done(P2pResult.FAILED) }
     }
 
     open fun removeGroup(channel: WifiP2pManager.Channel?) {

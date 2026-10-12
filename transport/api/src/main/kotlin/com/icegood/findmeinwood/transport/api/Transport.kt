@@ -28,6 +28,11 @@ sealed interface SendResult {
 data class SessionConfig(
     val networkId: NetworkId,
     val transports: Set<TransportId>,
+    /**
+     * Secret only members of the network know (derived from its traffic key): radios
+     * that need credentials (the Wi-Fi Direct group) derive them from it.
+     */
+    val groupSecret: ByteArray? = null,
 )
 
 interface Transport {

@@ -14,15 +14,12 @@ internal open class FakeWiring : WifiDirectWiring(
 ) {
     val peerCallbacks = mutableListOf<(List<String>) -> Unit>()
     val infoCallbacks = mutableListOf<(GroupInfo) -> Unit>()
-    val connectAddresses = mutableListOf<String>()
-    val connectIntents = mutableListOf<Int>()
     var createGroupCalls = 0
     var removeGroupCalls = 0
     var discoverCalls = 0
     var boundPort: Int? = null
     var failBind = false
     var socketToReturn: Socket? = null
-    var failConnect = false
 
     override fun initialize(): WifiP2pManager.Channel? =
         org.mockito.Mockito.mock(WifiP2pManager.Channel::class.java)
@@ -43,19 +40,18 @@ internal open class FakeWiring : WifiDirectWiring(
         infoCallbacks += info
     }
 
-    override fun connect(
-        channel: WifiP2pManager.Channel?,
-        address: String,
-        ownerIntent: Int,
-        done: (P2pResult) -> Unit,
-    ) {
-        connectAddresses += address
-        connectIntents += ownerIntent
-        done(if (failConnect) P2pResult.FAILED else P2pResult.OK)
+    val joins = mutableListOf<GroupCredentials>()
+    val created = mutableListOf<GroupCredentials>()
+    var failJoin = false
+
+    override fun join(channel: WifiP2pManager.Channel?, creds: GroupCredentials, done: (P2pResult) -> Unit) {
+        joins += creds
+        done(if (failJoin) P2pResult.FAILED else P2pResult.OK)
     }
 
-    override fun createGroup(channel: WifiP2pManager.Channel?, done: (P2pResult) -> Unit) {
+    override fun createGroup(channel: WifiP2pManager.Channel?, creds: GroupCredentials, done: (P2pResult) -> Unit) {
         createGroupCalls++
+        created += creds
         done(P2pResult.OK)
     }
 

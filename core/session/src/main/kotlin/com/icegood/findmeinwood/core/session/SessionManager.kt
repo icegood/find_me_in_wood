@@ -189,7 +189,14 @@ class SessionManager(
         if (running.value) return
         running.value = true
         val flows = transports.map { t ->
-            t to t.start(SessionConfig(profile.networkId, transports.map { it.id }.toSet()))
+            t to t.start(
+                SessionConfig(
+                    profile.networkId, transports.map { it.id }.toSet(),
+                    groupSecret = com.icegood.findmeinwood.core.crypto.Hkdf.derive(
+                        profile.trafficKey, ByteArray(32), "fmiw-wifi-direct-group".toByteArray(), 32,
+                    ),
+                ),
+            )
         }
         flows.forEach { (t, flow) ->
             jobs += scope.launch {
