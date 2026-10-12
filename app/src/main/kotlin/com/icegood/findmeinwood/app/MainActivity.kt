@@ -270,6 +270,15 @@ class MainActivity : ComponentActivity() {
                         onRename = { id, name -> MemberNames.rename(this@MainActivity, id, name) },
                         onSelectLink = { id, t -> SessionService.activeManager?.selectLink(id, t) },
                         onConfirmLink = { id -> SessionService.activeManager?.confirmLinks(id) },
+                        linkStatuses = SessionBus.linkStatuses.collectAsState().value,
+                        onLinkFix = { fix ->
+                            when (fix) {
+                                com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_BLUETOOTH -> turnOnBluetooth()
+                                com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_WIFI -> turnOnWifi()
+                                com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER -> tab = "settings"
+                                com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS -> smsPermissionLauncher.launch(smsPermissions)
+                            }
+                        },
                         emptyText = if (profile == null) {
                             "No network running. Start one in Networks to see its members here."
                         } else {
@@ -528,26 +537,30 @@ class MainActivity : ComponentActivity() {
             }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Location") }
         }
         if (btOff) {
-            OutlinedButton(onClick = {
-                runCatching {
-                    startActivity(android.content.Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE))
-                }.onFailure { startActivity(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)) }
-            }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Bluetooth") }
+            OutlinedButton(onClick = { turnOnBluetooth() }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Bluetooth") }
         }
         if (wifiOff) {
             Text(
                 "Wi-Fi is off: Wi-Fi Direct (longer range, photos) cannot work. No Wi-Fi network is needed, only Wi-Fi on.",
                 style = MaterialTheme.typography.bodySmall,
             )
-            OutlinedButton(onClick = {
-                startActivity(
-                    android.content.Intent(
-                        if (Build.VERSION.SDK_INT >= 29) android.provider.Settings.Panel.ACTION_WIFI
-                        else android.provider.Settings.ACTION_WIFI_SETTINGS,
-                    ),
-                )
-            }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Wi-Fi") }
+            OutlinedButton(onClick = { turnOnWifi() }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Wi-Fi") }
         }
+    }
+
+    private fun turnOnBluetooth() {
+        runCatching {
+            startActivity(android.content.Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE))
+        }.onFailure { startActivity(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)) }
+    }
+
+    private fun turnOnWifi() {
+        startActivity(
+            android.content.Intent(
+                if (Build.VERSION.SDK_INT >= 29) android.provider.Settings.Panel.ACTION_WIFI
+                else android.provider.Settings.ACTION_WIFI_SETTINGS,
+            ),
+        )
     }
 
     /** Shows a network's password, to read out or send to someone who should join. */

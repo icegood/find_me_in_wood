@@ -65,6 +65,23 @@ data class LinkOffer(
     val addr: String? = null,
 )
 
+/** What the user can do on this phone to make an unavailable link usable. */
+enum class LinkFix { TURN_ON_BLUETOOTH, TURN_ON_WIFI, SET_PHONE_NUMBER, ALLOW_SMS }
+
+/**
+ * One supported link as seen on this phone, for the member list: usable now (reason null,
+ * then it is offered in the handshake) or why not, and what fixes it. [transport] is null
+ * for a note that is not a link of its own (satellite is carried by SMS).
+ */
+data class LinkStatus(
+    val label: String,
+    val transport: TransportId?,
+    val reason: String? = null,
+    val fix: LinkFix? = null,
+    /** What a peer needs to reach us on [transport] (SMS: our number). */
+    val addr: String? = null,
+)
+
 /** LNP/3 handshake: acknowledges the set of transports agreed with one peer, by hash. */
 @kotlinx.serialization.Serializable
 data class LinkAck(

@@ -84,4 +84,27 @@ class MapMathTest {
         kotlin.test.assertEquals(200, radioBoundM(1877.0, com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT, heardRecently = true))
         kotlin.test.assertEquals(null, radioRangeM(com.icegood.findmeinwood.core.model.TransportId.SMS))
     }
+
+    @Test
+    fun `unavailable links - off here, not offered by them, and notes last`() {
+        val st = listOf(
+            com.icegood.findmeinwood.core.model.LinkStatus("Bluetooth", com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH),
+            com.icegood.findmeinwood.core.model.LinkStatus("Wi-Fi Direct", com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT),
+            com.icegood.findmeinwood.core.model.LinkStatus("SMS", com.icegood.findmeinwood.core.model.TransportId.SMS, "set this phone's number"),
+            com.icegood.findmeinwood.core.model.LinkStatus("Satellite", null, "not supported before Android 15"),
+        )
+        val peer = com.icegood.findmeinwood.core.session.PeerState(
+            com.icegood.findmeinwood.core.model.MemberId(ByteArray(32)), nickname = "Ira", lastSeenMs = 0, lastSeq = 0u,
+        )
+        kotlin.test.assertEquals(
+            listOf("SMS" to "set this phone's number", "Satellite" to "not supported before Android 15"),
+            unavailableLinks(peer, st), "offers not known yet: only what is off here",
+        )
+        val agreed = peer.copy(link = com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH, linkOptions = listOf(com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH))
+        kotlin.test.assertEquals(
+            listOf("Wi-Fi Direct" to "not offered by Ira", "SMS" to "set this phone's number", "Satellite" to "not supported before Android 15"),
+            unavailableLinks(agreed, st),
+        )
+        kotlin.test.assertEquals("Set number", fixLabel(com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER))
+    }
 }

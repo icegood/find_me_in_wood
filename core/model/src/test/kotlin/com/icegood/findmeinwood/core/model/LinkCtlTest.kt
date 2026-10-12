@@ -27,4 +27,15 @@ class LinkCtlTest {
         assertEquals(LinkCtl(), LinkCtl(v = 3, offers = emptyList(), acks = emptyList(), sel = emptyList()))
         assertEquals("+1", LinkOffer(TransportId.SMS, "+1").copy().addr)
     }
+
+    @Test
+    fun `link status - usable without a reason, greyed with one`() {
+        val ok = LinkStatus("SMS", TransportId.SMS, addr = "+1")
+        assertEquals(null, ok.reason)
+        assertEquals(null, ok.fix)
+        val off = ok.copy(reason = "set this phone's number", fix = LinkFix.SET_PHONE_NUMBER, addr = null)
+        kotlin.test.assertNotEquals(ok, off)
+        assertEquals(4, LinkFix.entries.size)
+        assertEquals(LinkFix.ALLOW_SMS, LinkFix.valueOf("ALLOW_SMS"))
+    }
 }

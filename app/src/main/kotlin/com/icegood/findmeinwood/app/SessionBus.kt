@@ -46,6 +46,11 @@ object SessionBus {
     private val _radioStates = MutableStateFlow<Map<com.icegood.findmeinwood.core.model.TransportId, com.icegood.findmeinwood.transport.api.RadioState>>(emptyMap())
     val radioStates: StateFlow<Map<com.icegood.findmeinwood.core.model.TransportId, com.icegood.findmeinwood.transport.api.RadioState>> = _radioStates
 
+    /** Every supported link on this phone, usable or greyed with the reason. */
+    private val _linkStatuses = MutableStateFlow<List<com.icegood.findmeinwood.core.model.LinkStatus>>(emptyList())
+    val linkStatuses: StateFlow<List<com.icegood.findmeinwood.core.model.LinkStatus>> = _linkStatuses
+    fun publishLinkStatuses(list: List<com.icegood.findmeinwood.core.model.LinkStatus>) { _linkStatuses.value = list }
+
     private val _ownerNote = MutableStateFlow<String?>(null)
     val ownerNote: StateFlow<String?> = _ownerNote
 
@@ -99,6 +104,7 @@ object SessionBus {
         // _joinOutcome survives on purpose: a successful join restarts the session on the
         // joined network, and the joiner still has to compare the code shown with it.
         _radioStates.value = emptyMap()
+        _linkStatuses.value = emptyList()
         // Swap out the chat replay buffer entirely: a stale session's payloads must
         // not replay into a fresh collector after Stop (same "buffer still shown"
         // class of bug, but for messages).

@@ -270,7 +270,9 @@ class SessionService : Service() {
         smsSentAt.clear()
         scope.launch {
             while (true) {
-                links.setOffers(currentOffers(manager))
+                val statuses = linkStatuses(manager)
+                SessionBus.publishLinkStatuses(statuses)
+                links.setOffers(LinkAvailability.offers(statuses))
                 links.setName(Prefs.currentDisplayName(this@SessionService))
                 val now = System.currentTimeMillis()
                 val interval = SMS_INTERVAL_MS
@@ -285,27 +287,30 @@ class SessionService : Service() {
                         put("satellite", SmsSender.onSatellite(this@SessionService))
                     }
                 }
-                delay(10_000)
+                delay(3_000) // a fixed link (number set, radio on) shows up within seconds
             }
         }
     }
 
-    private fun currentOffers(manager: SessionManager): List<LinkOffer> = buildList {
-        val states = manager.radioStates.value
+    /** Every supported link on this phone, usable or with the reason it is not. */
+    private fun linkStatuses(manager: SessionManager): List<com.icegood.findmeinwood.core.model.LinkStatus> {
         val btOn = runCatching {
             getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled == true
         }.getOrDefault(false)
         val wifiOn = runCatching {
             getSystemService(android.net.wifi.WifiManager::class.java)?.isWifiEnabled == true
         }.getOrDefault(false)
-        if (btOn) add(LinkOffer(TransportId.BLUETOOTH))
-        if (wifiOn) add(LinkOffer(TransportId.WIFI_DIRECT))
-        if (states[TransportId.LORA] == com.icegood.findmeinwood.transport.api.RadioState.READY) add(LinkOffer(TransportId.LORA))
-        val number = Prefs.myPhoneNumber(this@SessionService)
-        // Offered as soon as this phone's number is known and SMS is permitted: just another rung.
-        if (number.isNotEmpty() && smsPermitted()) {
-            add(LinkOffer(TransportId.SMS, number))
-        }
+        return LinkAvailability.statuses(
+            LinkAvailability.Inputs(
+                bluetoothOn = btOn,
+                wifiOn = wifiOn,
+                lora = manager.radioStates.value[TransportId.LORA],
+                phoneNumber = Prefs.myPhoneNumber(this@SessionService),
+                smsPermitted = smsPermitted(),
+                sdk = android.os.Build.VERSION.SDK_INT,
+                onSatellite = SmsSender.onSatellite(this@SessionService),
+            ),
+        )
     }
 
     private fun smsPermitted() = listOf(android.Manifest.permission.SEND_SMS, android.Manifest.permission.RECEIVE_SMS).all {

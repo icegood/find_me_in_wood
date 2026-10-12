@@ -859,9 +859,11 @@ fun PeerList(
     onRename: ((MemberId, String?) -> Unit)? = null,
     onSelectLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)? = null,
     onConfirmLink: ((MemberId) -> Unit)? = null,
+    linkStatuses: List<com.icegood.findmeinwood.core.model.LinkStatus> = emptyList(),
+    onLinkFix: ((com.icegood.findmeinwood.core.model.LinkFix) -> Unit)? = null,
 ) {
     val me = rememberDeviceFix(LocalContext.current)?.location
-    PeerList(peers, me, modifier, findTarget, onFind, emptyText, onRename, onSelectLink, onConfirmLink)
+    PeerList(peers, me, modifier, findTarget, onFind, emptyText, onRename, onSelectLink, onConfirmLink, linkStatuses, onLinkFix)
 }
 
 /** FR-6.4: mapless alternative — distance and bearing to each peer. */
@@ -879,6 +881,9 @@ fun PeerList(
     onSelectLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)? = null,
     /** This user confirms the transports offered by both (LNP/3 handshake step). */
     onConfirmLink: ((MemberId) -> Unit)? = null,
+    /** Every supported link on this phone; the unusable ones are shown greyed with why. */
+    linkStatuses: List<com.icegood.findmeinwood.core.model.LinkStatus> = emptyList(),
+    onLinkFix: ((com.icegood.findmeinwood.core.model.LinkFix) -> Unit)? = null,
 ) {
     val ps by peers.collectAsState()
     var renaming by remember { mutableStateOf<PeerState?>(null) }
@@ -920,7 +925,8 @@ fun PeerList(
                     TextButton(onClick = { onFind(peer.memberId) }) { Text("Find") }
                 }
             }
-            LinkRow(peer, onSelectLink, onConfirmLink)
+            LinkRow(peer, onSelectLink, onConfirmLink, linkStatuses)
+            UnavailableLinks(peer, linkStatuses, onLinkFix)
         }
     }
     renaming?.let { peer ->
@@ -988,6 +994,7 @@ private fun LinkRow(
     peer: PeerState,
     onSelect: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)?,
     onConfirm: ((MemberId) -> Unit)?,
+    statuses: List<com.icegood.findmeinwood.core.model.LinkStatus>,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1016,7 +1023,7 @@ private fun LinkRow(
         }
         var open by remember { mutableStateOf(false) }
         Box {
-            OutlinedButton(onClick = { open = true }, enabled = onSelect != null && peer.linkOptions.size > 1) {
+            OutlinedButton(onClick = { open = true }, enabled = onSelect != null) {
                 Text("link: ${viaLabel(link)} ▾", style = MaterialTheme.typography.labelSmall)
             }
             androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
@@ -1024,6 +1031,13 @@ private fun LinkRow(
                     androidx.compose.material3.DropdownMenuItem(
                         text = { Text((if (t == link) "✓ " else "") + viaLabel(t)) },
                         onClick = { open = false; onSelect?.invoke(peer.memberId, t) },
+                    )
+                }
+                unavailableLinks(peer, statuses).forEach { (label, why) ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text("$label — $why", color = Color.Gray) },
+                        onClick = {},
+                        enabled = false,
                     )
                 }
             }
@@ -1034,6 +1048,61 @@ private fun LinkRow(
             }
         }
     }
+}
+
+/**
+ * The supported links this member cannot be reached on, with why: off or not set up on
+ * this phone, or not offered by them. Notes such as satellite (carried by SMS) come last.
+ */
+internal fun unavailableLinks(
+    peer: PeerState,
+    statuses: List<com.icegood.findmeinwood.core.model.LinkStatus>,
+): List<Pair<String, String>> {
+    val usable = if (peer.link != null) peer.linkOptions else peer.linkCommon
+    val offersKnown = peer.link != null || peer.linkCommon.isNotEmpty()
+    val links = statuses.filter { it.transport != null }.mapNotNull { s ->
+        when {
+            s.reason != null -> s.label to s.reason!!
+            s.transport in usable || !offersKnown -> null
+            else -> s.label to "not offered by ${peer.nickname ?: "them"}"
+        }
+    }
+    val notes = statuses.filter { it.transport == null && it.reason != null }.map { it.label to it.reason!! }
+    return links + notes
+}
+
+/** The other supported links, greyed with the reason each one cannot be used, and a fix. */
+@Composable
+private fun UnavailableLinks(
+    peer: PeerState,
+    statuses: List<com.icegood.findmeinwood.core.model.LinkStatus>,
+    onFix: ((com.icegood.findmeinwood.core.model.LinkFix) -> Unit)?,
+) {
+    val lines = unavailableLinks(peer, statuses)
+    if (lines.isEmpty()) return
+    Column(Modifier.fillMaxWidth().padding(start = 12.dp)) {
+        lines.forEach { (label, why) ->
+            val fix = statuses.firstOrNull { it.label == label }?.fix
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "$label — $why",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray,
+                    modifier = Modifier.weight(1f),
+                )
+                if (fix != null && onFix != null) {
+                    TextButton(onClick = { onFix(fix) }) { Text(fixLabel(fix), style = MaterialTheme.typography.labelSmall) }
+                }
+            }
+        }
+    }
+}
+
+internal fun fixLabel(f: com.icegood.findmeinwood.core.model.LinkFix) = when (f) {
+    com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_BLUETOOTH -> "Turn on"
+    com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_WIFI -> "Turn on"
+    com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER -> "Set number"
+    com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS -> "Allow"
 }
 
 /** How the member is reached now (LNP/3 link, or relays). */

@@ -451,3 +451,51 @@ class MemberNamingTest {
         assertEquals(32, MemberNaming.rename(emptyMap(), id, "x".repeat(50)).values.single().length)
     }
 }
+
+class LinkAvailabilityTest {
+    private val all = LinkAvailability.Inputs(
+        bluetoothOn = true, wifiOn = true, lora = com.icegood.findmeinwood.transport.api.RadioState.READY,
+        phoneNumber = " +380001 ", smsPermitted = true, sdk = 35, onSatellite = false,
+    )
+
+    @Test
+    fun `every supported link is listed, the usable ones are offered`() {
+        val s = LinkAvailability.statuses(all)
+        assertEquals(listOf("Bluetooth", "Wi-Fi Direct", "LoRa", "SMS", "Satellite"), s.map { it.label })
+        val offers = LinkAvailability.offers(s)
+        assertEquals(
+            listOf(
+                com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH,
+                com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT,
+                com.icegood.findmeinwood.core.model.TransportId.LORA,
+                com.icegood.findmeinwood.core.model.TransportId.SMS,
+            ),
+            offers.map { it.t },
+        )
+        assertEquals("+380001", offers.last().addr)
+        assertTrue(s.last().reason!!.contains("not now"), "satellite is a note, never offered")
+        assertEquals("on satellite now: SMS goes through it", LinkAvailability.statuses(all.copy(onSatellite = true)).last().reason)
+    }
+
+    @Test
+    fun `unusable links are kept, greyed with the reason and the fix`() {
+        val s = LinkAvailability.statuses(all.copy(bluetoothOn = false, wifiOn = false, lora = null, phoneNumber = "", sdk = 29))
+        assertTrue(LinkAvailability.offers(s).isEmpty())
+        assertEquals(
+            listOf(
+                com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_BLUETOOTH,
+                com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_WIFI,
+                null,
+                com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER,
+                null,
+            ),
+            s.map { it.fix },
+        )
+        assertEquals("no LoRa node connected", s[2].reason)
+        assertEquals("not supported before Android 15", s[4].reason)
+        val noPerm = LinkAvailability.statuses(all.copy(smsPermitted = false))
+        assertEquals(com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS, noPerm[3].fix)
+        assertEquals("goes by SMS: set SMS up first", noPerm[4].reason)
+        assertEquals(com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS, noPerm[4].fix)
+    }
+}
