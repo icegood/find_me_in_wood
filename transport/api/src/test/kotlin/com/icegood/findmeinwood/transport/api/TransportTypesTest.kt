@@ -1,5 +1,7 @@
 package com.icegood.findmeinwood.transport.api
 
+import kotlinx.coroutines.flow.first
+
 import com.icegood.findmeinwood.core.model.EncryptedFrame
 import com.icegood.findmeinwood.core.model.TransportId
 import com.icegood.findmeinwood.core.model.MemberId
@@ -49,5 +51,16 @@ class TransportTypesTest {
     fun `session config holds provisioned set`() {
         val cfg = SessionConfig(NetworkId(ByteArray(8)), setOf(TransportId.LORA))
         assertTrue(cfg.transports.contains(TransportId.LORA))
+    }
+
+    @Test
+    fun `link up event names the peer and the radio`() = kotlinx.coroutines.runBlocking {
+        val e = TransportEvent.LinkUp("AA:BB", TransportId.BLUETOOTH)
+        assertEquals("AA:BB", e.radioPeerId)
+        assertEquals(TransportId.BLUETOOTH, e.copy().transport)
+        val t = FakeTransport(TransportId.WIFI_DIRECT)
+        val events = t.start(SessionConfig(com.icegood.findmeinwood.core.model.NetworkId(ByteArray(8)), setOf(TransportId.WIFI_DIRECT)))
+        t.linkUp("x")
+        assertEquals(TransportEvent.LinkUp("x", TransportId.WIFI_DIRECT), events.first { it is TransportEvent.LinkUp })
     }
 }

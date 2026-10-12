@@ -295,6 +295,8 @@ class BluetoothTransport internal constructor(
             if (device != null && responseNeeded) gattServer?.sendResponse(
                 device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null,
             )
+            // The peer subscribed to our notifications: we can reach it now.
+            if (device != null && descriptor?.uuid == CCCD_UUID) events.tryEmit(TransportEvent.LinkUp(device.address, id))
         }
 
         override fun onExecuteWrite(device: BluetoothDevice?, requestId: Int, execute: Boolean) {
@@ -408,6 +410,7 @@ class BluetoothTransport internal constructor(
             gatt?.let { clientReady.add(it.key()) }
             ready = true
             emit(RadioState.READY)
+            gatt?.let { events.tryEmit(TransportEvent.LinkUp(it.key(), id)) }
             synchronized(lock) { pumpClientWrites() }
         }
 

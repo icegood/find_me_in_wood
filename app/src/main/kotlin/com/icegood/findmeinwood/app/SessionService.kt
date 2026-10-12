@@ -219,6 +219,7 @@ class SessionService : Service() {
             manager.diagnostics.collect { SessionBus.publishDiagnostics(it) }
         }
         manager.links?.let { links -> runLinks(manager, links) }
+        if (BuildConfig.DEBUG) registerMuteHook(manager)
         // On Restart the old transports may still be releasing their radios; starting
         // the new ones before that finishes would fight over the same GATT server/link.
         val previous = stopping
@@ -337,7 +338,32 @@ class SessionService : Service() {
             .getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
     }.getOrNull()
 
+    private var muteHook: android.content.BroadcastReceiver? = null
+
+    /**
+     * Debug builds only: simulate being out of a radio's range from adb while the radio
+     * stays on (and offered), e.g.
+     *   adb shell am broadcast -a com.icegood.findmeinwood.debug.MUTE --es transports BLUETOOTH
+     *   adb shell am broadcast -a com.icegood.findmeinwood.debug.MUTE --es transports ""
+     */
+    private fun registerMuteHook(manager: SessionManager) {
+        val hook = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                val set = i.getStringExtra("transports").orEmpty().split(',')
+                    .mapNotNull { n -> runCatching { TransportId.valueOf(n.trim()) }.getOrNull() }.toSet()
+                manager.muted = set
+                linkLog?.write("debug_mute") { put("transports", set.joinToString()) }
+            }
+        }
+        val filter = android.content.IntentFilter(ACTION_DEBUG_MUTE)
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(hook, filter, Context.RECEIVER_EXPORTED)
+        else @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(hook, filter)
+        muteHook = hook
+    }
+
     private fun stopSession() {
+        muteHook?.let { runCatching { unregisterReceiver(it) } }
+        muteHook = null
         val s = session
         session = null
         linkLog?.let { log ->
@@ -403,6 +429,7 @@ class SessionService : Service() {
         const val ACTION_STOP = "com.icegood.findmeinwood.action.STOP"
         /** LNP/3 SMS link cadence (FR-3.9): one position SMS per peer on an SMS link per 30 min. */
         const val SMS_INTERVAL_MS = 30 * 60_000L
+        const val ACTION_DEBUG_MUTE = "com.icegood.findmeinwood.debug.MUTE"
         const val ACTION_LISTEN = "com.icegood.findmeinwood.action.LISTEN"
         const val EXTRA_NAME = "name"
         const val EXTRA_NETWORK_ID = "networkId"

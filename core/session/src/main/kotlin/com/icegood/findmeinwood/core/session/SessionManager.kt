@@ -53,6 +53,8 @@ class SessionManager(
     companion object {
         const val INITIAL_TTL: UByte = 3u
         const val KEEP_ALIVE_MS = 60_000L
+        /** Minimum gap between extra (link-control) beacons. */
+        const val REPLY_GAP_MS = 1_000L
     }
 
     private val verifier = IdentityVerifier()
@@ -93,10 +95,39 @@ class SessionManager(
 
     fun edges(): List<LinkNegotiator.LinkView> = links?.all() ?: emptyList()
 
+    /** Monotonic (not [clock]): spacing of extra beacons is about real radio load. */
+    @Volatile private var lastReplyAtMs = 0L
+    @Volatile private var lastPayload: BeaconPayload = BeaconPayload()
+
     private fun announce(switches: List<LinkNegotiator.Switch>) {
         switches.forEach { onLinkSwitch?.invoke(it) }
         // Agreed set, selection and suggestion feed the member list.
         links?.all()?.forEach { v -> tracker.setLinkInfo(v.peer, v.link, if (v.agreed) v.common else emptyList(), v.suggestion) }
+        // Answer handshake steps / announce selections at once instead of with the next
+        // scheduled beacon (at most one extra beacon per 2 s).
+        if (links?.replyNow() == true) replyNow(force = false)
+    }
+
+    @Volatile private var replyPending = false
+
+    /**
+     * Sends a beacon now (link control due). At most one extra beacon per second: a reply
+     * inside that second is deferred to its end, never dropped — a dropped reply would
+     * leave the handshake waiting for the next scheduled beacon.
+     */
+    private fun replyNow(force: Boolean) {
+        if (!running.value) return
+        val wait = if (force) 0L else (REPLY_GAP_MS - (System.nanoTime() / 1_000_000 - lastReplyAtMs)).coerceAtLeast(0)
+        if (wait > 0) {
+            if (replyPending) return
+            replyPending = true
+        }
+        scope.launch {
+            if (wait > 0) delay(wait)
+            replyPending = false
+            lastReplyAtMs = System.nanoTime() / 1_000_000
+            runCatching { sendBeaconSigned(lastPayload) }
+        }
     }
 
     /** User picked [t] for the link with [peer] (LNP/3: within the agreed set, no handshake). */
@@ -127,10 +158,18 @@ class SessionManager(
 
     /** Sends an already-encoded management frame on every transport (no AEAD). */
     suspend fun sendMgmt(wire: ByteArray) {
-        transports.forEach { t -> runCatching { t.send(wire) } }
+        live().forEach { t -> runCatching { t.send(wire) } }
     }
 
     fun transportIds(): List<TransportId> = transports.map { it.id }
+
+    /**
+     * Test hook (debug builds, field tests): radios that send and receive nothing, as if
+     * the peers were out of their range, while the radio stays on and offered.
+     */
+    @Volatile var muted: Set<TransportId> = emptySet()
+
+    private fun live() = transports.filter { it.id !in muted }
 
     /** Last known radio state per transport (drives the status line in the UI). */
     private val _radioStates = MutableStateFlow<Map<TransportId, RadioState>>(emptyMap())
@@ -146,9 +185,12 @@ class SessionManager(
             jobs += scope.launch {
                 flow.collect { ev ->
                     when (ev) {
-                        is TransportEvent.FrameReceived -> handleFrame(ev)
+                        is TransportEvent.FrameReceived -> if (ev.source !in muted) handleFrame(ev)
                         is TransportEvent.MgmtFrameReceived -> onMgmtFrame?.invoke(ev.wire, ev.source)
                         is TransportEvent.PeerRadioVisible -> Unit
+                        // A new radio link: introduce ourselves now (offers included), so
+                        // the handshake starts at once rather than with the next beacon.
+                        is TransportEvent.LinkUp -> links?.let { it.announceNow(); replyNow(force = true) }
                         is TransportEvent.StateChanged ->
                             _radioStates.value = _radioStates.value + (t.id to ev.state)
                     }
@@ -160,6 +202,7 @@ class SessionManager(
                 .commands(fixes)
                 .collect {
                     val payload = it.fix?.let { f -> PayloadCodec.fromFix(f) } ?: BeaconPayload()
+                    lastPayload = payload
                     sendBeaconSigned(payload)
                 }
         }
@@ -204,7 +247,7 @@ class SessionManager(
         val wire = FrameCodec.encode(
             EncryptedFrame(profile.networkId, profile.myMemberId, s, INITIAL_TTL, sentAt, ct),
         )
-        transports.forEach { it.send(wire) }
+        live().forEach { it.send(wire) }
         bump { it.copy(sent = it.sent + 1) }
         onFrameSent?.invoke(wire)
     }
@@ -228,7 +271,7 @@ class SessionManager(
             profile.networkId, profile.myMemberId, s, INITIAL_TTL, sentAt, ct,
         )
         val wire = FrameCodec.encode(frame)
-        transports.forEach { it.send(wire) }
+        live().forEach { it.send(wire) }
         bump { it.copy(sent = it.sent + 1) }
         onFrameSent?.invoke(wire)
     }
@@ -296,7 +339,7 @@ class SessionManager(
         if (relayEnabled && f.ttl > 1u) {
             val relayed = f.copy(ttl = (f.ttl - 1u).toUByte())
             val wire = FrameCodec.encode(relayed)
-            transports.filter { it.id != ev.source }.forEach { it.send(wire) }
+            live().filter { it.id != ev.source }.forEach { it.send(wire) }
             bump { it.copy(relayed = it.relayed + 1) }
         }
     }

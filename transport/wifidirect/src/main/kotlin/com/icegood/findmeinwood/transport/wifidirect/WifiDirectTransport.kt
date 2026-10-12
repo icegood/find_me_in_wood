@@ -297,6 +297,7 @@ class WifiDirectTransport(
         connecting.remove(key)
         if (!ready) { ready = true; emit(RadioState.READY) }
         events.tryEmit(TransportEvent.PeerRadioVisible(key, id))
+        events.tryEmit(TransportEvent.LinkUp(key, id))
         scope.launch {
             try {
                 val input = DataInputStream(s.getInputStream())

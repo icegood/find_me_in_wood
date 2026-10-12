@@ -78,6 +78,23 @@ class LinkNegotiator(
     private var dirty = true
     private var beaconCount = 0
     private val ackSent = HashMap<MemberId, Int>()
+    /** The peer is waiting for our answer (handshake step or a selection to announce). */
+    private var urgent = false
+
+    /**
+     * True when link control should go out now rather than with the next scheduled beacon:
+     * every handshake step is answered at once, so a handshake completes within one beacon
+     * interval (to first hear the peer) plus a few round trips.
+     */
+    @Synchronized
+    fun replyNow(): Boolean = urgent
+
+    /** Put our offers and acks on the very next beacon (e.g. a new radio link came up). */
+    @Synchronized
+    fun announceNow() {
+        dirty = true
+        urgent = true
+    }
 
     @Synchronized
     fun setOffers(offers: List<LinkOffer>) {
@@ -110,6 +127,7 @@ class LinkNegotiator(
         val sels = peers.filter { (_, p) -> p.announce > 0 && p.selected != null }
         if (!dirty && !handshaking && sels.isEmpty() && beaconCount % OFFERS_EVERY != 0) return null
         dirty = false
+        urgent = false
         acks.forEach { (id, ack) -> ackSent[id] = ack.h }
         sels.values.forEach { it.announce-- }
         return LinkCtl(
@@ -135,8 +153,12 @@ class LinkNegotiator(
             p.lastHeardMs = now
         }
         if (ctl != null && ctl.v == 3) {
-            p.offers = ctl.offers.filter { it.t in RUNGS }.distinctBy { it.t }
-            p.theirAck = ctl.acks.firstOrNull { it.p.contentEquals(prefix(self)) }?.h
+            val offers = ctl.offers.filter { it.t in RUNGS }.distinctBy { it.t }
+            val theirAck = ctl.acks.firstOrNull { it.p.contentEquals(prefix(self)) }?.h
+            // New offers need our ack; a missing/wrong ack means they lack our offers or ack.
+            if (offers != p.offers || theirAck != hash(peer, offers) || ackSent[peer] != hash(peer, offers)) urgent = true
+            p.offers = offers
+            p.theirAck = theirAck
             ctl.sel.firstOrNull { it.p.contentEquals(prefix(self)) }?.let { s ->
                 val newer = s.e > p.epoch || s.e == p.epoch && s.t != p.selected && hex(peer) < hex(self)
                 if (newer && s.t in agreedSet(peer, p)) {
@@ -158,6 +180,7 @@ class LinkNegotiator(
         p.epoch++
         p.selectedAtMs = nowMs()
         p.announce = SELECT_BEACONS
+        urgent = true
         return listOfNotNull(changed(peer, p))
     }
 

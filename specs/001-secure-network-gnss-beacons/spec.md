@@ -77,6 +77,12 @@ Bluetooth — **so that** everyone stays connected with the least radio cost.
   `link.acks` (peer id prefix + CRC-32 of the canonical set incl. addresses); the set is
   agreed once the peer's ack matches our own hash. Changing offers re-opens it. Only an
   agreed set is usable: nobody is texted without having offered the number for that.
+- FR-3.7a LNP/3 — no waiting. Link control is never held for the next scheduled beacon:
+  a phone introduces itself (offers) as soon as a radio link to a peer comes up (BLE
+  notifications on / Wi-Fi Direct socket open), answers every handshake step at once
+  and announces a selection at once — each in an extra beacon, at most one per second
+  (a reply inside that second is deferred, never dropped). A handshake therefore takes a
+  few round trips after the link is up, independent of the beacon interval.
 - FR-3.8 LNP/3 — selection. Once agreed, both start on the cheapest transport of the set
   (computed identically on both sides, nothing sent). Either member may then select any
   transport of the agreed set (member list → link ▾); it applies at once and is

@@ -48,6 +48,11 @@ class FakeTransport(override val id: TransportId) : Transport {
             SendResult.Sent
         }
 
+    /** Test helper: the radio reports a usable link to a peer. */
+    suspend fun linkUp(peer: String = "peer") {
+        events.emit(TransportEvent.LinkUp(peer, id))
+    }
+
     /** Test helper: inject a frame as if received over this transport. */
     suspend fun deliver(frame: EncryptedFrame) {
         events.emit(TransportEvent.FrameReceived(frame, id))

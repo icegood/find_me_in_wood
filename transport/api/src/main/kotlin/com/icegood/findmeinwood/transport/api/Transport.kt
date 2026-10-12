@@ -10,6 +10,8 @@ enum class RadioState { STOPPED, SCANNING, CONNECTING, READY, LINK_DOWN }
 sealed interface TransportEvent {
     data class FrameReceived(val frame: EncryptedFrame, val source: TransportId) : TransportEvent
     data class PeerRadioVisible(val radioPeerId: String, val transport: TransportId) : TransportEvent
+    /** A link to a peer became usable for sending (BLE notifications on, socket open). */
+    data class LinkUp(val radioPeerId: String, val transport: TransportId) : TransportEvent
     /** Cleartext management frame (US-8 discovery/handshake) as raw wire bytes. */
     data class MgmtFrameReceived(val wire: ByteArray, val source: TransportId) : TransportEvent
     data class StateChanged(val state: RadioState) : TransportEvent
