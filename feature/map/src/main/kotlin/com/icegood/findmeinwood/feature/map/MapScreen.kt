@@ -858,9 +858,10 @@ fun PeerList(
     emptyText: String = "No members heard yet.",
     onRename: ((MemberId, String?) -> Unit)? = null,
     onSelectLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)? = null,
+    onConfirmLink: ((MemberId) -> Unit)? = null,
 ) {
     val me = rememberDeviceFix(LocalContext.current)?.location
-    PeerList(peers, me, modifier, findTarget, onFind, emptyText, onRename, onSelectLink)
+    PeerList(peers, me, modifier, findTarget, onFind, emptyText, onRename, onSelectLink, onConfirmLink)
 }
 
 /** FR-6.4: mapless alternative — distance and bearing to each peer. */
@@ -876,6 +877,8 @@ fun PeerList(
     onRename: ((MemberId, String?) -> Unit)? = null,
     /** Switch the link to a transport of the agreed set (LNP/3, no further handshake). */
     onSelectLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)? = null,
+    /** This user confirms the transports offered by both (LNP/3 handshake step). */
+    onConfirmLink: ((MemberId) -> Unit)? = null,
 ) {
     val ps by peers.collectAsState()
     var renaming by remember { mutableStateOf<PeerState?>(null) }
@@ -917,7 +920,7 @@ fun PeerList(
                     TextButton(onClick = { onFind(peer.memberId) }) { Text("Find") }
                 }
             }
-            LinkRow(peer, onSelectLink)
+            LinkRow(peer, onSelectLink, onConfirmLink)
         }
     }
     renaming?.let { peer ->
@@ -984,6 +987,7 @@ internal fun uncertainty(peerAccM: Int, myAccM: Int): String {
 private fun LinkRow(
     peer: PeerState,
     onSelect: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)?,
+    onConfirm: ((MemberId) -> Unit)?,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -992,11 +996,22 @@ private fun LinkRow(
     ) {
         val link = peer.link
         if (link == null) {
-            Text(
-                "link: agreeing… (heard ${viaLabel(peer.transport)})",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray,
-            )
+            val common = peer.linkCommon.joinToString { viaLabel(it) }
+            when {
+                peer.linkCommon.isEmpty() -> Text(
+                    "link: exchanging offers… (heard ${viaLabel(peer.transport)})",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray,
+                )
+                !peer.linkConfirmedByMe -> Button(onClick = { onConfirm?.invoke(peer.memberId) }, enabled = onConfirm != null) {
+                    Text("Confirm link: $common", style = MaterialTheme.typography.labelSmall)
+                }
+                else -> Text(
+                    "link: $common — waiting for ${peer.nickname ?: "them"} to confirm",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Gray,
+                )
+            }
             return@Row
         }
         var open by remember { mutableStateOf(false) }

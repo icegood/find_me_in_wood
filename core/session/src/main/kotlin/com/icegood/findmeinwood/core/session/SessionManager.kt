@@ -102,7 +102,12 @@ class SessionManager(
     private fun announce(switches: List<LinkNegotiator.Switch>) {
         switches.forEach { onLinkSwitch?.invoke(it) }
         // Agreed set, selection and suggestion feed the member list.
-        links?.all()?.forEach { v -> tracker.setLinkInfo(v.peer, v.link, if (v.agreed) v.common else emptyList(), v.suggestion) }
+        links?.all()?.forEach { v ->
+            tracker.setLinkInfo(
+                v.peer, v.link, if (v.agreed) v.common else emptyList(), v.suggestion,
+                common = v.common, confirmedByMe = v.confirmedByMe, confirmedByPeer = v.confirmedByPeer,
+            )
+        }
         // Answer handshake steps / announce selections at once instead of with the next
         // scheduled beacon (at most one extra beacon per 2 s).
         if (links?.replyNow() == true) replyNow(force = false)
@@ -128,6 +133,11 @@ class SessionManager(
             lastReplyAtMs = System.nanoTime() / 1_000_000
             runCatching { sendBeaconSigned(lastPayload) }
         }
+    }
+
+    /** This phone's user confirms the transports common with [peer] (LNP/3 handshake). */
+    fun confirmLinks(peer: MemberId) {
+        links?.let { announce(it.confirm(peer)) }
     }
 
     /** User picked [t] for the link with [peer] (LNP/3: within the agreed set, no handshake). */

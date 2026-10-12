@@ -223,7 +223,8 @@ class SessionManagerBranchTest {
             eventually { m.peerFlow.value.containsKey(other) }
             assertEquals(null, m.peerFlow.value[other]?.transport)
 
-            // Our beacon carries our offers and the ack of the common set, signed.
+            // Our user confirms; our beacon then carries our offers and the ack, signed.
+            m.confirmLinks(other)
             m.sendBeaconSigned(BeaconPayload())
             val ours = FrameCodec.decode(t.sentHistory.last()).let {
                 PayloadCodec.decode(AesGcmAead.open(profile.trafficKey, it.ciphertext, FrameCodec.aad(it.networkId, it.senderId, it.seq, it.sentAtMs)))

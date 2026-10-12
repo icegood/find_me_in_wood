@@ -72,11 +72,14 @@ Bluetooth — **so that** everyone stays connected with the least radio cost.
   our number). An offer exists only while usable here (radio on, LoRa node paired, SMS
   permitted and own number entered). Link control rides on beacons when something
   changed or is pending, and on every 5th beacon otherwise; never in clear.
-- FR-3.7 LNP/3 — handshake. The agreed set of a pair is the transports both offer
-  (standard order BLUETOOTH, WIFI_DIRECT, LORA, SMS). Each side acknowledges it in
-  `link.acks` (peer id prefix + CRC-32 of the canonical set incl. addresses); the set is
-  agreed once the peer's ack matches our own hash. Changing offers re-opens it. Only an
-  agreed set is usable: nobody is texted without having offered the number for that.
+- FR-3.7 LNP/3 — handshake. The common set of a pair is the transports both offer
+  (standard order BLUETOOTH, WIFI_DIRECT, LORA, SMS). Each *user* confirms it on their
+  own phone (member list → "Confirm link: …"); only then does the phone acknowledge it in
+  `link.acks` (peer id prefix + CRC-32 of the canonical set incl. addresses). The set is
+  agreed when both acknowledgements match — both people confirmed; one side alone is
+  not enough ("waiting for … to confirm"). A confirmation keeps covering any subset of
+  what was confirmed (a radio switched off); a new transport or address needs a new
+  one. Only an agreed set is usable: nobody is texted without having agreed to it.
 - FR-3.7a LNP/3 — no waiting. Link control is never held for the next scheduled beacon:
   a phone introduces itself (offers) as soon as a radio link to a peer comes up (BLE
   notifications on / Wi-Fi Direct socket open), answers every handshake step at once

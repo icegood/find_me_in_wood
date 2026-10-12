@@ -21,6 +21,12 @@ data class PeerState(
     val linkOptions: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
     /** Next agreed transport while the selected link is quiet (a hint, never applied). */
     val linkSuggestion: com.icegood.findmeinwood.core.model.TransportId? = null,
+    /** Transports both offer: what the handshake asks the two users to confirm. */
+    val linkCommon: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
+    /** This phone's user confirmed [linkCommon]. */
+    val linkConfirmedByMe: Boolean = false,
+    /** The peer's user confirmed it. */
+    val linkConfirmedByPeer: Boolean = false,
 )
 
 /** Pure-Kotlin peer table (FR-6.1/6.3): staleness + purge, injectable clock. */
@@ -49,6 +55,9 @@ class PeerTracker(
             link = cur?.link,
             linkOptions = cur?.linkOptions ?: emptyList(),
             linkSuggestion = cur?.linkSuggestion,
+            linkCommon = cur?.linkCommon ?: emptyList(),
+            linkConfirmedByMe = cur?.linkConfirmedByMe ?: false,
+            linkConfirmedByPeer = cur?.linkConfirmedByPeer ?: false,
         ))
     }
 
@@ -58,9 +67,15 @@ class PeerTracker(
         link: com.icegood.findmeinwood.core.model.TransportId?,
         options: List<com.icegood.findmeinwood.core.model.TransportId>,
         suggestion: com.icegood.findmeinwood.core.model.TransportId?,
+        common: List<com.icegood.findmeinwood.core.model.TransportId> = options,
+        confirmedByMe: Boolean = options.isNotEmpty(),
+        confirmedByPeer: Boolean = options.isNotEmpty(),
     ) {
         val cur = peers.value[member] ?: return
-        val next = cur.copy(link = link, linkOptions = options, linkSuggestion = suggestion)
+        val next = cur.copy(
+            link = link, linkOptions = options, linkSuggestion = suggestion, linkCommon = common,
+            linkConfirmedByMe = confirmedByMe, linkConfirmedByPeer = confirmedByPeer,
+        )
         if (next != cur) peers.value = peers.value + (member to next)
     }
 

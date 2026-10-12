@@ -29,7 +29,7 @@ import kotlin.test.assertNull
  * End to end, two complete session stacks ("phones" A and B) with a Bluetooth and a Wi-Fi
  * Direct radio each, exchanging real signed + encrypted beacons:
  *
- * 1. Handshake agrees both Bluetooth and Wi-Fi Direct; the link starts on Bluetooth.
+ * 1. Handshake: both users confirm Bluetooth + Wi-Fi Direct; the link starts on Bluetooth.
  * 2. The phones walk apart: Bluetooth (~100 m) stops delivering, Wi-Fi Direct (~200 m)
  *    still does. Nothing switches by itself; both phones propose Wi-Fi Direct.
  * 3. The user on A takes the proposal: A switches at once, B follows from A's next beacon
@@ -107,8 +107,16 @@ class LinkE2ETest {
     fun `handshake both radios, propose the other one when apart, switch without a new handshake`() = runBlocking {
         a.session.start(); b.session.start()
 
-        // 1. Handshake: both radios agreed, link on Bluetooth (the cheapest).
-        repeat(3) { round() }
+        // 1. Handshake: offers exchanged, then each user confirms on their own phone.
+        round()
+        assertNull(a.peer(b)?.link, "nothing agreed before both users confirm")
+        assertEquals(listOf(BLUETOOTH, WIFI_DIRECT), a.peer(b)?.linkCommon)
+        a.session.confirmLinks(b.id)
+        round()
+        assertNull(b.peer(a)?.link, "A's confirmation alone is not enough")
+        assertEquals(true, b.peer(a)?.linkConfirmedByPeer)
+        b.session.confirmLinks(a.id)
+        round()
         assertEquals(listOf(BLUETOOTH, WIFI_DIRECT), a.peer(b)?.linkOptions)
         assertEquals(listOf(BLUETOOTH, WIFI_DIRECT), b.peer(a)?.linkOptions)
         assertEquals(BLUETOOTH, a.peer(b)?.link)
@@ -151,6 +159,10 @@ class LinkE2ETest {
         // everything after that is an immediate reply.
         val t0 = System.nanoTime()
         a.bt.linkUp()
+        eventually { a.peer(b)?.linkCommon?.isNotEmpty() == true && b.peer(a)?.linkCommon?.isNotEmpty() == true }
+        // Both users confirm; each confirmation goes out at once.
+        a.session.confirmLinks(b.id)
+        b.session.confirmLinks(a.id)
         eventually { a.peer(b)?.link == BLUETOOTH && b.peer(a)?.link == BLUETOOTH }
         val tookMs = (System.nanoTime() - t0) / 1_000_000
         // The test clock never moved: no scheduled beacon was involved, so the handshake

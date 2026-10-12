@@ -81,7 +81,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        permissionLauncher.launch(permissions.toTypedArray())
+        // Only when something is missing: an (even instantly answered) permission request
+        // puts a transparent screen on top that swallowed the first tap after every launch.
+        if (!granted()) permissionLauncher.launch(permissions.toTypedArray())
         MemberNames.load(this)
         setContent {
             var themeMode by remember { mutableStateOf(Prefs.themeMode(this@MainActivity)) }
@@ -267,6 +269,7 @@ class MainActivity : ComponentActivity() {
                         namedPeers,
                         onRename = { id, name -> MemberNames.rename(this@MainActivity, id, name) },
                         onSelectLink = { id, t -> SessionService.activeManager?.selectLink(id, t) },
+                        onConfirmLink = { id -> SessionService.activeManager?.confirmLinks(id) },
                         emptyText = if (profile == null) {
                             "No network running. Start one in Networks to see its members here."
                         } else {

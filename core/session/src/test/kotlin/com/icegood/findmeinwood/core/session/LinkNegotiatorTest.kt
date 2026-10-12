@@ -35,7 +35,46 @@ class LinkNegotiatorTest {
     private fun handshake() {
         a.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT), LinkOffer(SMS, "+380001")))
         b.setOffers(listOf(LinkOffer(SMS, "+380002"), LinkOffer(WIFI_DIRECT), LinkOffer(BLUETOOTH)))
+        exchange() // offers known on both sides
+        a.confirm(idB) // each user confirms on their own phone
+        b.confirm(idA)
+        repeat(2) { exchange() }
+    }
+
+    @Test
+    fun `the handshake needs a confirmation on both phones`() {
+        a.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT)))
+        b.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT)))
         repeat(3) { exchange() }
+        assertFalse(a.agreed(idB), "offers alone agree nothing")
+        assertNull(a.link(idB))
+        a.confirm(idB)
+        repeat(3) { exchange() }
+        assertFalse(a.agreed(idB), "only A's user confirmed")
+        assertFalse(b.agreed(idA))
+        assertTrue(a.all().single().confirmedByMe)
+        assertTrue(b.all().single().confirmedByPeer, "B sees that A confirmed")
+        assertFalse(b.all().single().confirmedByMe)
+        b.confirm(idA)
+        repeat(2) { exchange() }
+        assertTrue(a.agreed(idB) && b.agreed(idA))
+        assertEquals(BLUETOOTH, a.link(idB))
+    }
+
+    @Test
+    fun `a confirmation covers a smaller set, a new transport needs a new one`() {
+        handshake()
+        b.setOffers(listOf(LinkOffer(BLUETOOTH))) // B switched Wi-Fi and SMS off
+        repeat(2) { exchange() }
+        assertTrue(a.agreed(idB), "subset of what both confirmed: still agreed")
+        assertEquals(listOf(BLUETOOTH), a.common(idB))
+        b.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(SMS, "+380099"))) // new number
+        repeat(2) { exchange() }
+        assertFalse(a.agreed(idB), "the new SMS number was never confirmed")
+        a.confirm(idB); b.confirm(idA)
+        repeat(2) { exchange() }
+        assertTrue(a.agreed(idB))
+        assertEquals(listOf(idB to "+380099"), a.select(idB, SMS).let { a.peersOn(SMS) })
     }
 
     @Test
@@ -70,8 +109,10 @@ class LinkNegotiatorTest {
         a.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(SMS, "+1")))
         b.setOffers(listOf(LinkOffer(BLUETOOTH)))
         b.onFrame(idA, BLUETOOTH, direct = true, ctl = a.outgoing())
-        assertTrue(b.select(idA, BLUETOOTH).isEmpty(), "B has A's offers but A has not acknowledged yet")
+        assertTrue(b.select(idA, BLUETOOTH).isEmpty(), "B has A's offers but nobody confirmed yet")
         assertNull(b.link(idA))
+        exchange()
+        a.confirm(idB); b.confirm(idA)
         repeat(2) { exchange() }
         assertTrue(a.select(idB, SMS).isEmpty(), "B does not offer SMS")
         val ack = com.icegood.findmeinwood.core.model.LinkAck(LinkNegotiator.prefix(idB), a.hash(idB, b.offers()))
@@ -107,7 +148,7 @@ class LinkNegotiatorTest {
     }
 
     @Test
-    fun `a withdrawn offer re-opens the handshake and the link moves within the new set`() {
+    fun `a withdrawn offer keeps the agreement and the link moves within the smaller set`() {
         handshake()
         a.select(idB, SMS)
         exchange()

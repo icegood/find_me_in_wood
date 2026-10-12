@@ -12,7 +12,10 @@ import java.util.zip.CRC32
  * LNP/3, the Link Negotiation Protocol (spec FR-3.5–3.10). Pure Kotlin.
  *
  * - Handshake, once per pair: both list the transports they can use (an SMS offer carries
- *   the number) and acknowledge the common set by hash. Only an agreed set is usable.
+ *   the number). Each *user* confirms the common set on their own phone ([confirm]); only
+ *   then does the phone acknowledge it (hash). The set is agreed when both acknowledged —
+ *   i.e. both people confirmed. A confirmation keeps covering any subset of what was
+ *   confirmed (a radio switched off); a new transport or address needs a new one.
  * - Selection, any time, no further handshake: either side picks a transport within the
  *   agreed set ([select]); it applies at once and is announced in the next beacons, where
  *   the peer applies it too. The higher selection epoch is current; equal: lower id wins.
@@ -50,8 +53,12 @@ class LinkNegotiator(
         val peer: MemberId,
         /** Transports both offer, in standard order. */
         val common: List<TransportId>,
-        /** Handshake done: the peer acknowledged the same set. */
+        /** Handshake done: both people confirmed the same set. */
         val agreed: Boolean,
+        /** This phone's user has confirmed the current common set. */
+        val confirmedByMe: Boolean,
+        /** The peer's user has confirmed it (their acknowledgement matches). */
+        val confirmedByPeer: Boolean,
         /** Selected link; null until agreed. */
         val link: TransportId?,
         /** Next agreed transport when the selected link is quiet; never applied by itself. */
@@ -70,6 +77,8 @@ class LinkNegotiator(
         var selectedAtMs = 0L
         var announce = 0
         var shown: TransportId? = null
+        /** What this user confirmed for the peer: transport -> the two addresses then. */
+        var confirmed: Set<String> = emptySet()
     }
 
     private val peers = HashMap<MemberId, Peer>()
@@ -122,7 +131,8 @@ class LinkNegotiator(
     @Synchronized
     fun outgoing(): LinkCtl? {
         beaconCount++
-        val acks = peers.mapNotNull { (id, p) -> p.offers?.let { id to LinkAck(prefix(id), hash(id, it)) } }
+        // Acknowledge only what this phone's user confirmed.
+        val acks = peers.mapNotNull { (id, p) -> p.offers?.takeIf { confirmedByMe(id, p) }?.let { id to LinkAck(prefix(id), hash(id, it)) } }
         val handshaking = acks.any { (id, ack) -> ackSent[id] != ack.h || peers[id]?.theirAck != ack.h }
         val sels = peers.filter { (_, p) -> p.announce > 0 && p.selected != null }
         if (!dirty && !handshaking && sels.isEmpty() && beaconCount % OFFERS_EVERY != 0) return null
@@ -156,7 +166,9 @@ class LinkNegotiator(
             val offers = ctl.offers.filter { it.t in RUNGS }.distinctBy { it.t }
             val theirAck = ctl.acks.firstOrNull { it.p.contentEquals(prefix(self)) }?.h
             // New offers need our ack; a missing/wrong ack means they lack our offers or ack.
-            if (offers != p.offers || theirAck != hash(peer, offers) || ackSent[peer] != hash(peer, offers)) urgent = true
+            val h = hash(peer, offers)
+            val ourAckDue = confirmedFor(p, peer, offers) && ackSent[peer] != h
+            if (offers != p.offers || ourAckDue || confirmedFor(p, peer, offers) && theirAck != h) urgent = true
             p.offers = offers
             p.theirAck = theirAck
             ctl.sel.firstOrNull { it.p.contentEquals(prefix(self)) }?.let { s ->
@@ -168,6 +180,21 @@ class LinkNegotiator(
                 }
             }
         }
+        return listOfNotNull(changed(peer, p))
+    }
+
+    /**
+     * This phone's user confirms the transports currently common with [peer] (handshake
+     * step). The acknowledgement goes out at once; the set is agreed when the peer's user
+     * has confirmed too.
+     */
+    @Synchronized
+    fun confirm(peer: MemberId): List<Switch> {
+        val p = peers[peer] ?: return emptyList()
+        val offers = p.offers ?: return emptyList()
+        p.confirmed = p.confirmed + entries(peer, offers)
+        dirty = true
+        urgent = true
         return listOfNotNull(changed(peer, p))
     }
 
@@ -209,6 +236,7 @@ class LinkNegotiator(
     fun all(): List<LinkView> = peers.map { (id, p) ->
         LinkView(
             id, p.offers?.let { commonOf(it) } ?: emptyList(), agreedSet(id, p).isNotEmpty(),
+            confirmedByMe(id, p), p.offers?.let { p.theirAck == hash(id, it) } ?: false,
             linkOf(id, p), suggestionOf(id, p), p.lastHeardMs,
         )
     }
@@ -236,8 +264,21 @@ class LinkNegotiator(
 
     private fun agreedSet(id: MemberId, p: Peer): List<TransportId> {
         val offers = p.offers ?: return emptyList()
-        return if (p.theirAck == hash(id, offers)) commonOf(offers) else emptyList()
+        val both = confirmedFor(p, id, offers) && p.theirAck == hash(id, offers)
+        return if (both) commonOf(offers) else emptyList()
     }
+
+    /** One confirmable entry per common transport, including both addresses. */
+    private fun entries(id: MemberId, theirs: List<LinkOffer>): Set<String> = commonOf(theirs).map { t ->
+        "${t.name}:${myOffers.first { it.t == t }.addr.orEmpty()}:${theirs.first { it.t == t }.addr.orEmpty()}"
+    }.toSet()
+
+    private fun confirmedFor(p: Peer, id: MemberId, theirs: List<LinkOffer>): Boolean {
+        val e = entries(id, theirs)
+        return e.isNotEmpty() && p.confirmed.containsAll(e)
+    }
+
+    private fun confirmedByMe(id: MemberId, p: Peer): Boolean = p.offers?.let { confirmedFor(p, id, it) } ?: false
 
     /** Explicit selection while it is still in the agreed set, else the cheapest agreed one. */
     private fun linkOf(id: MemberId, p: Peer): TransportId? {
