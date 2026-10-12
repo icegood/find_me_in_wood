@@ -1,77 +1,75 @@
 package com.icegood.findmeinwood.core.session
 
+import com.icegood.findmeinwood.core.model.LinkAck
 import com.icegood.findmeinwood.core.model.LinkCtl
 import com.icegood.findmeinwood.core.model.LinkOffer
-import com.icegood.findmeinwood.core.model.LinkProp
+import com.icegood.findmeinwood.core.model.LinkSel
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.TransportId
+import java.util.zip.CRC32
 
 /**
- * LNP/2, the Link Negotiation Protocol (spec FR-3.5–3.10). Pure Kotlin.
+ * LNP/3, the Link Negotiation Protocol (spec FR-3.5–3.10). Pure Kotlin.
  *
- * The transport of each pair's link is explicit, agreed state: it changes only through a
- * PROPOSE / ACCEPT exchange carried in the peers' encrypted, signed beacons. There is no
- * fallback — nothing ever switches on its own because a link went quiet.
- *
- * - Offers: each member lists the transports it can use (an SMS offer carries its number).
- * - Proposals: a phone proposes a transport both offer — on first contact (the rung the
- *   peer is heard on), when the current link weakens (a missed beacon: the next rung),
- *   or when a cheaper radio hears the peer directly again (that rung).
- * - Acceptance: the peer accepts if it offers that transport too; both sides then use it.
- *   A proposal travels over whatever still reaches the peer (the weak link, a relay);
- *   if nothing does, it expires and the link stays as it was.
- * - Conflicts: higher epoch wins; equal epochs: the lower member id's proposal wins.
+ * - Handshake, once per pair: both list the transports they can use (an SMS offer carries
+ *   the number) and acknowledge the common set by hash. Only an agreed set is usable.
+ * - Selection, any time, no further handshake: either side picks a transport within the
+ *   agreed set ([select]); it applies at once and is announced in the next beacons, where
+ *   the peer applies it too. The higher selection epoch is current; equal: lower id wins.
+ * - Default: once agreed, both start on the cheapest common transport — computed the same
+ *   on both sides, so nothing needs to be sent.
+ * - No fallback: nothing switches by itself. When the selected link goes quiet the
+ *   negotiator only [suggest]s the next agreed transport; switching is the user's choice.
  */
 class LinkNegotiator(
     private val self: MemberId,
     private val nowMs: () -> Long,
-    /** Beacon cadence; one missed beacon on the current link = weak. */
+    /** Beacon cadence; a missed beacon on the selected link makes it "quiet". */
     private val beaconIntervalMs: Long,
-    /** SMS report cadence; one missed report on an SMS link = weak. */
+    /** SMS report cadence; a missed report on an SMS link makes it "quiet". */
     private val smsIntervalMs: Long = 30 * 60_000L,
 ) {
     companion object {
-        /** Standard rung order, cheapest and fastest first. */
+        /** Standard order, cheapest and fastest first. */
         val RUNGS = listOf(TransportId.BLUETOOTH, TransportId.WIFI_DIRECT, TransportId.LORA, TransportId.SMS)
 
-        /** Offers ride on every Nth beacon even when nothing changed (late joiners, lost frames). */
+        /** Link control rides on every Nth beacon even when nothing changed. */
         const val OFFERS_EVERY = 5
 
-        /** A proposal is repeated on this many beacons, then dropped if not accepted. */
-        const val PROPOSE_BEACONS = 3
-
-        /** An acceptance is repeated on this many beacons (the first may be lost). */
-        const val ACCEPT_BEACONS = 3
+        /** A selection is repeated on this many beacons (the first may be lost). */
+        const val SELECT_BEACONS = 3
 
         fun prefix(id: MemberId): ByteArray = id.bytes.copyOf(4)
     }
 
-    /** The agreed link to a peer changed (for the log and the UI). */
+    /** The selected link to a peer changed (for the log and the UI). */
     data class Switch(val peer: MemberId, val from: TransportId?, val to: TransportId?)
 
     /** Read-only view of one peer link. */
     data class LinkView(
         val peer: MemberId,
-        /** Transports both sides offer, in rung order. */
+        /** Transports both offer, in standard order. */
         val common: List<TransportId>,
-        /** Agreed link; null until a first proposal was accepted. */
+        /** Handshake done: the peer acknowledged the same set. */
+        val agreed: Boolean,
+        /** Selected link; null until agreed. */
         val link: TransportId?,
-        /** Our outstanding proposal, if any. */
-        val proposing: TransportId?,
+        /** Next agreed transport when the selected link is quiet; never applied by itself. */
+        val suggestion: TransportId?,
         val lastHeardMs: Long,
     )
 
-    private class Pending(val t: TransportId, val e: Int, var beaconsLeft: Int)
-
     private class Peer {
         var offers: List<LinkOffer>? = null
+        var theirAck: Int? = null
         val heard = HashMap<TransportId, Long>()
         var lastHeardMs = 0L
-        var link: TransportId? = null
+        /** Explicit selection (from either side); null = the default. */
+        var selected: TransportId? = null
         var epoch = 0
-        var linkSinceMs = 0L
-        var proposal: Pending? = null
-        var acceptance: Pending? = null
+        var selectedAtMs = 0L
+        var announce = 0
+        var shown: TransportId? = null
     }
 
     private val peers = HashMap<MemberId, Peer>()
@@ -79,8 +77,8 @@ class LinkNegotiator(
     private var myName: String? = null
     private var dirty = true
     private var beaconCount = 0
+    private val ackSent = HashMap<MemberId, Int>()
 
-    /** What this phone can offer right now; a change is announced on the next beacon. */
     @Synchronized
     fun setOffers(offers: List<LinkOffer>) {
         val sorted = offers.filter { it.t in RUNGS }.distinctBy { it.t }.sortedBy { RUNGS.indexOf(it.t) }
@@ -93,7 +91,7 @@ class LinkNegotiator(
     @Synchronized
     fun offers(): List<LinkOffer> = myOffers
 
-    /** Display name announced with the offers; a change is announced on the next beacon. */
+    /** Display name announced with the link control. */
     @Synchronized
     fun setName(name: String?) {
         val n = name?.trim()?.take(32)?.ifBlank { null }
@@ -107,77 +105,104 @@ class LinkNegotiator(
     @Synchronized
     fun outgoing(): LinkCtl? {
         beaconCount++
-        val props = peers.mapNotNull { (id, p) -> p.proposal?.let { id to it } }
-        val accs = peers.mapNotNull { (id, p) -> p.acceptance?.let { id to it } }
-        if (!dirty && props.isEmpty() && accs.isEmpty() && beaconCount % OFFERS_EVERY != 0) return null
+        val acks = peers.mapNotNull { (id, p) -> p.offers?.let { id to LinkAck(prefix(id), hash(id, it)) } }
+        val handshaking = acks.any { (id, ack) -> ackSent[id] != ack.h || peers[id]?.theirAck != ack.h }
+        val sels = peers.filter { (_, p) -> p.announce > 0 && p.selected != null }
+        if (!dirty && !handshaking && sels.isEmpty() && beaconCount % OFFERS_EVERY != 0) return null
         dirty = false
-        val ctl = LinkCtl(
+        acks.forEach { (id, ack) -> ackSent[id] = ack.h }
+        sels.values.forEach { it.announce-- }
+        return LinkCtl(
             offers = myOffers,
-            prop = props.map { (id, pr) -> LinkProp(prefix(id), pr.t, pr.e) },
-            acc = accs.map { (id, a) -> LinkProp(prefix(id), a.t, a.e) },
+            acks = acks.map { it.second },
+            sel = sels.map { (id, p) -> LinkSel(prefix(id), p.selected!!, p.epoch) },
             name = myName,
         )
-        // Count down repeats; an unanswered proposal expires and the link stays as it was.
-        props.forEach { (id, pr) -> if (--pr.beaconsLeft <= 0) peers[id]?.proposal = null }
-        accs.forEach { (id, a) -> if (--a.beaconsLeft <= 0) peers[id]?.acceptance = null }
-        return ctl
     }
 
     /**
      * An authenticated frame from [peer] arrived on [source]. [direct] = not relayed (TTL
-     * intact): only that counts as hearing the peer on that rung. [ctl] may come relayed:
-     * it is signed by the peer, so its proposals and acceptances are still the peer's own.
+     * intact): only that counts as hearing the peer on that transport. [ctl] may come
+     * relayed: it is signed by the peer, so its offers and selections are its own.
      */
     @Synchronized
     fun onFrame(peer: MemberId, source: TransportId, direct: Boolean, ctl: LinkCtl?): List<Switch> {
         if (peer == self) return emptyList()
         val p = peers.getOrPut(peer) { Peer() }
-        val out = mutableListOf<Switch>()
         if (direct && source in RUNGS) {
             val now = nowMs()
             p.heard[source] = now
             p.lastHeardMs = now
         }
-        if (ctl != null && ctl.v == 2) {
+        if (ctl != null && ctl.v == 3) {
             p.offers = ctl.offers.filter { it.t in RUNGS }.distinctBy { it.t }
-            ctl.acc.firstOrNull { it.p.contentEquals(prefix(self)) }?.let { a ->
-                val mine = p.proposal
-                if (mine != null && mine.t == a.t && mine.e == a.e) {
-                    p.proposal = null
-                    out += setLink(peer, p, a.t, a.e)
+            p.theirAck = ctl.acks.firstOrNull { it.p.contentEquals(prefix(self)) }?.h
+            ctl.sel.firstOrNull { it.p.contentEquals(prefix(self)) }?.let { s ->
+                val newer = s.e > p.epoch || s.e == p.epoch && s.t != p.selected && hex(peer) < hex(self)
+                if (newer && s.t in agreedSet(peer, p)) {
+                    p.selected = s.t
+                    p.epoch = s.e
+                    p.selectedAtMs = nowMs()
                 }
             }
-            ctl.prop.firstOrNull { it.p.contentEquals(prefix(self)) }?.let { pr ->
-                onProposal(peer, p, pr)?.let { out += it }
-            }
         }
-        maybePropose(peer, p)
-        return out
+        return listOfNotNull(changed(peer, p))
     }
 
-    /** Raises proposals that are due (weak link, cheaper radio back). Never switches by itself. */
+    /** Selects [t] for the link with [peer], at once; false when [t] is not in the agreed set. */
     @Synchronized
-    fun tick() {
-        peers.forEach { (id, p) -> maybePropose(id, p) }
+    fun select(peer: MemberId, t: TransportId): List<Switch> {
+        val p = peers[peer] ?: return emptyList()
+        if (t !in agreedSet(peer, p)) return emptyList()
+        p.selected = t
+        p.epoch++
+        p.selectedAtMs = nowMs()
+        p.announce = SELECT_BEACONS
+        return listOfNotNull(changed(peer, p))
     }
+
+    /** Re-evaluates links (e.g. a handshake completing or an offer withdrawn). */
+    @Synchronized
+    fun tick(): List<Switch> = peers.mapNotNull { (id, p) -> changed(id, p) }
 
     @Synchronized
     fun common(peer: MemberId): List<TransportId> = peers[peer]?.offers?.let { commonOf(it) } ?: emptyList()
 
     @Synchronized
-    fun link(peer: MemberId): TransportId? = peers[peer]?.link
+    fun agreed(peer: MemberId): Boolean = peers[peer]?.let { agreedSet(peer, it).isNotEmpty() } ?: false
 
     @Synchronized
-    fun proposing(peer: MemberId): TransportId? = peers[peer]?.proposal?.t
+    fun link(peer: MemberId): TransportId? = peers[peer]?.let { linkOf(peer, it) }
 
-    /** Peers whose agreed link is [t], with their address for it. */
+    @Synchronized
+    fun suggest(peer: MemberId): TransportId? = peers[peer]?.let { suggestionOf(peer, it) }
+
+    /** Peers whose selected link is [t], with their address for it. */
     @Synchronized
     fun peersOn(t: TransportId): List<Pair<MemberId, String?>> =
-        peers.filter { (_, p) -> p.link == t }.map { (id, p) -> id to p.offers?.firstOrNull { it.t == t }?.addr }
+        peers.filter { (id, p) -> linkOf(id, p) == t }.map { (id, p) -> id to p.offers?.firstOrNull { it.t == t }?.addr }
 
     @Synchronized
     fun all(): List<LinkView> = peers.map { (id, p) ->
-        LinkView(id, p.offers?.let { commonOf(it) } ?: emptyList(), p.link, p.proposal?.t, p.lastHeardMs)
+        LinkView(
+            id, p.offers?.let { commonOf(it) } ?: emptyList(), agreedSet(id, p).isNotEmpty(),
+            linkOf(id, p), suggestionOf(id, p), p.lastHeardMs,
+        )
+    }
+
+    /** Canonical hash of the pair's common set incl. addresses; both sides compute the same. */
+    @Synchronized
+    fun hash(peer: MemberId, theirOffers: List<LinkOffer>): Int {
+        val meFirst = hex(self) < hex(peer)
+        val (lo, hi) = if (meFirst) self to peer else peer to self
+        val sb = StringBuilder("LNP3|").append(hex(lo)).append('|').append(hex(hi))
+        for (t in commonOf(theirOffers)) {
+            val mine = myOffers.first { it.t == t }.addr.orEmpty()
+            val theirs = theirOffers.first { it.t == t }.addr.orEmpty()
+            val (a, b) = if (meFirst) mine to theirs else theirs to mine
+            sb.append('|').append(t.name).append(':').append(a).append(':').append(b)
+        }
+        return CRC32().apply { update(sb.toString().toByteArray()) }.value.toInt()
     }
 
     private fun commonOf(theirs: List<LinkOffer>): List<TransportId> {
@@ -186,50 +211,34 @@ class LinkNegotiator(
         return RUNGS.filter { it in mine && it in their }
     }
 
-    private fun onProposal(id: MemberId, p: Peer, pr: LinkProp): Switch? {
-        if (pr.e <= p.epoch) return null // stale or already applied
-        val offers = p.offers ?: return null
-        if (pr.t !in commonOf(offers)) return null // we cannot use that transport: no answer
-        val mine = p.proposal
-        // Both proposed at once: the higher epoch, then the lower member id, wins.
-        if (mine != null && (mine.e > pr.e || mine.e == pr.e && hex(self) < hex(id))) return null
-        p.proposal = null
-        p.acceptance = Pending(pr.t, pr.e, ACCEPT_BEACONS)
-        return setLink(id, p, pr.t, pr.e)
+    private fun agreedSet(id: MemberId, p: Peer): List<TransportId> {
+        val offers = p.offers ?: return emptyList()
+        return if (p.theirAck == hash(id, offers)) commonOf(offers) else emptyList()
     }
 
-    private fun setLink(id: MemberId, p: Peer, t: TransportId, e: Int): Switch {
-        val sw = Switch(id, p.link, t)
-        p.link = t
-        p.epoch = e
-        p.linkSinceMs = nowMs()
-        return sw
+    /** Explicit selection while it is still in the agreed set, else the cheapest agreed one. */
+    private fun linkOf(id: MemberId, p: Peer): TransportId? {
+        val set = agreedSet(id, p)
+        return p.selected?.takeIf { it in set } ?: set.firstOrNull()
     }
 
     private fun window(t: TransportId) = if (t == TransportId.SMS) smsIntervalMs else beaconIntervalMs
 
-    /** Heard directly on [t] recently: within one and a half of its cadence. */
-    private fun fresh(p: Peer, t: TransportId, now: Long) =
-        p.heard[t]?.let { now - it <= window(t) * 3 / 2 } ?: false
-
-    private fun maybePropose(id: MemberId, p: Peer) {
-        if (p.proposal != null || p.acceptance != null) return
-        val common = p.offers?.let { commonOf(it) } ?: return
-        if (common.isEmpty()) return
+    private fun suggestionOf(id: MemberId, p: Peer): TransportId? {
+        val link = linkOf(id, p) ?: return null
         val now = nowMs()
-        val cur = p.link
-        val cheaperBack = cur?.let { c -> common.firstOrNull { RUNGS.indexOf(it) < RUNGS.indexOf(c) && fresh(p, it, now) } }
-        val target: TransportId? = when {
-            // First contact: agree on the rung the peer is heard on directly.
-            cur == null -> common.firstOrNull { fresh(p, it, now) }
-            // A cheaper radio hears the peer directly again: propose going back to it.
-            cheaperBack != null -> cheaperBack
-            // Current link weak (a missed beacon or report on it): propose the next rung.
-            !fresh(p, cur, now) && now - p.linkSinceMs > window(cur) * 3 / 2 ->
-                common.firstOrNull { RUNGS.indexOf(it) > RUNGS.indexOf(cur) }
-            else -> null
-        }
-        if (target != null && target != cur) p.proposal = Pending(target, p.epoch + 1, PROPOSE_BEACONS)
+        val quiet = (p.heard[link]?.let { now - it } ?: Long.MAX_VALUE) > window(link) * 3 / 2 &&
+            now - p.selectedAtMs > window(link) * 3 / 2
+        if (!quiet) return null
+        return agreedSet(id, p).firstOrNull { RUNGS.indexOf(it) > RUNGS.indexOf(link) }
+    }
+
+    private fun changed(id: MemberId, p: Peer): Switch? {
+        val now = linkOf(id, p)
+        if (now == p.shown) return null
+        val sw = Switch(id, p.shown, now)
+        p.shown = now
+        return sw
     }
 
     private fun hex(id: MemberId) = id.bytes.joinToString("") { "%02x".format(it) }

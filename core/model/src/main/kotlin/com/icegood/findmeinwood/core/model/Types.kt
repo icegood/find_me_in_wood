@@ -53,11 +53,11 @@ data class BeaconPayload(
     val sig: ByteArray? = null,
     /** Sender's public key (SPKI) — pinned on first sight. */
     val pub: ByteArray? = null,
-    /** LNP/2 link negotiation (FR-3.6–3.9); absent on most beacons to keep them small. */
+    /** LNP/3 link negotiation (FR-3.6–3.9); absent on most beacons to keep them small. */
     val link: LinkCtl? = null,
 )
 
-/** LNP/2: a transport this member can use for the network, and how to reach it there. */
+/** LNP/3: a transport this member can use for the network, and how to reach it there. */
 @kotlinx.serialization.Serializable
 data class LinkOffer(
     val t: TransportId,
@@ -65,24 +65,32 @@ data class LinkOffer(
     val addr: String? = null,
 )
 
-/** LNP/2: a link change addressed to one peer — a proposal, or the acceptance of one. */
+/** LNP/3 handshake: acknowledges the set of transports agreed with one peer, by hash. */
 @kotlinx.serialization.Serializable
-data class LinkProp(
+data class LinkAck(
+    /** First 4 bytes of the peer's member id. */
+    val p: ByteArray,
+    val h: Int,
+)
+
+/** LNP/3: the transport selected for the link with one peer (within the agreed set). */
+@kotlinx.serialization.Serializable
+data class LinkSel(
     /** First 4 bytes of the peer's member id. */
     val p: ByteArray,
     val t: TransportId,
-    /** Per-pair change counter: a higher epoch supersedes; equal epochs: lower member id wins. */
+    /** Per-pair selection counter: the higher one is current; equal: lower member id wins. */
     val e: Int,
 )
 
 @kotlinx.serialization.Serializable
 data class LinkCtl(
-    val v: Int = 2,
+    val v: Int = 3,
     val offers: List<LinkOffer> = emptyList(),
-    /** Link changes this member proposes, one per peer at most. */
-    val prop: List<LinkProp> = emptyList(),
-    /** Proposals this member accepted (repeated for a few beacons, in case one is lost). */
-    val acc: List<LinkProp> = emptyList(),
+    /** Handshake: the agreed transport set per peer, acknowledged by hash. */
+    val acks: List<LinkAck> = emptyList(),
+    /** Selections made on this phone (repeated for a few beacons, in case one is lost). */
+    val sel: List<LinkSel> = emptyList(),
     /** Sender's display name, so members show up by name rather than as "member". */
     val name: String? = null,
 )

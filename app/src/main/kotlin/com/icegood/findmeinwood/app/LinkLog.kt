@@ -38,7 +38,7 @@ import java.util.Locale
  * ([BuildConfig.DEBUG] is a compile-time constant, so R8 strips the logging).
  *
  * Events: session_start/stop, snapshot (every [SAMPLE_MS]), radio (state changes),
- * peer_lost / peer_back (from [LinkWatch]), link_switch (LNP/2), sms_report.
+ * peer_lost / peer_back (from [LinkWatch]), link_switch (LNP/3), sms_report.
  */
 internal class LinkLog private constructor(private val out: OutputStream, val fileName: String) {
 
@@ -148,6 +148,7 @@ internal class LinkLogSampler(
             put("from", sw.from?.name)
             put("to", sw.to?.name ?: "none")
             put("common", manager.links?.common(sw.peer)?.joinToString())
+            put("agreed", manager.links?.agreed(sw.peer))
         }
     }
 
@@ -216,7 +217,8 @@ internal class LinkLogSampler(
                             put("via", s.transport)
                             val link = edges.values.firstOrNull { it.peer.short() == s.id }
                             put("link", link?.link?.name)
-                            put("proposing", link?.proposing?.name)
+                            put("agreed", link?.agreed)
+                            put("suggestion", link?.suggestion?.name)
                             put("common", link?.common?.joinToString())
                         },
                     )

@@ -106,7 +106,7 @@ object Prefs {
         putSealedString(ctx, KEY_TILE_API_KEY_PREFIX + providerId, key?.trim()?.ifBlank { null })
 
     /**
-     * This phone's own number, offered to members as the LNP/2 SMS link. Android cannot
+     * This phone's own number, offered to members as the LNP/3 SMS link. Android cannot
      * read it reliably, so the user types it once. Sealed (personal data).
      */
     fun myPhoneNumber(ctx: Context): String = sealedString(ctx, KEY_MY_PHONE).orEmpty()
@@ -142,7 +142,7 @@ object Prefs {
 
     /**
      * The name members see: the one chosen in Settings, else the signed-in account's name.
-     * Sent with link control (LNP/2), as the join nick and on chat messages.
+     * Sent with link control (LNP/3), as the join nick and on chat messages.
      */
     fun currentDisplayName(ctx: Context): String? =
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).let {

@@ -70,4 +70,18 @@ class MapMathTest {
         kotlin.test.assertEquals(" (±518 m)", uncertainty(500, 18))
         kotlin.test.assertEquals("", uncertainty(-1, 0))
     }
+
+    @Test
+    fun `a direct radio link overrides positions that contradict it`() {
+        val bt = com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH
+        // Side by side, one phone on a ±500 m network fix that is 1.9 km off.
+        kotlin.test.assertEquals("nearby (≤100 m: Bluetooth range)", distanceText(1877.0, 500, 18, bt, heardRecently = true))
+        // Plausible positions keep their distance.
+        kotlin.test.assertEquals("40 m", distanceText(40.0, 5, 5, bt, heardRecently = true))
+        // Only relayed, or not heard lately: no radio evidence, positions are all there is.
+        kotlin.test.assertEquals("1.9 km (±518 m)".replace('.', java.text.DecimalFormatSymbols.getInstance().decimalSeparator), distanceText(1877.0, 500, 18, null, heardRecently = true))
+        kotlin.test.assertEquals(null, radioBoundM(1877.0, bt, heardRecently = false))
+        kotlin.test.assertEquals(200, radioBoundM(1877.0, com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT, heardRecently = true))
+        kotlin.test.assertEquals(null, radioRangeM(com.icegood.findmeinwood.core.model.TransportId.SMS))
+    }
 }

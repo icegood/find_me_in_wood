@@ -1,31 +1,21 @@
 @startuml
-title find_me_in_wood — LNP/2: explicit link switching by PROPOSE / ACCEPT (no fallback)
+title find_me_in_wood — LNP/3: one handshake agrees the set, switching within it is instant
 autonumber
 participant "A" as A
 participant "B" as B
 
-== 1. Offers and first link (inside encrypted, signed beacons) ==
-A ->> B : BT beacon {offers=[BT, WD, SMS(+380..A)]}
-B ->> A : BT beacon {offers=[BT, SMS(+380..B)]}
-A ->> B : BT beacon {prop=[B: BT, e=1]}
-B -> B : BT offered by both -> link(A)=BT
-B ->> A : BT beacon {acc=[A: BT, e=1]}
-A -> A : link(B)=BT
+== 1. Handshake once (inside encrypted, signed beacons) ==
+A ->> B : beacon {offers=[BT, WD, SMS(+380..A)]}
+B ->> A : beacon {offers=[BT, WD, SMS(+380..B)], acks=[A: h]}
+A ->> B : beacon {acks=[B: h]}
+note over A, B : same hash on both sides -> set {BT, WD, SMS} agreed;\nboth start on the cheapest: BT
 
-== 2. Weak link: propose over a channel that still works ==
-note over A : missed a beacon from B on BT
-A ->> B : beacon {prop=[B: SMS, e=2]}\n(over weak BT or relayed by C)
-B -> B : link(A)=SMS
-B ->> A : beacon {acc=[A: SMS, e=2]}
-A -> A : link(B)=SMS
+== 2. Switch within the agreed set: no handshake ==
+A -> A : user: link to B -> SMS (applies at once)
+A ->> B : beacon {sel=[B: SMS, e=1]} (repeated 3x; may be relayed)
+B -> B : SMS in agreed set, e newer -> link(A)=SMS (no answer)
 A ->> B : SMS "FMIW1:..." position report (every 30 min, max 10/h)
 
-== 3. Nothing gets through: no switch ==
-note over A, B : proposal repeated on 3 beacons, unanswered -> expires;\nlink stays as it was, nobody is texted
-
-== 4. Back on a cheaper radio ==
-B ->> A : BT beacon (direct)
-A ->> B : BT beacon {prop=[B: BT, e=3]}
-B ->> A : BT beacon {acc=[A: BT, e=3]}
-note over A, B : link = BT on both, SMS reports stop
+== 3. Quiet link: suggestion only ==
+note over A : no beacon from B on the selected link\n-> member list: "Bluetooth quiet — use Wi-Fi Direct?"\nnothing switches unless the user taps
 @enduml

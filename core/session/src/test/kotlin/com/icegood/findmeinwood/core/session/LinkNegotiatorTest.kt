@@ -2,7 +2,7 @@ package com.icegood.findmeinwood.core.session
 
 import com.icegood.findmeinwood.core.model.LinkCtl
 import com.icegood.findmeinwood.core.model.LinkOffer
-import com.icegood.findmeinwood.core.model.LinkProp
+import com.icegood.findmeinwood.core.model.LinkSel
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.TransportId
 import com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH
@@ -23,123 +23,112 @@ class LinkNegotiatorTest {
     private val idB = MemberId(ByteArray(32) { 2 })
     private val a = LinkNegotiator(idA, { now }, beacon, sms)
     private val b = LinkNegotiator(idB, { now }, beacon, sms)
-    private val switchesA = mutableListOf<LinkNegotiator.Switch>()
-    private val switchesB = mutableListOf<LinkNegotiator.Switch>()
 
     /** One beacon from A to B and one back, received on [t] (null = nothing gets through). */
     private fun exchange(t: TransportId? = BLUETOOTH, direct: Boolean = true) {
         val fromA = a.outgoing()
-        if (t != null) switchesB += b.onFrame(idA, t, direct, fromA)
+        if (t != null) b.onFrame(idA, t, direct, fromA)
         val fromB = b.outgoing()
-        if (t != null) switchesA += a.onFrame(idB, t, direct, fromB)
+        if (t != null) a.onFrame(idB, t, direct, fromB)
     }
 
-    private fun meet() {
+    private fun handshake() {
         a.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT), LinkOffer(SMS, "+380001")))
-        b.setOffers(listOf(LinkOffer(SMS, "+380002"), LinkOffer(BLUETOOTH)))
+        b.setOffers(listOf(LinkOffer(SMS, "+380002"), LinkOffer(WIFI_DIRECT), LinkOffer(BLUETOOTH)))
         repeat(3) { exchange() }
     }
 
-    /** Lets repeated acceptances run out, so new proposals may start. */
-    private fun settle() = repeat(LinkNegotiator.ACCEPT_BEACONS) { exchange(t = null) }
-
     @Test
-    fun `first contact establishes the link explicitly by propose and accept`() {
-        meet()
-        assertEquals(listOf(BLUETOOTH, SMS), a.common(idB))
+    fun `handshake agrees the common set once and starts on the cheapest`() {
+        handshake()
+        assertTrue(a.agreed(idB) && b.agreed(idA))
+        assertEquals(listOf(BLUETOOTH, WIFI_DIRECT, SMS), a.common(idB))
+        assertEquals(a.hash(idB, b.offers()), b.hash(idA, a.offers()))
         assertEquals(BLUETOOTH, a.link(idB))
         assertEquals(BLUETOOTH, b.link(idA))
-        assertTrue(switchesA.isNotEmpty() && switchesB.isNotEmpty())
     }
 
     @Test
-    fun `a weak link is switched only after the peer accepts over a channel that still works`() {
-        meet()
-        settle()
-        now += 2 * beacon // A missed B's beacons on Bluetooth
-        a.tick()
-        assertEquals(SMS, a.proposing(idB))
-        assertEquals(BLUETOOTH, a.link(idB), "proposing is not switching")
-        exchange(BLUETOOTH, direct = false) // proposal relayed, B accepts, acceptance relayed back
-        assertEquals(SMS, b.link(idA))
-        assertEquals(SMS, a.link(idB))
+    fun `switching within the agreed set is instant and the peer follows without answering`() {
+        handshake()
+        val sw = a.select(idB, SMS).single()
+        assertEquals(LinkNegotiator.Switch(idB, BLUETOOTH, SMS), sw)
+        assertEquals(SMS, a.link(idB), "applies at once, no handshake")
         assertEquals(listOf(idB to "+380002"), a.peersOn(SMS))
+        b.onFrame(idA, BLUETOOTH, direct = false, ctl = a.outgoing()) // even relayed
+        assertEquals(SMS, b.link(idA))
         assertEquals(listOf(idA to "+380001"), b.peersOn(SMS))
+        assertTrue(b.outgoing()?.sel.orEmpty().isEmpty(), "the peer does not answer a selection")
+        // And back, just as instantly.
+        a.select(idB, WIFI_DIRECT)
+        b.onFrame(idA, WIFI_DIRECT, direct = true, ctl = a.outgoing())
+        assertEquals(WIFI_DIRECT, b.link(idA))
     }
 
     @Test
-    fun `no fallback when nothing gets through - the proposal expires and the link stays`() {
-        meet()
-        settle()
-        now += 2 * beacon
-        a.tick()
-        assertEquals(SMS, a.proposing(idB))
-        repeat(LinkNegotiator.PROPOSE_BEACONS) { a.outgoing() } // sent into the void
-        assertNull(a.proposing(idB), "unanswered proposal expired")
-        assertEquals(BLUETOOTH, a.link(idB))
+    fun `nothing outside the agreed set can be selected, and nothing before the handshake`() {
+        a.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(SMS, "+1")))
+        b.setOffers(listOf(LinkOffer(BLUETOOTH)))
+        b.onFrame(idA, BLUETOOTH, direct = true, ctl = a.outgoing())
+        assertTrue(b.select(idA, BLUETOOTH).isEmpty(), "B has A's offers but A has not acknowledged yet")
+        assertNull(b.link(idA))
+        repeat(2) { exchange() }
+        assertTrue(a.select(idB, SMS).isEmpty(), "B does not offer SMS")
+        val ack = com.icegood.findmeinwood.core.model.LinkAck(LinkNegotiator.prefix(idB), a.hash(idB, b.offers()))
+        val forged = LinkCtl(v = 3, offers = a.offers(), acks = listOf(ack), sel = listOf(LinkSel(LinkNegotiator.prefix(idB), LORA, 99)))
+        b.onFrame(idA, BLUETOOTH, direct = true, ctl = forged)
         assertEquals(BLUETOOTH, b.link(idA))
-        assertTrue(a.peersOn(SMS).isEmpty(), "nobody is texted without an accepted switch")
     }
 
     @Test
-    fun `back on a cheaper radio is proposed and accepted too`() {
-        meet()
-        settle()
-        now += 2 * beacon
-        a.tick()
-        exchange(BLUETOOTH, direct = false)
+    fun `no fallback - a quiet link only yields a suggestion`() {
+        handshake()
+        repeat(LinkNegotiator.SELECT_BEACONS + 2) { exchange(t = null) }
+        now += 2 * beacon // nothing heard on Bluetooth for two beacons
+        assertTrue(a.tick().isEmpty())
+        assertEquals(BLUETOOTH, a.link(idB), "still Bluetooth: nothing switches by itself")
+        assertEquals(WIFI_DIRECT, a.suggest(idB))
+        assertTrue(a.peersOn(SMS).isEmpty())
+        exchange(BLUETOOTH)
+        assertNull(a.suggest(idB), "heard again: no suggestion")
+    }
+
+    @Test
+    fun `concurrent selections - higher epoch wins, equal epochs the lower member id`() {
+        handshake()
+        a.select(idB, SMS)          // A epoch 1
+        b.select(idA, WIFI_DIRECT)  // B epoch 1
+        exchange()
         assertEquals(SMS, a.link(idB))
-        settle()
-        exchange(BLUETOOTH) // heard directly again -> proposal
-        exchange(BLUETOOTH) // -> accept
+        assertEquals(SMS, b.link(idA), "same epoch: A (lower id) wins")
+        b.select(idA, WIFI_DIRECT)  // epoch 2
+        exchange()
+        assertEquals(WIFI_DIRECT, a.link(idB))
+    }
+
+    @Test
+    fun `a withdrawn offer re-opens the handshake and the link moves within the new set`() {
+        handshake()
+        a.select(idB, SMS)
+        exchange()
+        b.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT))) // B stops offering SMS
+        repeat(2) { exchange() }
+        assertTrue(a.agreed(idB))
+        assertFalse(SMS in a.common(idB))
         assertEquals(BLUETOOTH, a.link(idB))
-        assertEquals(BLUETOOTH, b.link(idA))
         assertTrue(a.peersOn(SMS).isEmpty())
     }
 
     @Test
-    fun `a proposal for a transport the peer cannot use gets no answer`() {
-        meet()
-        val ctl = LinkCtl(offers = a.offers(), prop = listOf(LinkProp(LinkNegotiator.prefix(idB), WIFI_DIRECT, 9)))
-        assertTrue(b.onFrame(idA, BLUETOOTH, direct = true, ctl = ctl).isEmpty())
-        assertEquals(BLUETOOTH, b.link(idA))
-        assertTrue(b.outgoing()?.acc.orEmpty().none { it.t == WIFI_DIRECT })
-    }
-
-    @Test
-    fun `simultaneous proposals - equal epochs resolve to the lower member id`() {
-        meet()
-        settle()
-        now += 2 * beacon
-        a.tick(); b.tick()
-        assertEquals(SMS, a.proposing(idB))
-        assertEquals(SMS, b.proposing(idA))
-        exchange(BLUETOOTH, direct = false)
-        exchange(BLUETOOTH, direct = false)
-        assertEquals(SMS, a.link(idB))
-        assertEquals(SMS, b.link(idA))
-    }
-
-    @Test
-    fun `stale proposals and other protocol versions are ignored`() {
-        meet()
-        val old = LinkCtl(offers = a.offers(), prop = listOf(LinkProp(LinkNegotiator.prefix(idB), SMS, 1)))
-        assertTrue(b.onFrame(idA, BLUETOOTH, direct = true, ctl = old).isEmpty())
-        assertEquals(BLUETOOTH, b.link(idA))
-        assertTrue(b.onFrame(idA, BLUETOOTH, direct = true, ctl = LinkCtl(v = 1)).isEmpty())
-    }
-
-    @Test
-    fun `display name and offers are announced on change and every fifth beacon`() {
-        meet()
-        settle()
+    fun `name and offers are announced on change and every fifth beacon`() {
+        handshake()
+        repeat(3) { a.outgoing() }
         a.setName("  Ira  ")
         assertEquals("Ira", a.outgoing()!!.name)
         a.setName("Ira")
-        val sent = (1..LinkNegotiator.OFFERS_EVERY).map { a.outgoing() }
-        assertEquals(1, sent.count { it != null })
+        assertEquals(1, (1..LinkNegotiator.OFFERS_EVERY).count { a.outgoing() != null })
         assertTrue(a.onFrame(idA, BLUETOOTH, direct = true, ctl = null).isEmpty(), "own frames ignored")
+        assertTrue(a.onFrame(idB, BLUETOOTH, direct = true, ctl = LinkCtl(v = 2)).isEmpty(), "other versions ignored")
         assertEquals(BLUETOOTH, a.all().single().link)
-        assertFalse(LORA in a.common(idB))
     }
 }

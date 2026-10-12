@@ -15,8 +15,12 @@ data class PeerState(
     val verified: Boolean = true,
     /** Transport of the last frame heard directly from the peer; null when only relayed. */
     val transport: com.icegood.findmeinwood.core.model.TransportId? = null,
-    /** Link transport agreed with the peer (LNP/2); null until agreed. */
+    /** Link transport selected with the peer (LNP/3); null until the handshake is done. */
     val link: com.icegood.findmeinwood.core.model.TransportId? = null,
+    /** Transports agreed in the handshake: the ones the link can be switched to. */
+    val linkOptions: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
+    /** Next agreed transport while the selected link is quiet (a hint, never applied). */
+    val linkSuggestion: com.icegood.findmeinwood.core.model.TransportId? = null,
 )
 
 /** Pure-Kotlin peer table (FR-6.1/6.3): staleness + purge, injectable clock. */
@@ -43,16 +47,24 @@ class PeerTracker(
             verified = cur?.verified ?: true,
             transport = transport,
             link = cur?.link,
+            linkOptions = cur?.linkOptions ?: emptyList(),
+            linkSuggestion = cur?.linkSuggestion,
         ))
     }
 
-    /** The agreed link changed (LNP/2). */
-    fun setLink(member: MemberId, link: com.icegood.findmeinwood.core.model.TransportId?) {
+    /** Link state from LNP/3: selection, agreed options, suggestion. */
+    fun setLinkInfo(
+        member: MemberId,
+        link: com.icegood.findmeinwood.core.model.TransportId?,
+        options: List<com.icegood.findmeinwood.core.model.TransportId>,
+        suggestion: com.icegood.findmeinwood.core.model.TransportId?,
+    ) {
         val cur = peers.value[member] ?: return
-        if (cur.link != link) peers.value = peers.value + (member to cur.copy(link = link))
+        val next = cur.copy(link = link, linkOptions = options, linkSuggestion = suggestion)
+        if (next != cur) peers.value = peers.value + (member to next)
     }
 
-    /** Display name announced by the peer (LNP/2 link control). */
+    /** Display name announced by the peer (LNP/3 link control). */
     fun setNickname(member: MemberId, name: String) {
         val cur = peers.value[member] ?: return
         if (cur.nickname != name) peers.value = peers.value + (member to cur.copy(nickname = name))

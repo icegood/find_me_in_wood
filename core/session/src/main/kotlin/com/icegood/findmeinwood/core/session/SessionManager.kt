@@ -41,7 +41,7 @@ class SessionManager(
     private val clock: () -> Long,
     private val aead: Aead = AesGcmAead,
     private val relayEnabled: Boolean = true,
-    /** LNP/2 link negotiation (FR-3.5–3.10); null = broadcast only, no negotiation. */
+    /** LNP/3 link negotiation (FR-3.5–3.10); null = broadcast only, no negotiation. */
     val links: LinkNegotiator? = null,
     private val scope: CoroutineScope,
     private val keepAliveMs: Long = KEEP_ALIVE_MS,
@@ -78,7 +78,7 @@ class SessionManager(
     /** Decrypted payload of every authenticated incoming frame, with sender (chat etc.). */
     var onFrameReceived: ((ByteArray, MemberId) -> Unit)? = null
 
-    /** The agreed link to a peer changed (LNP/2 FR-3.8). */
+    /** The selected link to a peer changed (LNP/3 FR-3.8). */
     var onLinkSwitch: ((LinkNegotiator.Switch) -> Unit)? = null
 
     /** US-8: cleartext management frames (HELLO / join handshake) as raw wire bytes. */
@@ -93,9 +93,15 @@ class SessionManager(
 
     fun edges(): List<LinkNegotiator.LinkView> = links?.all() ?: emptyList()
 
-    private fun announce(switches: List<LinkNegotiator.Switch>) = switches.forEach { sw ->
-        tracker.setLink(sw.peer, sw.to)
-        onLinkSwitch?.invoke(sw)
+    private fun announce(switches: List<LinkNegotiator.Switch>) {
+        switches.forEach { onLinkSwitch?.invoke(it) }
+        // Agreed set, selection and suggestion feed the member list.
+        links?.all()?.forEach { v -> tracker.setLinkInfo(v.peer, v.link, if (v.agreed) v.common else emptyList(), v.suggestion) }
+    }
+
+    /** User picked [t] for the link with [peer] (LNP/3: within the agreed set, no handshake). */
+    fun selectLink(peer: MemberId, t: TransportId) {
+        links?.let { announce(it.select(peer, t)) }
     }
 
     /**
@@ -161,7 +167,7 @@ class SessionManager(
             while (true) {
                 delay(keepAliveMs)
                 tracker.tick()
-                links?.tick()
+                links?.let { announce(it.tick()) }
             }
         }
     }

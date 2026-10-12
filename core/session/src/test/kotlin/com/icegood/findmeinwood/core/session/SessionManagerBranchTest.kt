@@ -209,40 +209,43 @@ class SessionManagerBranchTest {
     }
 
     @Test
-    fun `negotiated link travels in signed beacons and is applied only on accept`() = runBlocking {
-        val links = LinkNegotiator(me, { now }, beaconIntervalMs = 10_000)
+    fun `negotiated link travels in signed beacons and selection switches at once`() = runBlocking {
+        val links = LinkNegotiator(me, { now }, beaconIntervalMs = 60_000)
         links.setOffers(listOf(LinkOffer(TransportId.BLUETOOTH), LinkOffer(TransportId.SMS, "+1")))
         val switches = mutableListOf<LinkNegotiator.Switch>()
-        // Realistic cadence: a 10 ms beacon loop would use up the proposal's repeats at once.
         val m = manager(links = links, keepAliveMs = 60_000)
         m.onLinkSwitch = { switches += it }
         m.start()
         try {
-            val offers = com.icegood.findmeinwood.core.model.LinkCtl(offers = listOf(LinkOffer(TransportId.BLUETOOTH)))
+            val theirOffers = listOf(LinkOffer(TransportId.BLUETOOTH), LinkOffer(TransportId.SMS, "+2"))
+            val offers = com.icegood.findmeinwood.core.model.LinkCtl(offers = theirOffers)
             t.deliver(frame(seq = 6u, ttl = 2u, payload = PayloadCodec.encode(BeaconPayload(link = offers)))) // relayed
             eventually { m.peerFlow.value.containsKey(other) }
             assertEquals(null, m.peerFlow.value[other]?.transport)
-            assertEquals(null, links.proposing(other), "relayed frames do not count as hearing a rung")
-            t.deliver(frame(seq = 7u, payload = PayloadCodec.encode(BeaconPayload(link = offers)))) // direct
-            eventually { links.proposing(other) == TransportId.BLUETOOTH }
-            assertEquals(null, links.link(other), "proposed, not yet agreed")
 
+            // Our beacon carries our offers and the ack of the common set, signed.
             m.sendBeaconSigned(BeaconPayload())
-            val prop = FrameCodec.decode(t.sentHistory.last()).let {
+            val ours = FrameCodec.decode(t.sentHistory.last()).let {
                 PayloadCodec.decode(AesGcmAead.open(profile.trafficKey, it.ciphertext, FrameCodec.aad(it.networkId, it.senderId, it.seq, it.sentAtMs)))
-            }.link!!.also { assertEquals("+1", it.offers.last().addr) }.prop.single()
-            assertEquals(TransportId.BLUETOOTH, prop.t)
+            }.link!!
+            assertEquals("+1", ours.offers.last().addr)
+            assertEquals(links.hash(other, theirOffers), ours.acks.single().h)
 
-            val accept = offers.copy(acc = listOf(com.icegood.findmeinwood.core.model.LinkProp(me.bytes.copyOf(4), prop.t, prop.e)))
-            t.deliver(frame(seq = 9u, payload = PayloadCodec.encode(BeaconPayload(link = accept))))
+            // The peer acknowledges the same set: handshake done, default link Bluetooth.
+            val ack = offers.copy(acks = listOf(com.icegood.findmeinwood.core.model.LinkAck(me.bytes.copyOf(4), links.hash(other, theirOffers))))
+            t.deliver(frame(seq = 7u, payload = PayloadCodec.encode(BeaconPayload(link = ack))))
             eventually { m.peerFlow.value[other]?.link == TransportId.BLUETOOTH }
-            assertEquals(TransportId.BLUETOOTH, switches.single().to)
+            assertEquals(listOf(TransportId.BLUETOOTH, TransportId.SMS), m.peerFlow.value[other]?.linkOptions)
+
+            m.selectLink(other, TransportId.SMS)
+            assertEquals(TransportId.SMS, m.peerFlow.value[other]?.link)
+            assertEquals(TransportId.SMS, switches.last().to)
 
             // The same frame again (as over a second radio) is dropped as a replay but still
             // counts as hearing the peer: the link stays agreed, nothing is proposed.
-            t.deliver(frame(seq = 9u, payload = PayloadCodec.encode(BeaconPayload(link = accept))))
+            t.deliver(frame(seq = 7u, payload = PayloadCodec.encode(BeaconPayload(link = ack))))
             eventually { m.diagnostics.value.dropped >= 1 }
-            assertEquals(null, links.proposing(other))
+            assertEquals(TransportId.SMS, links.link(other), "a duplicate never changes the selection")
 
 
             // A name in the peer's link control becomes its nickname.

@@ -62,32 +62,32 @@ Bluetooth — **so that** everyone stays connected with the least radio cost.
 - FR-3.4 A peer's position may arrive via a relay path; the UI may show "via B" when
   the direct edge is down. Peer staleness rules (FR-6.3) apply per member regardless
   of path.
-- FR-3.5 The transport of each pair's link is negotiated in-band by the Link Negotiation
-  Protocol (LNP/2, FR-3.6–3.9). It is explicit, agreed state: it changes only through a
-  PROPOSE / ACCEPT exchange. There is no fallback — nothing switches on its own because
-  a link went quiet. The user only decides which transports this phone *offers*.
-- FR-3.6 LNP/2 — offers. Every member advertises the transports it can use for this
+- FR-3.5 Links are negotiated in-band by the Link Negotiation Protocol (LNP/3,
+  FR-3.6–3.9): one handshake per pair agrees the *set* of usable transports; within that
+  set the link is switched at any time without a further handshake. There is no
+  fallback — nothing switches on its own.
+- FR-3.6 LNP/3 — offers. Every member advertises the transports it can use for this
   network inside its encrypted, signed beacon (`link.offers`): `{t: BLUETOOTH |
   WIFI_DIRECT | LORA | SMS, addr?}`; `addr` is what a peer needs to reach us there (SMS:
   our number). An offer exists only while usable here (radio on, LoRa node paired, SMS
   permitted and own number entered). Link control rides on beacons when something
   changed or is pending, and on every 5th beacon otherwise; never in clear.
-- FR-3.7 LNP/2 — proposals. A phone proposes a transport both peers offer
-  (`link.prop`: peer id prefix, transport, epoch = current epoch + 1):
-  on first contact (the rung the peer is heard on directly); when the current link is
-  weak (a missed beacon on it — SMS: a missed report): the next rung in the standard
-  order BLUETOOTH, WIFI_DIRECT, LORA, SMS; when a cheaper radio hears the peer directly
-  again: that rung. A proposal is repeated on 3 beacons and travels over whatever still
-  reaches the peer (the weak link, a relay — link control is signed by its author).
-- FR-3.8 LNP/2 — acceptance. The peer accepts a proposal for a transport it offers too
-  (`link.acc`, repeated on 3 beacons) and uses it from then on; the proposer switches
-  when the acceptance arrives. An unanswered proposal expires and the link stays as it
-  was — when nothing reaches the peer, nothing switches. Stale epochs are ignored;
-  simultaneous proposals: the higher epoch, then the lower member id, wins. The agreed
-  link of every member is shown in the member list.
-- FR-3.9 LNP/2 — SMS link. On an agreed SMS link each peer gets one position report
-  (the 47-byte encrypted SMS frame, `FMIW1:` + base64url) every 30 min, bounded by a
-  per-hour SMS budget (10/h). There is no separate distress mode, button or schedule.
+- FR-3.7 LNP/3 — handshake. The agreed set of a pair is the transports both offer
+  (standard order BLUETOOTH, WIFI_DIRECT, LORA, SMS). Each side acknowledges it in
+  `link.acks` (peer id prefix + CRC-32 of the canonical set incl. addresses); the set is
+  agreed once the peer's ack matches our own hash. Changing offers re-opens it. Only an
+  agreed set is usable: nobody is texted without having offered the number for that.
+- FR-3.8 LNP/3 — selection. Once agreed, both start on the cheapest transport of the set
+  (computed identically on both sides, nothing sent). Either member may then select any
+  transport of the agreed set (member list → link ▾); it applies at once and is
+  announced in `link.sel` (peer id prefix, transport, epoch; repeated on 3 beacons),
+  where the peer applies it too without answering. The higher epoch is current; equal
+  epochs: the lower member id wins. Selections outside the agreed set are ignored.
+  When the selected link misses a beacon (SMS: a report) the member list only
+  *suggests* the next agreed transport; switching stays the user's tap.
+- FR-3.9 LNP/3 — SMS link. On an SMS link each peer gets one position report (the
+  47-byte encrypted SMS frame, `FMIW1:` + base64url) every 30 min, bounded by a per-hour
+  SMS budget (10/h). There is no separate distress mode, button or schedule.
 - FR-3.10 Relays and the messenger carrier (INTERNET, FR-9) are not rungs: relayed
   frames never count as direct hearing, and messenger hand-off stays user-initiated.
 

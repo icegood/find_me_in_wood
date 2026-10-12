@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
     }
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
-    /** SMS rung (LNP/2): send + receive, and phone state for the satellite note in the log. */
+    /** SMS rung (LNP/3): send + receive, and phone state for the satellite note in the log. */
     private val smsPermissions = arrayOf(
         Manifest.permission.SEND_SMS,
         Manifest.permission.RECEIVE_SMS,
@@ -266,6 +266,7 @@ class MainActivity : ComponentActivity() {
                     tab == "peers" -> com.icegood.findmeinwood.feature.map.PeerList(
                         namedPeers,
                         onRename = { id, name -> MemberNames.rename(this@MainActivity, id, name) },
+                        onSelectLink = { id, t -> SessionService.activeManager?.selectLink(id, t) },
                         emptyText = if (profile == null) {
                             "No network running. Start one in Networks to see its members here."
                         } else {
@@ -879,7 +880,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * LNP/2 SMS link: the only input is this phone's number. With it (and SMS permitted)
+     * LNP/3 SMS link: the only input is this phone's number. With it (and SMS permitted)
      * SMS is offered to members like any other transport; nothing else to switch on.
      */
     @Composable

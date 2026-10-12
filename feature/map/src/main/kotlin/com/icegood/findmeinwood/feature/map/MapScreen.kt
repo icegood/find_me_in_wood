@@ -407,8 +407,10 @@ fun MapScreen(
                             }
                             drawDirectionArrow(my, tip, accent)
                             val (meters, _) = distanceBearing(meNow, target.latE7, target.lonE7)
+                            val targetPeer = ps[follow]
+                            val bound = targetPeer?.let { radioBoundM(meters, it.transport, heardRecently(it)) }
                             val layout = textMeasurer.measure(
-                                formatDistance(meters),
+                                bound?.let { "nearby ≤$it m" } ?: formatDistance(meters),
                                 style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelFg),
                             )
                             val pad = 6.dp.toPx()
@@ -562,9 +564,10 @@ fun MapScreen(
                     val fix0 = me
                     if (pos != null && fix0 != null) {
                         val (meters, bearing) = distanceBearing(fix0, pos.latE7, pos.lonE7)
-                        val dist = formatDistance(meters)
+                        val dist = distanceText(meters, pos.accuracyCm / 100, fix0.accuracy.toInt(), peer.transport, heardRecently(peer))
+                        val bound = radioBoundM(meters, peer.transport, heardRecently(peer))
                         Text(
-                            "$dist · ${bearing.toInt()}° ${compass(bearing)}" +
+                            (if (bound == null) "$dist · ${bearing.toInt()}° ${compass(bearing)}" else "$dist · positions too rough for a direction") +
                                 if (peer.viaMemberId != null) " · relayed" else "",
                             style = MaterialTheme.typography.labelLarge,
                         )
@@ -854,9 +857,10 @@ fun PeerList(
     onFind: (MemberId?) -> Unit = {},
     emptyText: String = "No members heard yet.",
     onRename: ((MemberId, String?) -> Unit)? = null,
+    onSelectLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)? = null,
 ) {
     val me = rememberDeviceFix(LocalContext.current)?.location
-    PeerList(peers, me, modifier, findTarget, onFind, emptyText, onRename)
+    PeerList(peers, me, modifier, findTarget, onFind, emptyText, onRename, onSelectLink)
 }
 
 /** FR-6.4: mapless alternative — distance and bearing to each peer. */
@@ -870,6 +874,8 @@ fun PeerList(
     emptyText: String = "No members heard yet.",
     /** Give a member a name on this phone (null/blank = back to their own name). */
     onRename: ((MemberId, String?) -> Unit)? = null,
+    /** Switch the link to a transport of the agreed set (LNP/3, no further handshake). */
+    onSelectLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)? = null,
 ) {
     val ps by peers.collectAsState()
     var renaming by remember { mutableStateOf<PeerState?>(null) }
@@ -884,7 +890,7 @@ fun PeerList(
             val pos = peer.lastPosition
             val isTarget = peer.memberId == findTarget
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                val name = (if (isTarget) "→ " else "") + (peer.nickname ?: "member") + " (${peer.link?.let { "link " + viaLabel(it) } ?: viaLabel(peer.transport)})"
+                val name = (if (isTarget) "→ " else "") + (peer.nickname ?: "member")
                 if (pos == null || me == null) {
                     Text(
                         "$name — unlocated, last seen ${age(peer.lastSeenMs)} ago",
@@ -894,9 +900,11 @@ fun PeerList(
                     )
                 } else {
                     val (meters, bearing) = distanceBearing(me, pos.latE7, pos.lonE7)
+                    val bound = radioBoundM(meters, peer.transport, heardRecently(peer))
                     Text(
-                        "$name — ${formatDistance(meters)}${uncertainty(pos.accuracyCm / 100, me.accuracy.toInt())}, " +
-                            "bearing ${bearing.toInt()}° ${compass(bearing)}",
+                        "$name — " + distanceText(meters, pos.accuracyCm / 100, me.accuracy.toInt(), peer.transport, heardRecently(peer)) +
+                            // A bearing from positions that contradict the radio is meaningless too.
+                            (if (bound == null) ", bearing ${bearing.toInt()}° ${compass(bearing)}" else ""),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (findTarget != null && !isTarget) Color.Gray else Color.Unspecified,
                         modifier = Modifier.weight(1f),
@@ -909,6 +917,7 @@ fun PeerList(
                     TextButton(onClick = { onFind(peer.memberId) }) { Text("Find") }
                 }
             }
+            LinkRow(peer, onSelectLink)
         }
     }
     renaming?.let { peer ->
@@ -930,6 +939,33 @@ fun PeerList(
     }
 }
 
+/** How far a direct link on [t] can reach at most; null when it says nothing useful. */
+internal fun radioRangeM(t: com.icegood.findmeinwood.core.model.TransportId?): Int? = when (t) {
+    com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH -> 100
+    com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT -> 200
+    else -> null
+}
+
+/**
+ * Upper bound on the real distance from a direct radio link heard recently, when the two
+ * positions claim more than that radio can reach (a rough indoor network fix can be off by
+ * kilometres while the phones lie side by side). Null when the positions are plausible.
+ */
+internal fun radioBoundM(meters: Double, directVia: com.icegood.findmeinwood.core.model.TransportId?, heardRecently: Boolean): Int? {
+    val range = if (heardRecently) radioRangeM(directVia) else null
+    return range?.takeIf { meters > it }
+}
+
+/** Distance as shown to the user: radio evidence beats positions that contradict it. */
+internal fun distanceText(
+    meters: Double, peerAccM: Int, myAccM: Int,
+    directVia: com.icegood.findmeinwood.core.model.TransportId?, heardRecently: Boolean,
+): String = radioBoundM(meters, directVia, heardRecently)
+    ?.let { "nearby (≤$it m: ${viaLabel(directVia)} range)" }
+    ?: (formatDistance(meters) + uncertainty(peerAccM, myAccM))
+
+private fun heardRecently(peer: PeerState) = System.currentTimeMillis() - peer.lastSeenMs < 3 * 60_000L
+
 /**
  * " (±N m)" when the two positions together are too rough for the distance to mean much
  * (e.g. an indoor network fix of ±500 m), otherwise nothing.
@@ -939,7 +975,53 @@ internal fun uncertainty(peerAccM: Int, myAccM: Int): String {
     return if (total > 100) " (±${total} m)" else ""
 }
 
-/** How the member is reached now (LNP/2 rung, or relays). */
+/**
+ * The link to one member: the selected transport, a picker over the transports agreed in
+ * the handshake (switching is instant, no new handshake), and — when the selected link has
+ * gone quiet — a one-tap suggestion. Nothing switches unless the user taps.
+ */
+@Composable
+private fun LinkRow(
+    peer: PeerState,
+    onSelect: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)?,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 12.dp),
+    ) {
+        val link = peer.link
+        if (link == null) {
+            Text(
+                "link: agreeing… (heard ${viaLabel(peer.transport)})",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray,
+            )
+            return@Row
+        }
+        var open by remember { mutableStateOf(false) }
+        Box {
+            OutlinedButton(onClick = { open = true }, enabled = onSelect != null && peer.linkOptions.size > 1) {
+                Text("link: ${viaLabel(link)} ▾", style = MaterialTheme.typography.labelSmall)
+            }
+            androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                peer.linkOptions.forEach { t ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text((if (t == link) "✓ " else "") + viaLabel(t)) },
+                        onClick = { open = false; onSelect?.invoke(peer.memberId, t) },
+                    )
+                }
+            }
+        }
+        peer.linkSuggestion?.let { t ->
+            TextButton(onClick = { onSelect?.invoke(peer.memberId, t) }) {
+                Text("${viaLabel(link)} quiet — use ${viaLabel(t)}?", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+    }
+}
+
+/** How the member is reached now (LNP/3 link, or relays). */
 internal fun viaLabel(t: com.icegood.findmeinwood.core.model.TransportId?): String = when (t) {
     null -> "via others"
     com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH -> "Bluetooth"
