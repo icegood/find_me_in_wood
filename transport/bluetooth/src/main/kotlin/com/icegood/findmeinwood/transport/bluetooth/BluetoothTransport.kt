@@ -88,6 +88,8 @@ class BluetoothTransport internal constructor(
     private val clientWriting = ConcurrentHashMap.newKeySet<String>()
     /** One central link per peer address: a mesh needs more than a single connection. */
     private val clients = ConcurrentHashMap<String, BluetoothGatt>()
+    /** Addresses with a connectGatt in flight (not in [clients] yet). */
+    private val connecting = ConcurrentHashMap.newKeySet<String>()
     private val clientMtu = ConcurrentHashMap<String, Int>()
     private val clientReady = ConcurrentHashMap.newKeySet<String>()
     private val lastInbound = ConcurrentHashMap<String, Long>()
@@ -155,7 +157,7 @@ class BluetoothTransport internal constructor(
         advertiser?.let { adapter?.bluetoothLeAdvertiser?.stopAdvertising(it) }
         advertiser = null
         clients.values.forEach { g -> try { g.disconnect(); g.close() } catch (_: Exception) {} }
-        clients.clear(); clientMtu.clear(); clientReady.clear(); lastInbound.clear()
+        clients.clear(); clientMtu.clear(); clientReady.clear(); lastInbound.clear(); connecting.clear()
         try { gattServer?.close() } catch (_: Exception) {}
         gattServer = null
         synchronized(lock) { clientQueues.clear(); clientWriting.clear() }
@@ -277,7 +279,7 @@ class BluetoothTransport internal constructor(
             if (characteristic?.uuid != CHAR_WRITE_UUID) return
             device?.let { lastInbound[it.address] = clock() }
             val frame = serverFramers
-                .getOrPut(device.address) { FrameFramer.Reassembler() }
+                .getOrPut(device.address) { framer() }
                 .offer(value) ?: return
             emitFrame(frame)
             events.tryEmit(TransportEvent.PeerRadioVisible(device.address, id))
@@ -309,8 +311,11 @@ class BluetoothTransport internal constructor(
     private val scanConsumer: (android.bluetooth.le.ScanResult) -> Unit = { result ->
         val address = result.device.address
         rssi[address] = RssiSample(result.rssi, clock())
-        if (running && clients.size < MAX_PEERS && !clients.containsKey(address)) {
+        // A scan reports the same phone many times a second: one connection attempt at a
+        // time, or each report opens another BluetoothGatt to it.
+        if (running && clients.size < MAX_PEERS && !clients.containsKey(address) && connecting.add(address)) {
             events.tryEmit(TransportEvent.PeerRadioVisible(address, id))
+            scheduleDelayed(CONNECT_TIMEOUT_MS) { connecting.remove(address) }
             try {
                 result.device.connectGatt(
                     context, false, clientCallback, BluetoothDevice.TRANSPORT_LE,
@@ -356,13 +361,24 @@ class BluetoothTransport internal constructor(
         override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
             val g = gatt ?: return
             val address = g.key()
+            connecting.remove(address)
             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                if (clients[address].let { it != null && it !== g }) {
+                    // Already linked to this phone: a duplicate would double every frame.
+                    try { g.disconnect() } catch (_: Exception) {}
+                    try { g.close() } catch (_: Exception) {}
+                    return
+                }
                 clients[address] = g
                 lastInbound[address] = clock()
                 try { g.requestMtu(MTU_REQUEST) } catch (_: SecurityException) {}
                 // if this peer never completes discovery, free the slot so the scan retries
                 watchdog(address)
             } else {
+                if (clients[address].let { it != null && it !== g }) {
+                    try { g.close() } catch (_: Exception) {}
+                    return // a duplicate went away: the real link stays
+                }
                 clients.remove(address)
                 clientMtu.remove(address)
                 clientReady.remove(address)
@@ -434,7 +450,10 @@ class BluetoothTransport internal constructor(
             val value = characteristic.value ?: return
             val key = gatt?.key() ?: return
             lastInbound[key] = clock()
-            clientFramers.getOrPut(key) { FrameFramer.Reassembler() }.offer(value)?.let(::emitFrame)
+            // A second BluetoothGatt to the same phone gets every notification too: feeding
+            // both copies into one reassembler garbles every frame (discovery never worked).
+            if (clients[key] !== gatt) return
+            clientFramers.getOrPut(key) { framer() }.offer(value)?.let(::emitFrame)
         }
     }
 
@@ -481,6 +500,9 @@ class BluetoothTransport internal constructor(
      * The GATT server accepts writes from any nearby device (no pairing), so a malformed
      * frame must be dropped here: throwing from a binder callback crashes the app.
      */
+    /** Every frame (mesh or management) starts with the "FM" magic: lets a stream resync. */
+    private fun framer() = FrameFramer.Reassembler(FrameCodec.MAGIC)
+
     private fun emitFrame(frame: ByteArray) {
         if (MgmtCodec.isMgmt(frame)) {
             events.tryEmit(TransportEvent.MgmtFrameReceived(frame, id))

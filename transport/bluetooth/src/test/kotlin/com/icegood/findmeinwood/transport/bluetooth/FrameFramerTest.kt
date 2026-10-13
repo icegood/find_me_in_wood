@@ -50,4 +50,27 @@ class FrameFramerTest {
         val wire = ByteArray(10) { 9 }
         assertContentEquals(wire, r.offer(FrameFramer.frameToChunks(wire, 244)[0])!!)
     }
+
+    private val fm = 0x464D
+    private fun fmFrame(n: Int, tag: Byte) = ByteArray(n) { tag }.also { it[0] = 0x46; it[1] = 0x4D }
+
+    @Test
+    fun `duplicated chunks cost one frame, not the stream`() {
+        val r = FrameFramer.Reassembler(fm)
+        val a = FrameFramer.frameToChunks(fmFrame(30, 1), 12)
+        val b = FrameFramer.frameToChunks(fmFrame(30, 2), 12)
+        // every chunk of A delivered twice (two gatt objects), then B once
+        val out = (a.flatMap { listOf(it, it) } + b).mapNotNull { r.offer(it) }
+        assertContentEquals(fmFrame(30, 2), out.last(), "the stream is in sync again for B")
+        out.forEach { assertEquals(0x46, it[0].toInt()); assertEquals(0x4D, it[1].toInt()) }
+    }
+
+    @Test
+    fun `a chunk that does not start a frame is dropped while idle`() {
+        val r = FrameFramer.Reassembler(fm)
+        assertNull(r.offer(byteArrayOf(0x0B, 0xBA.toByte(), 1, 2, 3, 4)), "mid-frame garbage")
+        val c = FrameFramer.frameToChunks(fmFrame(8, 3), 64).single()
+        assertContentEquals(fmFrame(8, 3), r.offer(c))
+    }
 }
+

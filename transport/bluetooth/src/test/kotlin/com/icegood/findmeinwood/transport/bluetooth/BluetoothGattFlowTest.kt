@@ -473,4 +473,35 @@ class BluetoothLinkSupervisionTest {
         assertIs<SendResult.Sent>(t.send(meshWire(4)))
         t.stop()
     }
+
+    @Test
+    fun `a second gatt to the same phone is closed and its notifications ignored`() = runBlocking {
+        val t = transport()
+        val events = t.start(SessionConfig(NetworkId(ByteArray(8)), emptySet()))
+            as kotlinx.coroutines.flow.SharedFlow<TransportEvent>
+        val cb = clientCallback(t)
+        val first = gatt("EE:00:00:00:00:03")
+        val dup = gatt("EE:00:00:00:00:03")
+        cb.onConnectionStateChange(first, 0, 2)
+        cb.onConnectionStateChange(dup, 0, 2)
+        Mockito.verify(dup).close()
+        Mockito.verify(first, Mockito.never()).close()
+
+        // A management frame ("FM" + mgmt version) arrives on both: delivered once.
+        val wire = byteArrayOf(0x46, 0x4D, 3 /* mgmt version */, 1, 9)
+        val chunk = FrameFramer.frameToChunks(wire, 64).single()
+        val notify = Mockito.mock(BluetoothGattCharacteristic::class.java)
+        Mockito.`when`(notify.uuid).thenReturn(BluetoothTransport.CHAR_NOTIFY_UUID)
+        Mockito.`when`(notify.value).thenReturn(chunk)
+        cb.onCharacteristicChanged(dup, notify)
+        cb.onCharacteristicChanged(first, notify)
+        assertEquals(1, events.replayCache.count { it is TransportEvent.MgmtFrameReceived })
+
+        // The duplicate going away leaves the real link up.
+        cb.onConnectionStateChange(dup, 0, 0)
+        cb.onMtuChanged(first, 185, 0)
+        cb.onServicesDiscovered(first, 0)
+        assertIs<SendResult.Sent>(t.send(meshWire(4)))
+        t.stop()
+    }
 }
