@@ -265,6 +265,7 @@ class BluetoothTransport internal constructor(
             val last = lastInbound[d.address] ?: now
             val dead = now - last > linkTimeoutMs
             if (dead) {
+                DebugLog.d { "Bluetooth server link ${d.address} silent: dropped" }
                 serverFramers.remove(d.address); serverMtu.remove(d.address)
                 try { gattServer?.cancelConnection(d) } catch (_: Exception) {}
             }
@@ -316,8 +317,12 @@ class BluetoothTransport internal constructor(
     private val serverCallback = object : BluetoothGattServerCallback() {
         override fun onConnectionStateChange(device: BluetoothDevice?, status: Int, newState: Int) {
             device ?: return
-            if (newState == BluetoothProfile.STATE_CONNECTED) serverDevices += device
-            else {
+            DebugLog.d { "Bluetooth server link ${device.address} ${if (newState == BluetoothProfile.STATE_CONNECTED) "up" else "down"}" }
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                // Not a link yet: it becomes one when the phone subscribes to notifications
+                // (our own outgoing connection shows up here too, and must get no traffic).
+                lastInbound[device.address] = clock()
+            } else {
                 serverDevices.remove(device)
                 serverFramers.remove(device.address)
                 serverMtu.remove(device.address)
@@ -363,7 +368,14 @@ class BluetoothTransport internal constructor(
                 device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null,
             )
             // The peer subscribed to our notifications: we can reach it now.
-            if (device != null && descriptor?.uuid == CCCD_UUID) events.tryEmit(TransportEvent.LinkUp(device.address, id))
+            if (device != null && descriptor?.uuid == CCCD_UUID) {
+                serverDevices += device
+                // Counts from now: a subscriber that falls silent (e.g. it restarted under a
+                // new address) is dropped after the link timeout.
+                lastInbound[device.address] = clock()
+                DebugLog.d { "Bluetooth server link ${device.address} subscribed" }
+                events.tryEmit(TransportEvent.LinkUp(device.address, id))
+            }
         }
 
         override fun onExecuteWrite(device: BluetoothDevice?, requestId: Int, execute: Boolean) {
@@ -496,6 +508,7 @@ class BluetoothTransport internal constructor(
                 }
                 clients[address] = g
                 lastInbound[address] = clock()
+                DebugLog.d { "Bluetooth client link $address up" }
                 try { g.requestMtu(MTU_REQUEST) } catch (_: SecurityException) {}
                 // if this peer never completes discovery, free the slot so the scan retries
                 watchdog(address)
@@ -505,6 +518,7 @@ class BluetoothTransport internal constructor(
                     return // a duplicate went away: the real link stays
                 }
                 clients.remove(address)
+                DebugLog.d { "Bluetooth client link $address down" }
                 clientMtu.remove(address)
                 clientReady.remove(address)
                 clientFramers.remove(address)

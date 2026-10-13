@@ -79,6 +79,14 @@ class BluetoothRadioPolicyTest {
         onResult!!.invoke(r)
     }
 
+    /** A phone connects to our server and subscribes to notifications: a link. */
+    private fun subscribe(server: android.bluetooth.BluetoothGattServerCallback, d: BluetoothDevice) {
+        server.onConnectionStateChange(d, 0, 2)
+        val cccd = Mockito.mock(android.bluetooth.BluetoothGattDescriptor::class.java)
+        Mockito.`when`(cccd.uuid).thenReturn(BluetoothTransport.CCCD_UUID)
+        server.onDescriptorWriteRequest(d, 1, cccd, false, false, 0, byteArrayOf(1, 0))
+    }
+
     private fun connects(d: BluetoothDevice) =
         Mockito.mockingDetails(d).invocations.count { it.method.name == "connectGatt" }
 
@@ -175,7 +183,7 @@ class BluetoothRadioPolicyTest {
         // A link appearing (here: a phone connecting to our server) makes it fast again.
         val server = BluetoothTransport::class.java.getDeclaredField("serverCallback").let { it.isAccessible = true; it.get(t) }
             as android.bluetooth.BluetoothGattServerCallback
-        server.onConnectionStateChange(device("AA:00:00:00:00:05"), 0, 2)
+        subscribe(server, device("AA:00:00:00:00:05"))
         t.tickRadios(now)
         assertEquals(paused + 2, scans(), "link change: scanning continuously again")
         t.stop()
@@ -190,4 +198,19 @@ class BluetoothRadioPolicyTest {
         assertEquals(2, scans(), "nothing connected for a while: scan restarted, never paused")
         t.stop()
     }
+
+    @Test
+    fun `a phone linked to our server that never talks is dropped after the link timeout`() = runBlocking {
+        val t = transport()
+        t.start(SessionConfig(NetworkId(ByteArray(8)), emptySet(), groupSecret = secret))
+        val server = BluetoothTransport::class.java.getDeclaredField("serverCallback").let { it.isAccessible = true; it.get(t) }
+            as android.bluetooth.BluetoothGattServerCallback
+        subscribe(server, device("AA:00:00:00:00:06"))
+        assertEquals(com.icegood.findmeinwood.transport.api.SendResult.Sent, t.send(ByteArray(4)))
+        now += 60_001 // link timeout in this fixture: 60 s
+        t.pruneStaleLinks(now)
+        assertTrue(t.send(ByteArray(4)) is com.icegood.findmeinwood.transport.api.SendResult.Failed, "stale link gone")
+        t.stop()
+    }
 }
+

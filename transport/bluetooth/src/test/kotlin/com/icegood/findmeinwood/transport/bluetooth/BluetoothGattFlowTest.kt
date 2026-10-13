@@ -105,6 +105,11 @@ class BluetoothGattFlowTest {
         val device = m(BluetoothDevice::class.java)
         Mockito.`when`(device.address).thenReturn("AA:BB:CC:DD:EE:FF")
         serverCb.onConnectionStateChange(device, 0, 2 /*STATE_CONNECTED*/)
+        // Only a phone that subscribes to notifications is a link we send to.
+        val cccd = m(android.bluetooth.BluetoothGattDescriptor::class.java)
+        Mockito.`when`(cccd.uuid).thenReturn(BluetoothTransport.CCCD_UUID)
+        assertTrue(t.send(wire(5)) is SendResult.Failed, "connected but not subscribed: no link")
+        serverCb.onDescriptorWriteRequest(device, 2, cccd, false, true, 0, byteArrayOf(1, 0))
 
         // incoming framed frame delivered through write requests
         val wire0 = wire(5)
