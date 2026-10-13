@@ -24,7 +24,7 @@ class SessionBusTest {
     fun `discovery channels publish and clear`() = runTest {
         val net = DiscoveredNetwork(
             NetworkId(ByteArray(8)), "hunt", MemberId(ByteArray(32)), "Misha",
-            JoinPolicy.OPEN, listOf(com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH), 1L,
+            JoinPolicy.PRIVATE, listOf(com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH), 1L,
         )
         SessionBus.publishDiscovered(listOf(net))
         assertEquals(1, SessionBus.discovered.value.size)
@@ -112,9 +112,7 @@ class ProfileStoreDirTest {
         networkIdHex = "aabbccddeeff0011",
         trafficKeyHex = "ab".repeat(32),
         vtagHex = "00112233",
-        myMemberIdHex = "cd".repeat(32),
-        ownerMemberIdHex = "cd".repeat(32),
-        policy = JoinPolicy.CODE,
+        policy = JoinPolicy.PRIVATE,
     )
 
     @Test
@@ -155,8 +153,6 @@ class ProfileStoreDirTest {
         assertEquals(r.profile.networkIdHex, joined.profile.networkIdHex)
         assertEquals(r.profile.trafficKeyHex, joined.profile.trafficKeyHex)
         assertEquals("my label", joined.profile.name)
-        // each member keeps its own identity
-        assertTrue(joined.profile.myMemberIdHex != r.profile.myMemberIdHex)
     }
 
     @Test
@@ -202,11 +198,25 @@ class ProfileStoreDirTest {
 
     @Test
     fun `toProfile maps hex fields`() {
-        val p = ProfileStore.toProfile(stored())
+        val me = MemberId(ByteArray(32) { 7 })
+        val p = ProfileStore.toProfile(stored(), me, master = null)
+        assertEquals(me, p.myMemberId)
+        assertEquals(MemberId(ByteArray(32)), p.ownerMemberId, "master unknown")
+        assertEquals(me, ProfileStore.toProfile(stored(), me, master = me).ownerMemberId)
         assertEquals("hunt", p.name)
         assertEquals(8, p.networkId.bytes.size)
         assertEquals(32, p.trafficKey.size)
-        assertEquals(JoinPolicy.CODE, p.policy)
+        assertEquals(JoinPolicy.PRIVATE, p.policy)
+    }
+
+    @Test
+    fun `profiles from older builds still load`() {
+        val d = dir()
+        val old = """[{"name":"old","networkIdHex":"aabbccddeeff0011","trafficKeyHex":"${"ab".repeat(32)}",""" +
+            """"vtagHex":"00112233","myMemberIdHex":"cd","ownerMemberIdHex":"cd","policy":"PRIVATE"}]"""
+        d.resolve("profiles.json").writeBytes(SecureStorage.box.seal(old.toByteArray()))
+        assertEquals("old", ProfileStore.load(d).single().name)
+        assertEquals("", ProfileStore.load(d).single().masterIdHex, "master unknown")
     }
 
     @Test

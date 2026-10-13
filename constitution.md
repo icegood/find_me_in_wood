@@ -3,8 +3,10 @@
 Non-negotiable principles for all features and code. Any PR violating these is rejected.
 
 ## P1. Offline-first
-The app MUST be fully functional with no internet access: no cloud, no push, no online
-accounts. The only connectivity used is device-to-device (WiFi Direct, Bluetooth, LoRa).
+The app MUST be fully functional with no internet access: no cloud, no push. Member
+traffic only ever goes device-to-device (Wi-Fi Direct, Bluetooth, LoRa node, SMS) or
+through a messenger the user picks. Internet is used only to download map tiles (cached
+for offline use) and for the optional sign-in; neither is needed in the field.
 
 ## P2. Secure network by construction
 A network is a **name + shared secret**, created once and agreed out-of-band.

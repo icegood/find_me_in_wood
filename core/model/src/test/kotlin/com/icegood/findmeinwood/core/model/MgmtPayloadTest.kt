@@ -28,20 +28,12 @@ class MgmtPayloadTest {
         assertEquals("Misha", reqBack.joinerNick)
         assertTrue(reqBack.joinerPubkey.contentEquals(req.joinerPubkey))
 
-        val accept = JoinAcceptPayload(
-            name = "net", policy = JoinPolicy.OPEN, secret = "s3cret",
-            ownerPub = null, sealedSecret = null, nonce = ByteArray(8) { 2 },
-        )
-        val acceptBack = PayloadCodec.decodeJoinAccept(PayloadCodec.encodeJoinAccept(accept))
-        assertEquals("s3cret", acceptBack.secret)
-        assertEquals(JoinPolicy.OPEN, acceptBack.policy)
-
         val sealed = JoinAcceptPayload(
-            name = "net", policy = JoinPolicy.PRIVATE, secret = null,
+            name = "net", policy = JoinPolicy.PRIVATE,
             ownerPub = ByteArray(44) { 3 }, sealedSecret = ByteArray(16) { 4 }, nonce = ByteArray(8) { 5 },
         )
         val sealedBack = PayloadCodec.decodeJoinAccept(PayloadCodec.encodeJoinAccept(sealed))
-        assertEquals(null, sealedBack.secret)
+        assertEquals(JoinPolicy.PRIVATE, sealedBack.policy)
         assertTrue(sealedBack.sealedSecret!!.contentEquals(sealed.sealedSecret!!))
 
         val rej = PayloadCodec.decodeJoinReject(PayloadCodec.encodeJoinReject(JoinRejectPayload("nope")))

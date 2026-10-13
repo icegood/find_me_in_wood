@@ -85,6 +85,11 @@ class PeerTracker(
         if (cur.nickname != name) peers.value = peers.value + (member to cur.copy(nickname = name))
     }
 
+    /** Drops every peer [gone] says is gone (a member the master removed). */
+    fun forget(gone: (MemberId) -> Boolean) {
+        if (peers.value.keys.any(gone)) peers.value = peers.value.filterKeys { !gone(it) }
+    }
+
     /** Marks peers stale / purges old ones; call periodically or from [tick]. */
     fun tick() {
         val now = nowMs()

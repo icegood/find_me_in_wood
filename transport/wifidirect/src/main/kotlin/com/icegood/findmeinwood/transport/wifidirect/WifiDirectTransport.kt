@@ -46,6 +46,8 @@ class WifiDirectTransport(
     internal val wiring: WifiDirectWiring = WifiDirectWiring(context),
     /** Poll interval for group/peer state (shortened in tests). */
     internal val pollMs: Long = POLL_MS,
+    /** TCP port of the group's frame sockets (tests use a free one: runs may overlap). */
+    internal val port: Int = PORT,
 ) : Transport {
     override val id: TransportId = TransportId.WIFI_DIRECT
 
@@ -210,7 +212,7 @@ class WifiDirectTransport(
         if (acceptLoopStarted) return
         acceptLoopStarted = true
         scope.launch {
-            val server = wiring.bind(PORT)
+            val server = wiring.bind(port)
             serverSocket = server
             if (server == null) {
                 acceptLoopStarted = false
@@ -306,7 +308,7 @@ class WifiDirectTransport(
                 if (!linked && !sockets.containsKey(key) && connecting.add(key)) {
                     requestedAt[key] = System.currentTimeMillis()
                     scope.launch {
-                        val s = wiring.connectSocket(host, PORT, CONNECT_TIMEOUT_MS)
+                        val s = wiring.connectSocket(host, port, CONNECT_TIMEOUT_MS)
                         requestedAt.remove(key)
                         connecting.remove(key)
                         if (s == null) Unit else registerSocket(s)

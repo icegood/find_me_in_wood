@@ -54,7 +54,7 @@ class BleAdvertTest {
     @Test
     fun `raw record - members code and network info told apart by length`() {
         val tag = ByteArray(6) { 1 }
-        val info = BleAdvert.encodeInfo(BleAdvert.Info(NetworkId(ByteArray(8)), JoinPolicy.OPEN, "x"))
+        val info = BleAdvert.encodeInfo(BleAdvert.Info(NetworkId(ByteArray(8)), JoinPolicy.PRIVATE, "x"))
         val raw = ad(0x01, 0x06) + manuf(0xFFFF, tag) + manuf(0x004C, ByteArray(6)) + manuf(0xFFFF, info) + byteArrayOf(0, 0)
         val p = BleAdvert.parseRecord(raw)
         assertContentEquals(tag, p.tag)

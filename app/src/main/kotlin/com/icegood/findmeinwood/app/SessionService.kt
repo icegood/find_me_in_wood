@@ -83,7 +83,7 @@ class SessionService : Service() {
     private fun startListening() {
         val throwaway = (ProfileStore.create("listening", null) as CreateResult.Ok).profile
         // Same member id as after joining: the master lists exactly the phone it let in.
-        val profile = ProfileStore.toProfile(throwaway).copy(policy = JoinPolicy.CODE, myMemberId = deviceId())
+        val profile = ProfileStore.toProfile(throwaway, deviceId(), master = null)
         runSession(profile, listen = true, masterId = null)
     }
 
@@ -165,7 +165,8 @@ class SessionService : Service() {
             signer = identityPair,
             beaconsEnabled = !listen,
             book = book,
-        )
+            requireSignatures = true,
+        ).also { it.sharingPaused = !listen && Prefs.sharingPaused(this, netHex) }
         book?.let { b ->
             manager.onBookChanged = {
                 MemberBookStore.save(this, profile.networkId, b)
@@ -226,7 +227,7 @@ class SessionService : Service() {
         // Findable by new people: on for a while after Start (and Invite, approvals), then
         // off by itself; members reach each other either way.
         // Only the master lets people in, so only the master can be found by them.
-        val canBeFound = !listen && profile.policy != JoinPolicy.CODE && book?.isMaster == true
+        val canBeFound = !listen && book?.isMaster == true
         SessionBus.setFindable(canBeFound)
         val advert = BleAdvert.encodeInfo(BleAdvert.Info(profile.networkId, profile.policy, profile.name))
         scope.launch {
@@ -500,7 +501,6 @@ class SessionService : Service() {
         const val EXTRA_NAME = "name"
         const val EXTRA_NETWORK_ID = "networkId"
         const val EXTRA_TRAFFIC_KEY = "trafficKey"
-        const val EXTRA_MY_ID = "myId"
         const val EXTRA_OWNER_ID = "ownerId"
         const val EXTRA_POLICY = "policy"
 
@@ -529,11 +529,19 @@ class SessionService : Service() {
         /** The running network's member list (null while listening or stopped). */
         @Volatile var activeBook: com.icegood.findmeinwood.core.session.MemberBook? = null
 
+        /** FR-4.4: pause or resume sending my position in network [networkIdHex]. */
+        fun setSharingPaused(context: Context, networkIdHex: String, paused: Boolean) {
+            Prefs.setSharingPaused(context, networkIdHex, paused)
+            val running = activeNetworkId?.bytes?.joinToString("") { "%02x".format(it) }
+            if (running == networkIdHex) activeManager?.sharingPaused = paused
+        }
+
         /** Master only: drops [id] from the member list and tells the others. */
         fun removeMember(id: MemberId): Boolean {
             val b = activeBook ?: return false
             val m = activeManager ?: return false
             if (!b.remove(id)) return false
+            m.forgetRemoved()
             m.onBookChanged?.invoke()
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { m.syncBook(force = true) }
             return true
@@ -555,7 +563,6 @@ class SessionService : Service() {
                 .putExtra(EXTRA_NAME, p.name)
                 .putExtra(EXTRA_NETWORK_ID, p.networkIdHex)
                 .putExtra(EXTRA_TRAFFIC_KEY, p.trafficKeyHex)
-                .putExtra(EXTRA_MY_ID, p.myMemberIdHex)
                 .putExtra(EXTRA_OWNER_ID, p.masterIdHex)
                 .putExtra(EXTRA_POLICY, p.policy.name)
 

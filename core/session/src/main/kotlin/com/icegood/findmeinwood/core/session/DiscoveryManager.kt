@@ -106,17 +106,11 @@ class DiscoveryManager(
         val req = pending[joinerId] ?: return null
         val secret = ownerSecret ?: return null
         val aad = req.nonce.toBytes()
-        val sealed = if (profile.policy == JoinPolicy.OPEN) {
-            null
-        } else {
-            AesGcmAead.seal(req.sharedKey, secret.toByteArray(), aad)
-        }
         val payload = JoinAcceptPayload(
             name = profile.name,
             policy = profile.policy,
-            secret = if (sealed == null) secret else null,
-            ownerPub = if (sealed == null) null else req.ownerPair.public.encoded,
-            sealedSecret = sealed,
+            ownerPub = req.ownerPair.public.encoded,
+            sealedSecret = AesGcmAead.seal(req.sharedKey, secret.toByteArray(), aad),
             nonce = aad,
         )
         pending.remove(joinerId)
@@ -161,7 +155,6 @@ class DiscoveryManager(
     /** A findable network seen in a radio advert from [radioPeerId]. */
     @Synchronized
     fun onAdvert(info: BleAdvert.Info, radioPeerId: String, transport: TransportId) {
-        if (info.policy == JoinPolicy.CODE) return // hidden: never listed
         if (info.networkId == profile.networkId) return // our own network: nothing to join
         radioPeers.getOrPut(info.networkId) { LinkedHashMap() }[radioPeerId] = transport
         val entry = DiscoveredNetwork(
@@ -203,20 +196,17 @@ class DiscoveryManager(
         // their choosing onto a device that merely asked to join a different one.
         if (!isAnswerToMyRequest(frame)) return
         val payload = runCatching { PayloadCodec.decodeJoinAccept(frame.payload) }.getOrNull() ?: return
-        var sas = "------"
-        val secret: String = payload.secret ?: run {
-            val ephemeral = myEphemeral ?: return
-            val ownerPub = payload.ownerPub ?: return
-            val sealed = payload.sealedSecret ?: return
-            val shared = JoinCrypto.sharedSecret(ephemeral, ownerPub)
-            val plain = runCatching {
-                AesGcmAead.open(JoinCrypto.aeadKey(shared), sealed, payload.nonce ?: ByteArray(0))
-            }.getOrNull() ?: return
-            sas = JoinCrypto.sas(shared)
-            plain.decodeToString()
-        }
-        // The owner named in HELLO is self-declared, so also prove the secret: it must derive
-        // exactly the network we asked for, which nobody without the real secret can fake.
+        // The password only ever comes sealed to our ephemeral key.
+        val ephemeral = myEphemeral ?: return
+        val ownerPub = payload.ownerPub ?: return
+        val sealed = payload.sealedSecret ?: return
+        val shared = JoinCrypto.sharedSecret(ephemeral, ownerPub)
+        val secret = runCatching {
+            AesGcmAead.open(JoinCrypto.aeadKey(shared), sealed, payload.nonce ?: ByteArray(0))
+        }.getOrNull()?.decodeToString() ?: return
+        val sas = JoinCrypto.sas(shared)
+        // Anyone can answer in clear, so prove the password: it must derive exactly the
+        // network we asked for, which nobody without the real password can fake.
         if (NetworkKeysFactory.derive(secret.toByteArray()).networkId != frame.networkId) return
         requestedNetworkId = null
         myEphemeral = null

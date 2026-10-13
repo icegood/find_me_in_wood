@@ -1,5 +1,7 @@
 # Tasks — 001: Secure offline member location network
 
+> **Historical:** the original build plan. Current requirements: `spec.md`; status of each: `review.md`.
+
 Order matters inside phases; phases 1–2 are prerequisites for all radio work.
 
 ## Phase 1 — Skeleton & core (pure Kotlin, M1)

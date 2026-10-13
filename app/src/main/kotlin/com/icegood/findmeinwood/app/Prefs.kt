@@ -15,6 +15,7 @@ object Prefs {
     private const val KEY_INTERVAL_MS = "beacon_interval_ms"
     private const val KEY_SECRET_PREFIX = "secret_"
     private const val KEY_UNVERIFIED_PREFIX = "join_code_"
+    private const val KEY_PAUSED_PREFIX = "sharing_paused_"
     private const val KEY_TILE_SOURCE = "tile_source"
     private const val KEY_TILE_API_KEY_PREFIX = "tile_api_key_"
     private const val KEY_P2P_OWNER = "p2p_group_owner"
@@ -76,6 +77,13 @@ object Prefs {
     /** FR-8.4: the 6-digit code of a password-less join still to be compared; null = done. */
     fun unverifiedCode(ctx: Context, networkIdHex: String): String? =
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_UNVERIFIED_PREFIX + networkIdHex, null)
+
+    /** FR-4.4: my position is not sent in this network (beacons still are). */
+    fun sharingPaused(ctx: Context, networkIdHex: String): Boolean =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY_PAUSED_PREFIX + networkIdHex, false)
+
+    fun setSharingPaused(ctx: Context, networkIdHex: String, paused: Boolean) =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_PAUSED_PREFIX + networkIdHex, paused).apply()
 
     fun setUnverifiedCode(ctx: Context, networkIdHex: String, code: String?) {
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().apply {

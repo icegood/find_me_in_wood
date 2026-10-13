@@ -82,9 +82,13 @@ class SmsLinkReceiver : BroadcastReceiver() {
         val network = SessionService.activeNetworkId ?: return
         val manager = SessionService.activeManager ?: return
         if (!SmsCodec.networkTag(network).contentEquals(SmsCodec.networkTagOf(frame))) return
-        val profile = ProfileStore.load(ctx).map(ProfileStore::toProfile).firstOrNull { it.networkId == network } ?: return
+        val me = com.icegood.findmeinwood.core.model.MemberId(
+            com.icegood.findmeinwood.core.crypto.Identity.memberIdOf(IdentityHolder.keyPair(ctx)),
+        )
+        val profile = ProfileStore.load(ctx).map { ProfileStore.toProfile(it, me, master = null) }
+            .firstOrNull { it.networkId == network } ?: return
         val r = SmsCodec.decode(frame, profile.trafficKey) ?: return
-        if (r.isFrom(profile.myMemberId)) return
+        if (r.isFrom(me)) return // our own report (e.g. texted to ourselves)
         val known = r.latE7 != 0 || r.lonE7 != 0
         manager.acceptSmsReport(
             r.senderPrefix, r.seq, r.timeS * 1000,

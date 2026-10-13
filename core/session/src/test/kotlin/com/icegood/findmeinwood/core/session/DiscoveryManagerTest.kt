@@ -42,7 +42,7 @@ class DiscoveryManagerTest {
     private fun listener(id: MemberId, pair: java.security.KeyPair): DiscoveryManager {
         val own = NetworkKeysFactory.derive("listener-${id.bytes[0]}".toByteArray())
         return DiscoveryManager(
-            profile(JoinPolicy.CODE, id).copy(networkId = own.networkId, trafficKey = own.trafficKey),
+            profile(JoinPolicy.PRIVATE, id).copy(networkId = own.networkId, trafficKey = own.trafficKey),
             pair, { now },
         )
     }
@@ -51,7 +51,7 @@ class DiscoveryManagerTest {
         com.icegood.findmeinwood.core.crypto.BleAdvert.Info(id, policy, name)
 
     @Test
-    fun `findable networks are listed from adverts, hidden ones never`() {
+    fun `findable networks are listed from adverts`() {
         val (peerId, peerPair) = member()
         val peer = listener(peerId, peerPair)
         peer.onAdvert(advert(JoinPolicy.PRIVATE), "AA:01", TransportId.BLUETOOTH)
@@ -66,17 +66,12 @@ class DiscoveryManagerTest {
             peer.radioPeersOf(keys.networkId),
         )
         assertTrue(peer.radioPeersOf(NetworkId(ByteArray(8) { 3 })).isEmpty())
-
-        // CODE networks are never listed
-        val peer2 = listener(peerId, peerPair)
-        peer2.onAdvert(advert(JoinPolicy.CODE, id = NetworkId(ByteArray(8) { 4 })), "AA:03", TransportId.BLUETOOTH)
-        assertTrue(peer2.discovered.value.isEmpty())
     }
 
     @Test
     fun `stale networks are pruned`() {
         val peer = listener(MemberId(ByteArray(32)), Identity.generate())
-        peer.onAdvert(advert(JoinPolicy.OPEN), "AA:01", TransportId.BLUETOOTH)
+        peer.onAdvert(advert(JoinPolicy.PRIVATE), "AA:01", TransportId.BLUETOOTH)
         assertEquals(1, peer.discovered.value.size)
         now += 120_000
         peer.pruneStale()
@@ -96,7 +91,7 @@ class DiscoveryManagerTest {
     @Test
     fun `the joiner learns who let it in`() {
         val (ownerId, ownerPair) = member()
-        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair).apply { ownerSecret = "discovery-net" }
+        val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair).apply { ownerSecret = "discovery-net" }
         val (joinerId, joinerPair) = member()
         val joiner = listener(joinerId, joinerPair)
         owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)))
@@ -151,21 +146,19 @@ class DiscoveryManagerTest {
     }
 
     @Test
-    fun `open join delivers the secret in clear`() {
+    fun `an accept without a sealed password is ignored`() {
         val (ownerId, ownerPair) = member()
-        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair)
-        owner.ownerSecret = "discovery-net"
         val (joinerId, joinerPair) = member()
         val joiner = listener(joinerId, joinerPair)
-
-        owner.pinKey(joinerId, joinerPair.public)
-        owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)))
-        val accept = owner.approve(joinerId)!!
-        joiner.pinKey(ownerId, ownerPair.public)
-        joiner.onMgmtFrame(MgmtCodec.decode(accept))
-
-        val outcome = joiner.outcome.value as JoinOutcome.Joined
-        assertEquals("discovery-net", outcome.secret)
+        joiner.buildJoinRequest(keys.networkId, null)
+        // Signed, for the network asked for, but carrying nothing sealed to our key.
+        val payload = com.icegood.findmeinwood.core.model.JoinAcceptPayload("hunt", JoinPolicy.PRIVATE)
+        val frame = com.icegood.findmeinwood.core.crypto.MgmtFrame(
+            com.icegood.findmeinwood.core.model.MgmtType.JOIN_ACCEPT, keys.networkId, ownerId, 1L,
+            com.icegood.findmeinwood.core.model.PayloadCodec.encodeJoinAccept(payload), ByteArray(0),
+        )
+        joiner.onMgmtFrame(MgmtCodec.decode(MgmtCodec.encode(frame, ownerPair)))
+        assertNull(joiner.outcome.value)
     }
 
     @Test
@@ -212,7 +205,7 @@ class DiscoveryManagerTest {
     @Test
     fun `join accept for a network we did not ask for is ignored`() {
         val (ownerId, ownerPair) = member()
-        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair)
+        val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair)
         owner.ownerSecret = "attacker-network-secret"
         val (joinerId, joinerPair) = member()
         val joiner = listener(joinerId, joinerPair)
@@ -228,7 +221,7 @@ class DiscoveryManagerTest {
     @Test
     fun `approved request cannot be approved twice`() {
         val (ownerId, ownerPair) = member()
-        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair)
+        val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair)
         owner.ownerSecret = "discovery-net"
         val (joinerId, joinerPair) = member()
         val joiner = listener(joinerId, joinerPair)
@@ -267,16 +260,16 @@ class DiscoveryManagerTest {
     @Test
     fun `a device without the network's secret cannot let anyone in`() {
         val (ownerId, ownerPair) = member()
-        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair).apply { ownerSecret = "discovery-net" }
+        val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair).apply { ownerSecret = "discovery-net" }
         val (rogueId, roguePair) = member()
         val rogue = DiscoveryManager(
-            profile(JoinPolicy.OPEN, rogueId).copy(ownerMemberId = rogueId),
+            profile(JoinPolicy.PRIVATE, rogueId).copy(ownerMemberId = rogueId),
             roguePair, { now },
         ).apply { ownerSecret = "rogue-secret" }
         val (joinerId, joinerPair) = member()
         val joiner = listener(joinerId, joinerPair)
 
-        joiner.onAdvert(advert(JoinPolicy.OPEN), "AA:01", TransportId.BLUETOOTH)
+        joiner.onAdvert(advert(JoinPolicy.PRIVATE), "AA:01", TransportId.BLUETOOTH)
         val req = MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null))
         owner.onMgmtFrame(req)
         rogue.onMgmtFrame(req)
@@ -314,7 +307,7 @@ class DiscoveryManagerTest {
     fun `accept carrying a secret for another network is refused`() {
         val (ownerId, ownerPair) = member()
         // Answers for keys.networkId but hands out a secret that derives a different network.
-        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair).apply { ownerSecret = "not-this-network" }
+        val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair).apply { ownerSecret = "not-this-network" }
         val (joinerId, joinerPair) = member()
         val joiner = listener(joinerId, joinerPair)
         owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)))

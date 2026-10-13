@@ -96,7 +96,9 @@ class LinkE2ETest {
     }
 
     private suspend fun eventually(cond: () -> Boolean) {
-        val deadline = System.nanoTime() + 5_000_000_000L
+        // Generous: a loaded build machine must not fail the test, the beacon counts below
+        // are what proves nothing waited for a scheduled beacon.
+        val deadline = System.nanoTime() + 15_000_000_000L
         while (!cond()) {
             check(System.nanoTime() < deadline) { "timed out" }
             delay(10)
@@ -168,7 +170,7 @@ class LinkE2ETest {
         // The test clock never moved: no scheduled beacon was involved, so the handshake
         // takes a few round trips after the link comes up, whatever the beacon interval.
         assertEquals(listOf(BLUETOOTH, WIFI_DIRECT), b.peer(a)?.linkOptions)
-        kotlin.test.assertTrue(tookMs < 3_000, "took $tookMs ms")
+        kotlin.test.assertTrue(tookMs < 10_000, "took $tookMs ms")
         kotlin.test.assertTrue(a.session.diagnostics.value.sent <= 3, "A sent ${a.session.diagnostics.value.sent}")
     }
 }

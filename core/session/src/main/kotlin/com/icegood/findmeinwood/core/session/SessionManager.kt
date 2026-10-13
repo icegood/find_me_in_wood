@@ -52,6 +52,8 @@ class SessionManager(
     private val beaconsEnabled: Boolean = true,
     /** The network's member list and member cards (null: no list kept, e.g. listening). */
     val book: MemberBook? = null,
+    /** Refuse unsigned beacons (the app always signs; some tests run without keys). */
+    private val requireSignatures: Boolean = false,
 ) {
     companion object {
         const val INITIAL_TTL: UByte = 3u
@@ -60,10 +62,12 @@ class SessionManager(
         const val REPLY_GAP_MS = 1_000L
         /** Minimum gap between member-list syncs sent by this phone. */
         const val SYNC_GAP_MS = 20_000L
+        val SYNC_RADIOS = setOf(TransportId.BLUETOOTH, TransportId.WIFI_DIRECT)
     }
 
     private val verifier = IdentityVerifier()
-    private val tracker = PeerTracker(keepAliveMs = KEEP_ALIVE_MS, nowMs = clock)
+    // Staleness follows this network's beacon interval (3 missed keep-alives, FR-6.3).
+    private val tracker = PeerTracker(keepAliveMs = keepAliveMs, nowMs = clock)
     private val replay = ReplayWindow(clock)
     // Seeded from wall-clock seconds so a restarted sender keeps increasing seqs: peers
     // (replay window, peer tracker) drop anything at or below the last seq they saw.
@@ -79,7 +83,10 @@ class SessionManager(
      */
     fun nextSeq(): UInt = seq.getAndIncrement().toUInt()
 
-    /** Wire bytes of every beacon sent (used by carriers, e.g. Viber share — US-9). */
+    /**
+     * Wire bytes of every *beacon* sent (the position "Send via messenger" shares, US-9);
+     * chat and member-list frames never show up here.
+     */
     var onFrameSent: ((ByteArray) -> Unit)? = null
 
     /** Decrypted payload of every authenticated incoming frame, with sender (chat etc.). */
@@ -89,13 +96,24 @@ class SessionManager(
     var onBookChanged: (() -> Unit)? = null
     @Volatile private var lastSyncAt = Long.MIN_VALUE / 2
 
+    /** FR-4.4: beacons go out without my position while true. */
+    @Volatile var sharingPaused: Boolean = false
+
+    /** Takes members the master removed off the peer table (map, member list) at once. */
+    fun forgetRemoved() {
+        val b = book ?: return
+        tracker.forget { b.isRemoved(it) }
+    }
+
     /** Sends this phone's member list and cards (rate-limited unless [force]). */
     suspend fun syncBook(force: Boolean = false) {
         val b = book ?: return
         val now = clock()
         if (!force && now - lastSyncAt < SYNC_GAP_MS) return
         lastSyncAt = now
-        sendRaw(com.icegood.findmeinwood.core.model.RosterCodec.encode(b.toSync()))
+        // KBs of signed list + cards: only radios with the bandwidth (never LoRa, SMS or a
+        // messenger hand-off).
+        sendRaw(com.icegood.findmeinwood.core.model.RosterCodec.encode(b.toSync()), only = SYNC_RADIOS)
     }
 
     /** The selected link to a peer changed (LNP/3 FR-3.8). */
@@ -173,8 +191,11 @@ class SessionManager(
         senderPrefix: ByteArray, seq: UInt, sentAtMs: Long,
         position: com.icegood.findmeinwood.core.model.BeaconPosition?, batteryPct: Int?,
     ): MemberId? {
-        val member = (tracker.peersFlow.value.keys + (links?.all()?.map { it.peer } ?: emptyList()))
-            .firstOrNull { it.bytes.copyOf(8).contentEquals(senderPrefix) } ?: return null
+        // Members met, plus everyone on the member list (texted without ever meeting).
+        val known = tracker.peersFlow.value.keys + (links?.all()?.map { it.peer } ?: emptyList()) +
+            (book?.members() ?: emptyList())
+        val member = known.firstOrNull { it.bytes.copyOf(8).contentEquals(senderPrefix) } ?: return null
+        if (book?.isRemoved(member) == true) return null
         tracker.onBeacon(
             DecryptedBeacon(member, seq, sentAtMs, BeaconPayload(position = position, batteryPct = batteryPct)),
             TransportId.SMS,
@@ -268,10 +289,15 @@ class SessionManager(
         jobs += scope.launch {
             while (true) {
                 delay(keepAliveMs)
-                tracker.tick()
-                links?.let { announce(it.tick()) }
+                housekeeping()
             }
         }
+    }
+
+    /** Once per beacon interval: stale/purged peers, quiet-link suggestions. */
+    internal fun housekeeping() {
+        tracker.tick()
+        links?.let { announce(it.tick()) }
     }
 
     suspend fun stop() {
@@ -283,7 +309,7 @@ class SessionManager(
 
     suspend fun sendBeacon(fix: GnssFix?) {
         val payload: BeaconPayload = fix?.let { PayloadCodec.fromFix(it) } ?: BeaconPayload()
-        sendRaw(PayloadCodec.encode(payload))
+        sendRaw(PayloadCodec.encode(payload), beacon = true)
     }
 
     /**
@@ -292,7 +318,12 @@ class SessionManager(
      */
     suspend fun sendBeaconSigned(beacon: BeaconPayload) {
         // Link control is part of the signed payload, so offers cannot be forged by relays.
-        val payload = beacon.copy(link = links?.outgoing(), book = book?.digest())
+        // Paused sharing: still a beacon (reachable, links work), just without my position.
+        val payload = beacon.copy(
+            position = beacon.position.takeUnless { sharingPaused },
+            link = links?.outgoing(),
+            book = book?.digest(),
+        )
         val s = (seq.getAndIncrement()).toUInt()
         val sentAt = clock()
         val signed = signer?.let { Identity.sign(it, signedBeaconBytes(s, sentAt, payload)) }
@@ -321,7 +352,11 @@ class SessionManager(
         return out
     }
 
-    suspend fun sendRaw(payloadBytes: ByteArray) {
+    /**
+     * Seals and sends [payloadBytes] on every radio, or only on [only]. [beacon] marks a
+     * position beacon (reported to [onFrameSent]).
+     */
+    suspend fun sendRaw(payloadBytes: ByteArray, beacon: Boolean = false, only: Set<TransportId>? = null) {
         val s = (seq.getAndIncrement()).toUInt()
         val sentAt = clock()
         val aad = FrameCodec.aad(profile.networkId, profile.myMemberId, s, sentAt)
@@ -330,9 +365,9 @@ class SessionManager(
             profile.networkId, profile.myMemberId, s, INITIAL_TTL, sentAt, ct,
         )
         val wire = FrameCodec.encode(frame)
-        live().forEach { it.send(wire) }
+        live().filter { only == null || it.id in only }.forEach { it.send(wire) }
         bump { it.copy(sent = it.sent + 1) }
-        onFrameSent?.invoke(wire)
+        if (beacon) onFrameSent?.invoke(wire)
     }
 
     suspend fun acceptExternalWire(wire: ByteArray, source: TransportId) {
@@ -379,11 +414,14 @@ class SessionManager(
         }
         // Member list / cards from another member: merge (any member passes them on).
         com.icegood.findmeinwood.core.model.RosterCodec.decode(plain)?.let { sync ->
-            if (book?.merge(sync) == true) onBookChanged?.invoke()
+            if (book?.merge(sync) == true) {
+                forgetRemoved()
+                onBookChanged?.invoke()
+            }
             // Still differs (we know something they do not): answer with ours.
             if (book?.knowsMoreThan(sync) == true) syncBook()
             bump { it.copy(received = it.received + 1) }
-            relay(f, ev.source)
+            relay(f, ev.source, only = SYNC_RADIOS)
             return
         }
         // Chat messages are not beacons: route them to the app instead of dropping
@@ -418,11 +456,11 @@ class SessionManager(
         relay(f, ev.source)
     }
 
-    private suspend fun relay(f: EncryptedFrame, source: TransportId) {
+    private suspend fun relay(f: EncryptedFrame, source: TransportId, only: Set<TransportId>? = null) {
         if (relayEnabled && f.ttl > 1u) {
             val relayed = f.copy(ttl = (f.ttl - 1u).toUByte())
             val wire = FrameCodec.encode(relayed)
-            live().filter { it.id != source }.forEach { it.send(wire) }
+            live().filter { it.id != source && (only == null || it.id in only) }.forEach { it.send(wire) }
             bump { it.copy(relayed = it.relayed + 1) }
         }
     }
@@ -433,8 +471,13 @@ class SessionManager(
      * stripping the signature would bypass the check.
      */
     private fun verifyOrigin(f: EncryptedFrame, payload: BeaconPayload): Boolean {
-        val sig = payload.sig ?: return verifier.keyFor(f.senderId) == null
+        val sig = payload.sig ?: return !requireSignatures && verifier.keyFor(f.senderId) == null
         val pub = payload.pub
+        // A member id is its key's hash: a key that is not the sender's own is refused,
+        // so nobody can pin a key for someone else and lock their real beacons out.
+        if (pub != null && !java.security.MessageDigest.getInstance("SHA-256").digest(pub).contentEquals(f.senderId.bytes)) {
+            return false
+        }
         if (pub != null && verifier.keyFor(f.senderId) == null && !verifier.pin(f.senderId, pub)) return false
         return verifier.verify(f.senderId, signedBeaconBytes(f.seq, f.sentAtMs, payload), sig)
     }

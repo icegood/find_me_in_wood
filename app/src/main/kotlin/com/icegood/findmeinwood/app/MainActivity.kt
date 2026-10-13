@@ -347,6 +347,8 @@ class MainActivity : ComponentActivity() {
         val radios by SessionBus.radioStates.collectAsState()
         val findableUntil by SessionBus.findableUntil.collectAsState()
         val book by SessionBus.book.collectAsState()
+        /** Bumped to re-read the per-network "sharing paused" flag after a toggle. */
+        var pausedTick by remember { mutableStateOf(0) }
         // Ticks so "findable: N min left" counts down and ends by itself.
         var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
         LaunchedEffect(findableUntil) {
@@ -388,6 +390,20 @@ class MainActivity : ComponentActivity() {
                                     style = MaterialTheme.typography.labelMedium,
                                     color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (isRunning) {
+                                    val paused = pausedTick >= 0 && Prefs.sharingPaused(this@MainActivity, p.networkIdHex)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            if (paused) "my position: paused — members see me as unlocated" else "my position: shared",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        TextButton(onClick = {
+                                            SessionService.setSharingPaused(this@MainActivity, p.networkIdHex, !paused)
+                                            pausedTick++
+                                        }) { Text(if (paused) "Share again" else "Pause") }
+                                    }
+                                }
                                 if (isRunning) Text(
                                     if (book?.iAmMaster == true) UiText.findable(findableUntil, nowMs)
                                     else "only the network's master can let new people in",

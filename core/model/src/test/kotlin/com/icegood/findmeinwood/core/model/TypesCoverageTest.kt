@@ -10,7 +10,7 @@ class TypesCoverageTest {
     @Test
     fun `transport id and join policy enumerations`() {
         assertEquals(5, TransportId.entries.size)
-        assertEquals(3, JoinPolicy.entries.size)
+        assertEquals(listOf(JoinPolicy.PRIVATE), JoinPolicy.entries, "one join policy (FR-2.1)")
     }
 
     @Test
@@ -19,7 +19,7 @@ class TypesCoverageTest {
             name = "hunt",
             ownerMemberId = ByteArray(32) { 5 },
             ownerNick = "ice",
-            policy = JoinPolicy.OPEN,
+            policy = JoinPolicy.PRIVATE,
             activeTransports = listOf(TransportId.BLUETOOTH, TransportId.LORA),
         )
         val decoded = Cbor.decodeFromByteArray(HelloPayload.serializer(), Cbor.encodeToByteArray(HelloPayload.serializer(), h))

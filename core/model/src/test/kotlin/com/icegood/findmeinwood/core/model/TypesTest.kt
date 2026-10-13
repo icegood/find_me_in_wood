@@ -31,18 +31,18 @@ class TypesTest {
     fun `profile data class copy`() {
         val p = NetworkProfile(
             name = "n", networkId = net(1), trafficKey = ByteArray(32),
-            myMemberId = member(2), ownerMemberId = member(2), policy = JoinPolicy.OPEN,
+            myMemberId = member(2), ownerMemberId = member(2), policy = JoinPolicy.PRIVATE,
         )
         val q = p.copy(name = "other")
         assertNotEquals(p, q)
-        assertEquals(JoinPolicy.OPEN, p.policy)
+        assertEquals(JoinPolicy.PRIVATE, p.policy)
     }
 
     @Test
     fun `hello payload defaults`() {
         val h = HelloPayload(ownerMemberId = ByteArray(32))
         assertNullDefaults(h)
-        assertEquals(JoinPolicy.CODE, h.policy)
+        assertEquals(JoinPolicy.PRIVATE, h.policy)
     }
 
     private fun assertNullDefaults(h: HelloPayload) {

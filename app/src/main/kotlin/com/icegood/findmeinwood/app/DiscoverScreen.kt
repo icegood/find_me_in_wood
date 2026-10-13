@@ -98,13 +98,6 @@ fun DiscoverScreen(
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(net.name ?: "(unnamed)", style = MaterialTheme.typography.titleMedium)
 
-                    if (net.policy == JoinPolicy.OPEN) {
-                        Text(
-                            "OPEN: anyone nearby who asks gets the password.",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
                     if (stored != null) {
                         Text("You are a member.", style = MaterialTheme.typography.bodySmall)
                         Button(onClick = { onStart(stored) }) { Text("Start") }

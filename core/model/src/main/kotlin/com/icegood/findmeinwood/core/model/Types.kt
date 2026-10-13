@@ -5,7 +5,11 @@ enum class TransportId { WIFI_DIRECT, BLUETOOTH, LORA, INTERNET, SMS }
 /** Explicit UI theme: follow the system, or force light / dark regardless of it. */
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
-enum class JoinPolicy { OPEN, PRIVATE, CODE }
+/**
+ * One join policy (FR-2.1): ask the master, or know the password. Kept as a type because
+ * stored profiles and the discovery advert carry it.
+ */
+enum class JoinPolicy { PRIVATE }
 
 class NetworkId(val bytes: ByteArray) {
     override fun equals(other: Any?) = other is NetworkId && bytes.contentEquals(other.bytes)
@@ -119,7 +123,7 @@ data class HelloPayload(
     val name: String? = null,
     val ownerMemberId: ByteArray,
     val ownerNick: String? = null,
-    val policy: JoinPolicy = JoinPolicy.CODE,
+    val policy: JoinPolicy = JoinPolicy.PRIVATE,
     val activeTransports: List<TransportId> = emptyList(),
 )
 
@@ -146,11 +150,9 @@ data class JoinRequestPayload(
 data class JoinAcceptPayload(
     val name: String,
     val policy: JoinPolicy,
-    /** OPEN: the secret in clear (FR-8.3 — UI warns it is readable by anyone). */
-    val secret: String? = null,
-    /** PRIVATE: owner's ephemeral public key, so the joiner derives the same ECDH secret. */
+    /** Master's ephemeral public key, so the joiner derives the same ECDH secret. */
     val ownerPub: ByteArray? = null,
-    /** PRIVATE: secret sealed under the ECDH-derived key. */
+    /** The password sealed under the ECDH-derived key (never sent in clear). */
     val sealedSecret: ByteArray? = null,
     val nonce: ByteArray? = null,
 )

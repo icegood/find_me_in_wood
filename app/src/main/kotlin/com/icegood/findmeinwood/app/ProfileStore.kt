@@ -4,7 +4,6 @@ import com.icegood.findmeinwood.core.storage.SecretBox
 import com.icegood.findmeinwood.core.storage.SecureStorage
 import android.content.Context
 import com.icegood.findmeinwood.core.crypto.NetworkKeysFactory
-import com.icegood.findmeinwood.core.crypto.Identity
 import com.icegood.findmeinwood.core.model.JoinPolicy
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.NetworkId
@@ -20,8 +19,6 @@ data class StoredProfile(
     val networkIdHex: String,
     val trafficKeyHex: String,
     val vtagHex: String,
-    val myMemberIdHex: String,
-    val ownerMemberIdHex: String,
     val policy: JoinPolicy,
     /**
      * Who manages the member list: [MASTER_ME] when this phone created the network, the
@@ -48,7 +45,8 @@ sealed interface JoinResult {
  * unsealed or undecryptable file reads as empty.
  */
 object ProfileStore {
-    private val json = Json { prettyPrint = true }
+    // Unknown keys: profiles written by older builds (with per-network member ids) still load.
+    private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
     private fun file(ctx: Context) = dir(ctx).resolve("profiles.json")
     internal fun dir(ctx: Context) = ctx.filesDir.apply { mkdirs() }
 
@@ -82,12 +80,13 @@ object ProfileStore {
 
     fun setMaster(ctx: Context, networkIdHex: String, masterIdHex: String) = setMaster(dir(ctx), networkIdHex, masterIdHex)
 
-    fun toProfile(p: StoredProfile): NetworkProfile = NetworkProfile(
+    /** [me]: this phone's member id (its device identity); [master]: null while unknown. */
+    fun toProfile(p: StoredProfile, me: MemberId, master: MemberId?): NetworkProfile = NetworkProfile(
         name = p.name,
         networkId = NetworkId(p.networkIdHex.hex()),
         trafficKey = p.trafficKeyHex.hex(),
-        myMemberId = MemberId(p.myMemberIdHex.hex()),
-        ownerMemberId = MemberId(p.ownerMemberIdHex.hex()),
+        myMemberId = me,
+        ownerMemberId = master ?: MemberId(ByteArray(32)),
         policy = p.policy,
     )
 
@@ -130,15 +129,11 @@ object ProfileStore {
 
     private fun storedFor(name: String, secret: String): StoredProfile {
         val keys = NetworkKeysFactory.derive(secret.toByteArray())
-        val memberId = Identity.memberIdOf(Identity.generate())
         return StoredProfile(
             name = name,
             networkIdHex = keys.networkId.bytes.hex(),
             trafficKeyHex = keys.trafficKey.hex(),
             vtagHex = keys.verifyTag.hex(),
-            myMemberIdHex = memberId.hex(),
-            // Owner is advertised in HELLO (US-8); until then the joiner is its own owner.
-            ownerMemberIdHex = memberId.hex(),
             policy = JoinPolicy.PRIVATE,
         )
     }

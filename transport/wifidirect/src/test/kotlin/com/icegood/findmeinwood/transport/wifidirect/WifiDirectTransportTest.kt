@@ -36,12 +36,14 @@ private fun dummyContext(): android.content.Context =
 class WifiDirectTransportTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var t: WifiDirectTransport
+    /** A port nobody else uses right now (debug and release test runs may overlap). */
+    private val freePort = java.net.ServerSocket(0).use { it.localPort }
 
     private val cfg = SessionConfig(NetworkId(ByteArray(8)), setOf(TransportId.WIFI_DIRECT))
 
     @BeforeTest
     fun up() {
-        t = WifiDirectTransport(dummyContext())
+        t = WifiDirectTransport(dummyContext(), port = freePort)
     }
 
     @AfterTest
@@ -73,7 +75,7 @@ class WifiDirectTransportTest {
         withTimeout(5_000) {
             while (true) {
                 try {
-                    client.connect(InetSocketAddress("127.0.0.1", WifiDirectTransport.PORT), 500)
+                    client.connect(InetSocketAddress("127.0.0.1", freePort), 500)
                     break
                 } catch (_: Exception) {
                     delay(50)
@@ -126,12 +128,5 @@ class WifiDirectConstantsTest {
     fun `frame cap matches protocol`() {
         assertEquals(65_507, WifiDirectTransport.MAX_FRAME)
         assertTrue(WifiDirectTransport.PORT in 1024..65535)
-    }
-
-    @Test
-    fun `server socket port is bindable in test env`() {
-        ServerSocket().use { s ->
-            s.bind(InetSocketAddress(WifiDirectTransport.PORT))
-        }
     }
 }
