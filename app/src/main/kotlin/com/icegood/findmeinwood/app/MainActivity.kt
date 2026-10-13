@@ -302,7 +302,8 @@ class MainActivity : ComponentActivity() {
                         tileApiKeys = mapTileKeys,
                         onTileApiKey = { source, key -> mapTileKeys = mapTileKeys + (source to key) },
                     )
-                    else -> NetworksScreen(onDiscover = { tab = "discover" })
+                    tab == "members" -> MembersScreen(onBack = { tab = "networks" })
+                    else -> NetworksScreen(onDiscover = { tab = "discover" }, onMembers = { tab = "members" })
                 }
             }
         }
@@ -327,7 +328,7 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun NetworksScreen(onDiscover: () -> Unit) {
+    private fun NetworksScreen(onDiscover: () -> Unit, onMembers: () -> Unit) {
         var profiles by remember { mutableStateOf(ProfileStore.load(this)) }
         var showCreate by remember { mutableStateOf(false) }
         var showJoin by remember { mutableStateOf(false) }
@@ -345,6 +346,7 @@ class MainActivity : ComponentActivity() {
         val listening by SessionBus.listening.collectAsState()
         val radios by SessionBus.radioStates.collectAsState()
         val findableUntil by SessionBus.findableUntil.collectAsState()
+        val book by SessionBus.book.collectAsState()
         // Ticks so "findable: N min left" counts down and ends by itself.
         var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
         LaunchedEffect(findableUntil) {
@@ -387,7 +389,8 @@ class MainActivity : ComponentActivity() {
                                     color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 if (isRunning) Text(
-                                    UiText.findable(findableUntil, nowMs),
+                                    if (book?.iAmMaster == true) UiText.findable(findableUntil, nowMs)
+                                    else "only the network's master can let new people in",
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                                 if (code != null) {
@@ -401,15 +404,19 @@ class MainActivity : ComponentActivity() {
                                         verifyTick++
                                     }) { Text("The codes matched") }
                                 }
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     if (isRunning) {
                                         // Discovery only: the network keeps running for its members either way.
-                                        if (findableUntil > nowMs) {
-                                            OutlinedButton(onClick = { SessionBus.setFindable(false) }) { Text("Stop discovery") }
-                                        } else {
-                                            Button(onClick = { SessionBus.setFindable(true) }) { Text("Start discovery") }
+                                        if (book?.iAmMaster == true) {
+                                            if (findableUntil > nowMs) {
+                                                OutlinedButton(onClick = { SessionBus.setFindable(false) }) { Text("Stop discovery") }
+                                            } else {
+                                                Button(onClick = { SessionBus.setFindable(true) }) { Text("Start discovery") }
+                                            }
+                                            OutlinedButton(onClick = { sharing = p; SessionBus.setFindable(true) }) { Text("Invite") }
                                         }
-                                        OutlinedButton(onClick = { sharing = p; SessionBus.setFindable(true) }) { Text("Invite") }
+                                        OutlinedButton(onClick = onMembers) { Text("Members") }
                                     } else {
                                         Button(onClick = {
                                             if (!granted()) { requestRadioPermissions(); return@Button }
@@ -597,7 +604,7 @@ class MainActivity : ComponentActivity() {
                             "The other phone opens Discover, taps Look for networks, picks " +
                                 "“${p.name}” and enters this password. This network must be started here " +
                                 "so it can be seen. Out of range: Networks → Join by password.\n\n" +
-                                "Or skip the password: they tap Ask a member and you tap Accept in Discover.",
+                                "Or skip the password: they tap Ask a member and you tap Accept in Members.",
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }

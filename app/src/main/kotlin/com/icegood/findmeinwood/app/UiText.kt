@@ -43,4 +43,21 @@ internal object UiText {
             "findable by new members: ${(left + 59_999) / 60_000} min left"
         }
     }
+
+    /** How a member can be reached, from their card: "Bluetooth · Wi-Fi Direct · SMS +380…". */
+    fun offers(offers: List<com.icegood.findmeinwood.core.model.LinkOffer>): String =
+        if (offers.isEmpty()) "links not announced yet"
+        else offers.joinToString(" · ") { o -> name(o.t) + (o.addr?.let { " $it" } ?: "") }
+
+    /** When a member was last heard on any radio. */
+    fun heard(lastSeenMs: Long?, nowMs: Long): String {
+        if (lastSeenMs == null) return "not heard yet"
+        val s = ((nowMs - lastSeenMs) / 1000).coerceAtLeast(0)
+        return when {
+            s < 60 -> "heard just now"
+            s < 3600 -> "heard ${s / 60} min ago"
+            else -> "heard ${s / 3600} h ago"
+        }
+    }
 }
+

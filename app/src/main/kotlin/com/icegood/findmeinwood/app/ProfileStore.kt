@@ -23,7 +23,14 @@ data class StoredProfile(
     val myMemberIdHex: String,
     val ownerMemberIdHex: String,
     val policy: JoinPolicy,
+    /**
+     * Who manages the member list: [MASTER_ME] when this phone created the network, the
+     * master's member id (hex) when let in by it, empty until learned (joined by password).
+     */
+    val masterIdHex: String = "",
 )
+
+const val MASTER_ME = "me"
 
 sealed interface CreateResult {
     data class Ok(val profile: StoredProfile, val password: String) : CreateResult
@@ -69,6 +76,12 @@ object ProfileStore {
     fun add(ctx: Context, p: StoredProfile) = add(dir(ctx), p)
     fun remove(ctx: Context, networkIdHex: String) = remove(dir(ctx), networkIdHex)
 
+    /** Records the master of a network once known. */
+    internal fun setMaster(dir: File, networkIdHex: String, masterIdHex: String) =
+        save(dir, load(dir).map { if (it.networkIdHex == networkIdHex) it.copy(masterIdHex = masterIdHex) else it })
+
+    fun setMaster(ctx: Context, networkIdHex: String, masterIdHex: String) = setMaster(dir(ctx), networkIdHex, masterIdHex)
+
     fun toProfile(p: StoredProfile): NetworkProfile = NetworkProfile(
         name = p.name,
         networkId = NetworkId(p.networkIdHex.hex()),
@@ -89,7 +102,7 @@ object ProfileStore {
             return CreateResult.Error("Password too weak: use 16+ characters or 6+ words")
         }
         val secret = supplied ?: generateSecret()
-        return CreateResult.Ok(storedFor(name, secret), secret)
+        return CreateResult.Ok(storedFor(name, secret).copy(masterIdHex = MASTER_ME), secret)
     }
 
     /**

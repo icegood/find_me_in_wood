@@ -51,6 +51,11 @@ object SessionBus {
     val linkStatuses: StateFlow<List<com.icegood.findmeinwood.core.model.LinkStatus>> = _linkStatuses
     fun publishLinkStatuses(list: List<com.icegood.findmeinwood.core.model.LinkStatus>) { _linkStatuses.value = list }
 
+    /** The running network's member list (null: none, e.g. only listening). */
+    private val _book = MutableStateFlow<BookView?>(null)
+    val book: StateFlow<BookView?> = _book
+    fun publishBook(view: BookView?) { _book.value = view }
+
     /** Until when the running network is findable by new people (0: not findable). */
     private val _findableUntil = MutableStateFlow(0L)
     val findableUntil: StateFlow<Long> = _findableUntil
@@ -119,6 +124,7 @@ object SessionBus {
         _radioStates.value = emptyMap()
         _linkStatuses.value = emptyList()
         _findableUntil.value = 0L
+        _book.value = null
         // Swap out the chat replay buffer entirely: a stale session's payloads must
         // not replay into a fresh collector after Stop (same "buffer still shown"
         // class of bug, but for messages).

@@ -50,12 +50,16 @@ class SessionManager(
     private val signer: java.security.KeyPair? = null,
     /** False while only listening for networks to join: radios run, no beacons go out. */
     private val beaconsEnabled: Boolean = true,
+    /** The network's member list and member cards (null: no list kept, e.g. listening). */
+    val book: MemberBook? = null,
 ) {
     companion object {
         const val INITIAL_TTL: UByte = 3u
         const val KEEP_ALIVE_MS = 60_000L
         /** Minimum gap between extra (link-control) beacons. */
         const val REPLY_GAP_MS = 1_000L
+        /** Minimum gap between member-list syncs sent by this phone. */
+        const val SYNC_GAP_MS = 20_000L
     }
 
     private val verifier = IdentityVerifier()
@@ -80,6 +84,19 @@ class SessionManager(
 
     /** Decrypted payload of every authenticated incoming frame, with sender (chat etc.). */
     var onFrameReceived: ((ByteArray, MemberId) -> Unit)? = null
+
+    /** The member list or a member card changed here (to persist it and refresh the UI). */
+    var onBookChanged: (() -> Unit)? = null
+    @Volatile private var lastSyncAt = Long.MIN_VALUE / 2
+
+    /** Sends this phone's member list and cards (rate-limited unless [force]). */
+    suspend fun syncBook(force: Boolean = false) {
+        val b = book ?: return
+        val now = clock()
+        if (!force && now - lastSyncAt < SYNC_GAP_MS) return
+        lastSyncAt = now
+        sendRaw(com.icegood.findmeinwood.core.model.RosterCodec.encode(b.toSync()))
+    }
 
     /** The selected link to a peer changed (LNP/3 FR-3.8). */
     var onLinkSwitch: ((LinkNegotiator.Switch) -> Unit)? = null
@@ -275,7 +292,7 @@ class SessionManager(
      */
     suspend fun sendBeaconSigned(beacon: BeaconPayload) {
         // Link control is part of the signed payload, so offers cannot be forged by relays.
-        val payload = beacon.copy(link = links?.outgoing())
+        val payload = beacon.copy(link = links?.outgoing(), book = book?.digest())
         val s = (seq.getAndIncrement()).toUInt()
         val sentAt = clock()
         val signed = signer?.let { Identity.sign(it, signedBeaconBytes(s, sentAt, payload)) }
@@ -355,6 +372,20 @@ class SessionManager(
             if (f.ttl == INITIAL_TTL) links?.let { announce(it.onFrame(f.senderId, ev.source, direct = true, ctl = null)) }
             return
         }
+        // A member the master dropped is out: nothing it sends counts, nothing is relayed.
+        if (book?.isRemoved(f.senderId) == true) {
+            bump { it.copy(dropped = it.dropped + 1) }
+            return
+        }
+        // Member list / cards from another member: merge (any member passes them on).
+        com.icegood.findmeinwood.core.model.RosterCodec.decode(plain)?.let { sync ->
+            if (book?.merge(sync) == true) onBookChanged?.invoke()
+            // Still differs (we know something they do not): answer with ours.
+            if (book?.knowsMoreThan(sync) == true) syncBook()
+            bump { it.copy(received = it.received + 1) }
+            relay(f, ev.source)
+            return
+        }
         // Chat messages are not beacons: route them to the app instead of dropping
         // them as an "undecodable beacon". They still take part in relaying below.
         // Relayed frames have a decremented TTL: they do not prove a direct link (FR-3.10).
@@ -371,6 +402,12 @@ class SessionManager(
                 return
             }
             tracker.onBeacon(DecryptedBeacon(f.senderId, f.seq, f.sentAtMs, payload), ev.source.takeIf { direct })
+            book?.let { b ->
+                // The master lists whoever talks with the network key (let in, or joined by
+                // password); its id is its key's hash, so the key cannot be someone else's.
+                if (b.isMaster && payload.pub != null && b.add(f.senderId, payload.pub!!)) onBookChanged?.invoke()
+                if (payload.book != null && payload.book != b.digest()) syncBook()
+            }
             links?.let { announce(it.onFrame(f.senderId, ev.source, direct, payload.link)) }
             payload.link?.name?.let { tracker.setNickname(f.senderId, it.take(32)) }
         } else {
@@ -378,10 +415,14 @@ class SessionManager(
         }
         bump { it.copy(received = it.received + 1) }
         onFrameReceived?.invoke(plain, f.senderId)
+        relay(f, ev.source)
+    }
+
+    private suspend fun relay(f: EncryptedFrame, source: TransportId) {
         if (relayEnabled && f.ttl > 1u) {
             val relayed = f.copy(ttl = (f.ttl - 1u).toUByte())
             val wire = FrameCodec.encode(relayed)
-            live().filter { it.id != ev.source }.forEach { it.send(wire) }
+            live().filter { it.id != source }.forEach { it.send(wire) }
             bump { it.copy(relayed = it.relayed + 1) }
         }
     }

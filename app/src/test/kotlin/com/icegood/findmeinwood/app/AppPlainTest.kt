@@ -515,3 +515,70 @@ class LinkAvailabilityTest {
         assertEquals(com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS, noPerm[4].fix)
     }
 }
+
+class MemberBookStoreTest {
+    init { SecureStorage.box = TestBox }
+
+    private val net = com.icegood.findmeinwood.core.model.NetworkId(ByteArray(8) { 3 })
+    private val masterPair = com.icegood.findmeinwood.core.crypto.Identity.generate()
+    private val masterId = MemberId(com.icegood.findmeinwood.core.crypto.Identity.memberIdOf(masterPair))
+    private val aPair = com.icegood.findmeinwood.core.crypto.Identity.generate()
+    private val aId = MemberId(com.icegood.findmeinwood.core.crypto.Identity.memberIdOf(aPair))
+
+    @Test
+    fun `the member list survives a restart and reads master first, removed last`() {
+        val dir = Files.createTempDirectory("fmiw").toFile()
+        val master = MemberBookStore.load(dir, net, masterPair, masterId)
+        master.add(aId, aPair.public.encoded)
+        val a = com.icegood.findmeinwood.core.session.MemberBook(net, aPair, masterId)
+        a.updateMyCard("Ira", listOf(com.icegood.findmeinwood.core.model.LinkOffer(com.icegood.findmeinwood.core.model.TransportId.SMS, "+1")), 5)
+        master.merge(a.toSync())
+        MemberBookStore.save(dir, net, master)
+
+        val again = MemberBookStore.load(dir, net, masterPair, masterId)
+        assertEquals(setOf(masterId, aId), again.members().toSet())
+        assertEquals("+1", again.card(aId)!!.offers.single().addr)
+        val v = MemberBookStore.view(again)
+        assertTrue(v.iAmMaster && v.masterKnown)
+        assertEquals(listOf(true, false), v.members.map { it.isMaster })
+        assertEquals("Ira", v.members[1].name)
+
+        again.remove(aId)
+        val after = MemberBookStore.view(again)
+        assertTrue(after.members.last().removed)
+        // A member that has not heard the master yet: only itself, master unknown.
+        val lone = MemberBookStore.view(MemberBookStore.load(Files.createTempDirectory("fmiw").toFile(), net, aPair, null))
+        assertTrue(!lone.iAmMaster && !lone.masterKnown)
+        assertTrue(lone.members.single().isMe)
+    }
+
+    @Test
+    fun `the master is recorded on the profile`() {
+        val dir = Files.createTempDirectory("fmiw").toFile()
+        val created = (ProfileStore.create("wood", null) as CreateResult.Ok).profile
+        assertEquals(MASTER_ME, created.masterIdHex)
+        val joined = (ProfileStore.join("wood", "correct horse battery staple again") as JoinResult.Ok).profile
+        assertEquals("", joined.masterIdHex, "joined by password: not known yet")
+        ProfileStore.add(dir, joined)
+        ProfileStore.setMaster(dir, joined.networkIdHex, "ab".repeat(32))
+        assertEquals("ab".repeat(32), ProfileStore.load(dir).single().masterIdHex)
+    }
+
+    @Test
+    fun `members read as links and when they were heard`() {
+        assertEquals("links not announced yet", UiText.offers(emptyList()))
+        assertEquals(
+            "Bluetooth · SMS +380",
+            UiText.offers(
+                listOf(
+                    com.icegood.findmeinwood.core.model.LinkOffer(com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH),
+                    com.icegood.findmeinwood.core.model.LinkOffer(com.icegood.findmeinwood.core.model.TransportId.SMS, "+380"),
+                ),
+            ),
+        )
+        assertEquals("not heard yet", UiText.heard(null, 0))
+        assertEquals("heard just now", UiText.heard(1_000, 30_000))
+        assertEquals("heard 5 min ago", UiText.heard(0, 300_000))
+        assertEquals("heard 2 h ago", UiText.heard(0, 7_200_000))
+    }
+}

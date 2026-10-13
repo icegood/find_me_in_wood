@@ -55,6 +55,8 @@ data class BeaconPayload(
     val pub: ByteArray? = null,
     /** LNP/3 link negotiation (FR-3.6–3.9); absent on most beacons to keep them small. */
     val link: LinkCtl? = null,
+    /** Fingerprint of the sender's member list + cards: a differing one triggers a sync. */
+    val book: Int? = null,
 )
 
 /** LNP/3: a transport this member can use for the network, and how to reach it there. */

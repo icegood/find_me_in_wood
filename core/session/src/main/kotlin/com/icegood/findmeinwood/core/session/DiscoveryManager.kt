@@ -25,7 +25,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.security.KeyPair
 
 sealed interface JoinOutcome {
-    data class Joined(val name: String, val secret: String, val sas: String) : JoinOutcome
+    /** [masterId]: the phone that let us in (only the master admits). */
+    data class Joined(val name: String, val secret: String, val sas: String, val masterId: MemberId? = null) : JoinOutcome
     data class Rejected(val reason: String) : JoinOutcome
 }
 
@@ -48,6 +49,8 @@ class DiscoveryManager(
     private val identity: KeyPair,
     private val nowMs: () -> Long,
     private val staleAfterMs: Long = 90_000,
+    /** Only the master lets people in: other members ignore join requests. */
+    private val canAdmit: () -> Boolean = { true },
 ) {
     // Mutators are @Synchronized: the app calls them from every transport collector (IO)
     // and from UI callbacks at the same time, and the state below is plain HashMaps.
@@ -180,6 +183,7 @@ class DiscoveryManager(
 
     private fun onJoinRequest(frame: MgmtFrame) {
         if (frame.networkId != profile.networkId) return
+        if (!canAdmit()) return
         val payload = runCatching { PayloadCodec.decodeJoinRequest(frame.payload) }.getOrNull() ?: return
         val ownerPair = JoinCrypto.ephemeralKeyPair()
         val shared = JoinCrypto.sharedSecret(ownerPair, payload.joinerPubkey)
@@ -216,7 +220,7 @@ class DiscoveryManager(
         if (NetworkKeysFactory.derive(secret.toByteArray()).networkId != frame.networkId) return
         requestedNetworkId = null
         myEphemeral = null
-        _outcome.value = JoinOutcome.Joined(payload.name, secret, sas)
+        _outcome.value = JoinOutcome.Joined(payload.name, secret, sas, frame.senderId)
     }
 
     private fun onJoinReject(frame: MgmtFrame) {

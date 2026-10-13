@@ -84,6 +84,27 @@ class DiscoveryManagerTest {
     }
 
     @Test
+    fun `only the master admits - other members ignore join requests`() {
+        val (memberId, memberPair) = member()
+        val notMaster = DiscoveryManager(profile(JoinPolicy.PRIVATE, memberId), memberPair, { now }, canAdmit = { false })
+        val (joinerId, joinerPair) = member()
+        val joiner = listener(joinerId, joinerPair)
+        notMaster.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, "Misha")))
+        assertTrue(notMaster.pendingJoins.value.isEmpty())
+    }
+
+    @Test
+    fun `the joiner learns who let it in`() {
+        val (ownerId, ownerPair) = member()
+        val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair).apply { ownerSecret = "discovery-net" }
+        val (joinerId, joinerPair) = member()
+        val joiner = listener(joinerId, joinerPair)
+        owner.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null)))
+        joiner.onMgmtFrame(MgmtCodec.decode(owner.approve(joinerId)!!))
+        assertEquals(ownerId, (joiner.outcome.value as JoinOutcome.Joined).masterId)
+    }
+
+    @Test
     fun `join request reaches the owner as a pending join`() {
         val (ownerId, ownerPair) = member()
         val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair)

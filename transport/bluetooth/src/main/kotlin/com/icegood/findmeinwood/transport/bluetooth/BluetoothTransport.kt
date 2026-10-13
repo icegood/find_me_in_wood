@@ -116,6 +116,7 @@ class BluetoothTransport internal constructor(
     private var lastLinkCount = 0
     private var supervisorTicks = 0
     private val lastAdvertSeen = ConcurrentHashMap<String, Long>()
+    private val lastScanLog = ConcurrentHashMap<String, Long>()
 
     override fun start(config: SessionConfig): Flow<TransportEvent> {
         if (!running) {
@@ -402,6 +403,13 @@ class BluetoothTransport internal constructor(
             listening -> false
             secret == null -> true
             else -> isMemberTag(parsed.tag, now)
+        }
+        if (now - (lastScanLog[address] ?: 0L) >= ADVERT_EVENT_MS * 2) {
+            lastScanLog[address] = now
+            DebugLog.d {
+                "Bluetooth saw $address: code=${parsed.tag?.let { if (isMemberTag(it, now)) "member" else "other" } ?: "none"}" +
+                    " info=${parsed.info != null} raw=${result.scanRecord?.bytes?.size ?: -1}B connect=$wanted"
+            }
         }
         if (wanted) connectTo(result.device)
     }

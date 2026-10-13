@@ -19,6 +19,7 @@ import com.icegood.findmeinwood.core.model.JoinPolicy
 import com.icegood.findmeinwood.core.model.TransportId
 import com.icegood.findmeinwood.transport.api.DebugLog
 import com.icegood.findmeinwood.core.crypto.BleAdvert
+import com.icegood.findmeinwood.core.crypto.Identity
 import com.icegood.findmeinwood.core.session.GnssSource
 import com.icegood.findmeinwood.core.crypto.MgmtCodec
 import com.icegood.findmeinwood.core.session.DiscoveryManager
@@ -81,7 +82,9 @@ class SessionService : Service() {
      */
     private fun startListening() {
         val throwaway = (ProfileStore.create("listening", null) as CreateResult.Ok).profile
-        runSession(ProfileStore.toProfile(throwaway).copy(policy = JoinPolicy.CODE), listen = true)
+        // Same member id as after joining: the master lists exactly the phone it let in.
+        val profile = ProfileStore.toProfile(throwaway).copy(policy = JoinPolicy.CODE, myMemberId = deviceId())
+        runSession(profile, listen = true, masterId = null)
     }
 
     private fun startSession(intent: Intent?) {
@@ -92,20 +95,29 @@ class SessionService : Service() {
             return
         }
         val name = intent.getStringExtra(EXTRA_NAME) ?: "network"
+        val masterId = when (val m = intent.getStringExtra(EXTRA_OWNER_ID).orEmpty()) {
+            MASTER_ME -> deviceId()
+            "" -> null
+            else -> MemberId(m.chunked(2).map { it.toInt(16).toByte() }.toByteArray())
+        }
         val profile = NetworkProfile(
             name = name,
             networkId = com.icegood.findmeinwood.core.model.NetworkId(intent.hex(EXTRA_NETWORK_ID)),
             trafficKey = intent.hex(EXTRA_TRAFFIC_KEY),
-            myMemberId = MemberId(intent.hex(EXTRA_MY_ID)),
-            ownerMemberId = MemberId(intent.hex(EXTRA_OWNER_ID)),
+            // A member is its device identity (the key that signs its beacons) in every
+            // network: member ids are key hashes, so signatures are checkable by id.
+            myMemberId = deviceId(),
+            ownerMemberId = masterId ?: MemberId(ByteArray(32)),
             policy = intent.getStringExtra(EXTRA_POLICY)?.let {
                 runCatching { JoinPolicy.valueOf(it) }.getOrNull()
             } ?: JoinPolicy.PRIVATE,
         )
-        runSession(profile, listen = false)
+        runSession(profile, listen = false, masterId = masterId)
     }
 
-    private fun runSession(profile: NetworkProfile, listen: Boolean) {
+    private fun deviceId() = MemberId(Identity.memberIdOf(IdentityHolder.keyPair(this)))
+
+    private fun runSession(profile: NetworkProfile, listen: Boolean, masterId: MemberId?) {
         // "Start" while a session is live restarts it (and "Restart" in the UI is
         // no longer a silent no-op). stopSession hands the old scope to its background
         // shutdown and installs a fresh one, which also covers Stop -> Start on the
@@ -134,7 +146,12 @@ class SessionService : Service() {
             ShareTransport(this),
         )
         val identityPair = IdentityHolder.keyPair(this)
-        val discovery = DiscoveryManager(profile, identityPair, { System.currentTimeMillis() })
+        val netHex = profile.networkId.bytes.joinToString("") { "%02x".format(it) }
+        val book = if (listen) null else MemberBookStore.load(this, profile.networkId, identityPair, masterId).also { b ->
+            b.onMasterLearned = { id -> ProfileStore.setMaster(this, netHex, id.bytes.joinToString("") { "%02x".format(it) }) }
+        }
+        activeBook = book
+        val discovery = DiscoveryManager(profile, identityPair, { System.currentTimeMillis() }, canAdmit = { book?.isMaster == true })
         discovery.ownerSecret = Prefs.secretFor(this, profile.networkId.bytes.joinToString("") { "%02x".format(it) })
         val clock = { System.currentTimeMillis() }
         val manager = SessionManager(
@@ -147,7 +164,15 @@ class SessionService : Service() {
             ),
             signer = identityPair,
             beaconsEnabled = !listen,
+            book = book,
         )
+        book?.let { b ->
+            manager.onBookChanged = {
+                MemberBookStore.save(this, profile.networkId, b)
+                SessionBus.publishBook(MemberBookStore.view(b))
+            }
+            SessionBus.publishBook(MemberBookStore.view(b))
+        }
         linkLog = (if (listen) null else LinkLog.open(this))?.also { log ->
             linkLogFile = "Download/${LinkLog.FOLDER}/${log.fileName}"
             val sampler = LinkLogSampler(this, log, manager, bluetooth, wifiDirect, { lastFix }, deltaMs)
@@ -200,7 +225,8 @@ class SessionService : Service() {
         }
         // Findable by new people: on for a while after Start (and Invite, approvals), then
         // off by itself; members reach each other either way.
-        val canBeFound = !listen && profile.policy != JoinPolicy.CODE
+        // Only the master lets people in, so only the master can be found by them.
+        val canBeFound = !listen && profile.policy != JoinPolicy.CODE && book?.isMaster == true
         SessionBus.setFindable(canBeFound)
         val advert = BleAdvert.encodeInfo(BleAdvert.Info(profile.networkId, profile.policy, profile.name))
         scope.launch {
@@ -265,7 +291,10 @@ class SessionService : Service() {
         if (outcome is JoinOutcome.Joined) {
             val id = ProfileStore.networkIdOf(outcome.secret).bytes.joinToString("") { "%02x".format(it) }
             val existing = ProfileStore.load(this).firstOrNull { it.networkIdHex == id }
-            val stored = existing ?: (ProfileStore.join(outcome.name, outcome.secret) as? JoinResult.Ok)?.profile?.also {
+            val masterHex = outcome.masterId?.bytes?.joinToString("") { b -> "%02x".format(b) }.orEmpty()
+            // The phone that let us in is the master: started with it, not learned later.
+            val stored = existing ?: (ProfileStore.join(outcome.name, outcome.secret) as? JoinResult.Ok)?.profile
+                ?.copy(masterIdHex = masterHex)?.also {
                 ProfileStore.add(this, it)
                 Prefs.setSecretFor(this, it.networkIdHex, outcome.secret)
                 // FR-8.4: unverified until the human compares the SAS
@@ -295,6 +324,13 @@ class SessionService : Service() {
                 SessionBus.publishLinkStatuses(statuses)
                 links.setOffers(LinkAvailability.offers(statuses))
                 links.setName(Prefs.currentDisplayName(this@SessionService))
+                // The member card: name and links for members who never heard us directly.
+                manager.book?.let { b ->
+                    if (b.updateMyCard(Prefs.currentDisplayName(this@SessionService), links.offers(), System.currentTimeMillis())) {
+                        manager.onBookChanged?.invoke()
+                        manager.syncBook(force = true)
+                    }
+                }
                 val now = System.currentTimeMillis()
                 val interval = SMS_INTERVAL_MS
                 for ((peer, addr) in links.peersOn(TransportId.SMS)) {
@@ -400,6 +436,7 @@ class SessionService : Service() {
         activeManager = null
         activeNetworkId = null
         activeWifiDirect = null
+        activeBook = null
         activeDiscovery = null
         DiscoveryBridge.onRequestJoin = null
         DiscoveryBridge.onApprove = null
@@ -489,6 +526,19 @@ class SessionService : Service() {
         @Volatile var activeWifiDirect: WifiDirectTransport? = null
             private set
 
+        /** The running network's member list (null while listening or stopped). */
+        @Volatile var activeBook: com.icegood.findmeinwood.core.session.MemberBook? = null
+
+        /** Master only: drops [id] from the member list and tells the others. */
+        fun removeMember(id: MemberId): Boolean {
+            val b = activeBook ?: return false
+            val m = activeManager ?: return false
+            if (!b.remove(id)) return false
+            m.onBookChanged?.invoke()
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { m.syncBook(force = true) }
+            return true
+        }
+
         /** Flip the Wi-Fi Direct role while a session is running (host = group owner). */
         fun setP2pGroupOwner(context: Context, owner: Boolean) {
             Prefs.setP2pGroupOwner(context, owner)
@@ -506,7 +556,7 @@ class SessionService : Service() {
                 .putExtra(EXTRA_NETWORK_ID, p.networkIdHex)
                 .putExtra(EXTRA_TRAFFIC_KEY, p.trafficKeyHex)
                 .putExtra(EXTRA_MY_ID, p.myMemberIdHex)
-                .putExtra(EXTRA_OWNER_ID, p.ownerMemberIdHex)
+                .putExtra(EXTRA_OWNER_ID, p.masterIdHex)
                 .putExtra(EXTRA_POLICY, p.policy.name)
 
         /** Starts listening for networks to join; no-op while a session already runs. */

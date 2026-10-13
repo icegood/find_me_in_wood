@@ -45,9 +45,6 @@ fun DiscoverScreen(
     // Re-check system switches (Location) every few seconds: the user flips them elsewhere.
     var tick by remember { mutableStateOf(0) }
     androidx.compose.runtime.LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(3_000); tick++ } }
-    val pending by SessionBus.pendingJoins.collectAsState()
-    val sas by SessionBus.ownerSas.collectAsState()
-    val note by SessionBus.ownerNote.collectAsState()
     val outcome by SessionBus.joinOutcome.collectAsState()
     val running by SessionBus.sessionRunning.collectAsState()
     val listening by SessionBus.listening.collectAsState()
@@ -121,7 +118,7 @@ fun DiscoverScreen(
                         }
                         if (asked != null && asked == (net.name ?: "the network")) {
                             Text(
-                                "Asked. A member nearby must open Discover and tap Accept.",
+                                "Asked. The network's master must tap Accept on their phone.",
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -150,29 +147,7 @@ fun DiscoverScreen(
             }
         }
 
-        if (sas != null || note != null) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                sas?.let { Text("Code $it — the person joining must see the same", style = MaterialTheme.typography.bodyMedium) }
-                note?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-            }
-        }
-        if (pending.isNotEmpty()) {
-            Text("Asking to join “${current?.name ?: "your network"}”", style = MaterialTheme.typography.titleMedium)
-            pending.forEach { req ->
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            req.joinerNick ?: "device ${req.joinerId.bytes.take(4).joinToString("") { "%02x".format(it) }}",
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { DiscoveryBridge.approve(req.joinerId) }) { Text("Accept") }
-                            OutlinedButton(onClick = { DiscoveryBridge.reject(req.joinerId) }) { Text("Reject") }
-                        }
-                    }
-                }
-            }
-        }
+        JoinRequests(current?.name)
     }
 
     passwordFor?.let { net ->
@@ -245,4 +220,35 @@ internal fun PasswordDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+/** Join requests waiting for this phone (the master) and the code of the last one let in. */
+@Composable
+internal fun JoinRequests(networkName: String?) {
+    val pending by SessionBus.pendingJoins.collectAsState()
+    val sas by SessionBus.ownerSas.collectAsState()
+    val note by SessionBus.ownerNote.collectAsState()
+    if (sas != null || note != null) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            sas?.let { Text("Code $it — the person joining must see the same", style = MaterialTheme.typography.bodyMedium) }
+            note?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+    if (pending.isNotEmpty()) {
+        Text("Asking to join “${networkName ?: "your network"}”", style = MaterialTheme.typography.titleMedium)
+        pending.forEach { req ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        req.joinerNick ?: "device ${req.joinerId.bytes.take(4).joinToString("") { "%02x".format(it) }}",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { DiscoveryBridge.approve(req.joinerId) }) { Text("Accept") }
+                        OutlinedButton(onClick = { DiscoveryBridge.reject(req.joinerId) }) { Text("Reject") }
+                    }
+                }
+            }
+        }
+    }
 }

@@ -49,6 +49,10 @@ object Identity {
         null
     }
 
+    /** [verify] with the key as encoded bytes (SPKI); false for a key that does not parse. */
+    fun verify(publicKey: ByteArray, data: ByteArray, signature: ByteArray): Boolean =
+        runCatching { verify(KeyParse.publicKey(publicKey), data, signature) }.getOrDefault(false)
+
     fun verify(publicKey: PublicKey, data: ByteArray, signature: ByteArray): Boolean = try {
         withSignature(publicKey.algorithm) { s ->
             s.initVerify(publicKey)
