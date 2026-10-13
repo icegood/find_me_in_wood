@@ -40,13 +40,14 @@ class ShareTransport(private val context: Context) : Transport {
 
     override suspend fun stop() {}
 
+    /** Newest frame, kept in memory only: written to a file when the user shares it. */
+    @Volatile var latest: ByteArray? = null
+        private set
+
     override suspend fun send(wireFrame: ByteArray): SendResult {
-        val envelope = encodeEnvelope(wireFrame)
-        return runCatching {
-            beaconFile(context, System.currentTimeMillis()).writeText(envelope)
-            pruneBeacons(context)
-            SendResult.HandedToUser
-        }.getOrDefault(SendResult.Failed("cannot buffer envelope"))
+        // No file per beacon: that was a flash write every few seconds nobody read.
+        latest = wireFrame
+        return SendResult.HandedToUser
     }
 
     /** FR-9.1/FR-9.2: explicit, user-in-loop share of the newest envelope as a file. */

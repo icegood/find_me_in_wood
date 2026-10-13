@@ -36,54 +36,47 @@ class DiscoveryManagerTest {
     }
 
     private fun manager(policy: JoinPolicy, id: MemberId, pair: java.security.KeyPair) =
-        DiscoveryManager(profile(policy, id), pair, { now }, helloIntervalMs = 15_000)
+        DiscoveryManager(profile(policy, id), pair, { now })
 
-    /** A device with no network yet: listens on a throwaway one and never advertises it. */
+    /** A device with no network yet: listens on a throwaway one. */
     private fun listener(id: MemberId, pair: java.security.KeyPair): DiscoveryManager {
         val own = NetworkKeysFactory.derive("listener-${id.bytes[0]}".toByteArray())
         return DiscoveryManager(
             profile(JoinPolicy.CODE, id).copy(networkId = own.networkId, trafficKey = own.trafficKey),
-            pair, { now }, advertise = false,
+            pair, { now },
         )
     }
 
-    @Test
-    fun `hello is emitted only when due and hides CODE networks`() {
-        val (id, pair) = member()
-        val m = manager(JoinPolicy.PRIVATE, id, pair)
-        assertTrue(m.helloDue())
-        val first = m.buildHello(listOf(TransportId.BLUETOOTH))
-        assertFalse(m.helloDue())
-        now += 20_000
-        assertTrue(m.helloDue())
+    private fun advert(policy: JoinPolicy, name: String? = "hunt-2026", id: NetworkId = keys.networkId) =
+        com.icegood.findmeinwood.core.crypto.BleAdvert.Info(id, policy, name)
 
-        // peer receives it and lists the network
+    @Test
+    fun `findable networks are listed from adverts, hidden ones never`() {
         val (peerId, peerPair) = member()
         val peer = listener(peerId, peerPair)
-        val frame = MgmtCodec.decode(first)
-        peer.pinKey(id, pair.public)
-        peer.onMgmtFrame(frame)
+        peer.onAdvert(advert(JoinPolicy.PRIVATE), "AA:01", TransportId.BLUETOOTH)
         val found = peer.discovered.value.single()
         assertEquals("hunt-2026", found.name)
         assertEquals(JoinPolicy.PRIVATE, found.policy)
         assertEquals(listOf(TransportId.BLUETOOTH), found.activeTransports)
+        peer.onAdvert(advert(JoinPolicy.PRIVATE), "AA:02", TransportId.BLUETOOTH)
+        assertEquals(1, peer.discovered.value.size, "same network from a second member: one entry")
+        assertEquals(
+            listOf(TransportId.BLUETOOTH to "AA:01", TransportId.BLUETOOTH to "AA:02"),
+            peer.radioPeersOf(keys.networkId),
+        )
+        assertTrue(peer.radioPeersOf(NetworkId(ByteArray(8) { 3 })).isEmpty())
 
-        // CODE networks are never advertised
-        val hidden = manager(JoinPolicy.CODE, id, pair)
+        // CODE networks are never listed
         val peer2 = listener(peerId, peerPair)
-        peer2.pinKey(id, pair.public)
-        peer2.onMgmtFrame(MgmtCodec.decode(hidden.buildHello(emptyList())))
+        peer2.onAdvert(advert(JoinPolicy.CODE, id = NetworkId(ByteArray(8) { 4 })), "AA:03", TransportId.BLUETOOTH)
         assertTrue(peer2.discovered.value.isEmpty())
     }
 
     @Test
     fun `stale networks are pruned`() {
-        val (id, pair) = member()
-        val m = manager(JoinPolicy.OPEN, id, pair)
-        val peer = listener(MemberId(ByteArray(32)), Identity.generate()).apply {
-            pinKey(id, pair.public)
-        }
-        peer.onMgmtFrame(MgmtCodec.decode(m.buildHello(emptyList())))
+        val peer = listener(MemberId(ByteArray(32)), Identity.generate())
+        peer.onAdvert(advert(JoinPolicy.OPEN), "AA:01", TransportId.BLUETOOTH)
         assertEquals(1, peer.discovered.value.size)
         now += 120_000
         peer.pruneStale()
@@ -251,7 +244,7 @@ class DiscoveryManagerTest {
     }
 
     @Test
-    fun `join answers are only accepted from devices advertising the network`() {
+    fun `a device without the network's secret cannot let anyone in`() {
         val (ownerId, ownerPair) = member()
         val owner = manager(JoinPolicy.OPEN, ownerId, ownerPair).apply { ownerSecret = "discovery-net" }
         val (rogueId, roguePair) = member()
@@ -262,31 +255,26 @@ class DiscoveryManagerTest {
         val (joinerId, joinerPair) = member()
         val joiner = listener(joinerId, joinerPair)
 
-        joiner.onMgmtFrame(MgmtCodec.decode(owner.buildHello(emptyList())))
+        joiner.onAdvert(advert(JoinPolicy.OPEN), "AA:01", TransportId.BLUETOOTH)
         val req = MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, null))
         owner.onMgmtFrame(req)
         rogue.onMgmtFrame(req)
 
         joiner.onMgmtFrame(MgmtCodec.decode(rogue.approve(joinerId)!!))
-        assertNull(joiner.outcome.value, "a reply from a device that never advertised must be ignored")
-        joiner.onMgmtFrame(MgmtCodec.decode(rogue.reject(joinerId)))
-        assertNull(joiner.outcome.value, "a reject from a device that never advertised must be ignored")
+        assertNull(joiner.outcome.value, "its secret does not derive the network asked for")
 
         joiner.onMgmtFrame(MgmtCodec.decode(owner.approve(joinerId)!!))
         assertEquals("discovery-net", (joiner.outcome.value as JoinOutcome.Joined).secret)
     }
 
     @Test
-    fun `any advertising member may answer, not only the owner`() {
-        val (ownerId, ownerPair) = member()
-        val owner = manager(JoinPolicy.PRIVATE, ownerId, ownerPair)
+    fun `any member may answer, not only the owner`() {
         val (memberId, memberPair) = member()
-        // A member that joined earlier holds the secret and advertises the same network.
+        // A member that joined earlier holds the secret.
         val other = manager(JoinPolicy.PRIVATE, memberId, memberPair).apply { ownerSecret = "discovery-net" }
         val (joinerId, joinerPair) = member()
         val joiner = listener(joinerId, joinerPair)
-        joiner.onMgmtFrame(MgmtCodec.decode(owner.buildHello(emptyList())))
-        joiner.onMgmtFrame(MgmtCodec.decode(other.buildHello(emptyList())))
+        joiner.onAdvert(advert(JoinPolicy.PRIVATE), "AA:01", TransportId.BLUETOOTH)
 
         other.onMgmtFrame(MgmtCodec.decode(joiner.buildJoinRequest(keys.networkId, "Misha")))
         joiner.onMgmtFrame(MgmtCodec.decode(other.approve(joinerId)!!))
@@ -294,13 +282,11 @@ class DiscoveryManagerTest {
     }
 
     @Test
-    fun `own network is not listed and a listener never advertises`() {
-        val (aId, aPair) = member()
+    fun `own network is not listed`() {
         val (bId, bPair) = member()
         val b = manager(JoinPolicy.PRIVATE, bId, bPair)
-        b.onMgmtFrame(MgmtCodec.decode(manager(JoinPolicy.PRIVATE, aId, aPair).buildHello(emptyList())))
+        b.onAdvert(advert(JoinPolicy.PRIVATE), "AA:01", TransportId.BLUETOOTH)
         assertTrue(b.discovered.value.isEmpty())
-        assertFalse(listener(aId, aPair).helloDue())
     }
 
     @Test

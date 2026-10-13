@@ -411,6 +411,22 @@ class SmsLogicTest {
 
 class UiTextTest {
     @Test
+    fun `findability reads as minutes left, or members-only`() {
+        assertEquals("findable by new members: 10 min left", UiText.findable(600_000, 0))
+        assertEquals("findable by new members: 1 min left", UiText.findable(1_000, 0))
+        assertTrue(UiText.findable(0, 5).startsWith("not findable"))
+    }
+
+    @Test
+    fun `findable for ten minutes, then off by itself`() {
+        SessionBus.setFindable(true, now = 1_000)
+        assertTrue(SessionBus.isFindable(now = 1_000 + SessionBus.FINDABLE_MS - 1))
+        assertTrue(!SessionBus.isFindable(now = 1_000 + SessionBus.FINDABLE_MS))
+        SessionBus.setFindable(false)
+        assertEquals(0L, SessionBus.findableUntil.value)
+    }
+
+    @Test
     fun `radios read as plain words, optional ones only when working`() {
         val lines = UiText.radios(
             mapOf(

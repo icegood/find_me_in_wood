@@ -34,6 +34,7 @@ class P2PTransportAdapter(
                 is TransportEvent.MgmtFrameReceived -> null
                 is TransportEvent.StateChanged -> null
                 is TransportEvent.LinkUp -> null
+                is TransportEvent.NetworkAdvertSeen -> null
             }
         }
     }

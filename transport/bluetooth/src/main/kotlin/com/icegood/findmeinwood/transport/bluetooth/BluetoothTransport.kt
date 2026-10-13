@@ -16,6 +16,7 @@ import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.annotation.SuppressLint
 import android.os.ParcelUuid
+import com.icegood.findmeinwood.core.crypto.BleAdvert
 import com.icegood.findmeinwood.core.crypto.FrameCodec
 import com.icegood.findmeinwood.core.crypto.MgmtCodec
 import com.icegood.findmeinwood.transport.api.DebugLog
@@ -98,13 +99,44 @@ class BluetoothTransport internal constructor(
     private val rssi = ConcurrentHashMap<String, RssiSample>()
     private val lock = Any()
 
+    /** Members-only secret (null: connect to anyone with our service — tests, old setups). */
+    @Volatile private var secret: ByteArray? = null
+    @Volatile private var listening = false
+    /** Network info advertised to new people; null while not findable. */
+    @Volatile private var findable: ByteArray? = null
+    private var advertisedWindow = Long.MIN_VALUE
+    private var advertisedInfo: ByteArray? = null
+    private var tagWindow = Long.MIN_VALUE
+    private var memberTags: List<ByteArray> = emptyList()
+    /** Scan continuously until then (start, link changes); afterwards in short bursts. */
+    @Volatile private var fastScanUntil = 0L
+    @Volatile private var scanning = false
+    private var scanStartedAt = 0L
+    private var nextBurstAt = 0L
+    private var lastLinkCount = 0
+    private var supervisorTicks = 0
+    private val lastAdvertSeen = ConcurrentHashMap<String, Long>()
+
     override fun start(config: SessionConfig): Flow<TransportEvent> {
         if (!running) {
+            secret = config.groupSecret
+            listening = config.listening
+            fastScanUntil = clock() + FAST_SCAN_MS
             running = true
             bringUp()
             armSupervisor()
         }
         return events
+    }
+
+    override fun setFindable(info: ByteArray?) {
+        findable = info
+        if (radiosUp) refreshAdvert(clock())
+    }
+
+    override fun connect(radioPeerId: String) {
+        val device = runCatching { adapter?.getRemoteDevice(radioPeerId) }.getOrNull() ?: return
+        connectTo(device)
     }
 
     /**
@@ -143,7 +175,9 @@ class BluetoothTransport internal constructor(
         try { gattServer?.close() } catch (_: Exception) {}
         gattServer = null
         advertiser = null
+        advertisedWindow = Long.MIN_VALUE
         scannerCallback = null
+        scanning = false
         synchronized(lock) { clientQueues.clear(); clientWriting.clear() }
         serverFramers.clear(); serverDevices.clear(); serverMtu.clear()
         emit(RadioState.LINK_DOWN)
@@ -153,10 +187,12 @@ class BluetoothTransport internal constructor(
         running = false
         ready = false
         radiosUp = false
-        try { adapter?.bluetoothLeScanner?.stopScan(scannerCallback) } catch (_: SecurityException) {}
+        wiring.stopScan(adapter, scannerCallback)
         scannerCallback = null
-        advertiser?.let { adapter?.bluetoothLeAdvertiser?.stopAdvertising(it) }
+        scanning = false
+        wiring.stopAdvertising(adapter, advertiser)
         advertiser = null
+        advertisedWindow = Long.MIN_VALUE
         clients.values.forEach { g -> try { g.disconnect(); g.close() } catch (_: Exception) {} }
         clients.clear(); clientMtu.clear(); clientReady.clear(); lastInbound.clear(); connecting.clear()
         try { gattServer?.close() } catch (_: Exception) {}
@@ -246,7 +282,35 @@ class BluetoothTransport internal constructor(
     private fun startPeripheral() {
         gattServer = wiring.openServer(manager!!, serverCallback)
         gattServer?.addService(wiring.buildService())
-        advertiser = wiring.startAdvertising(adapter)
+        refreshAdvert(clock(), force = true)
+    }
+
+    /**
+     * (Re)starts advertising when the members code rolls over or findability changes. A
+     * listening phone advertises nothing: it only looks, and connects itself to ask.
+     */
+    @Synchronized
+    private fun refreshAdvert(now: Long, force: Boolean = false) {
+        if (listening) return
+        val w = BleAdvert.window(now)
+        val info = findable
+        if (!force && w == advertisedWindow && info.contentEquals(advertisedInfo)) return
+        wiring.stopAdvertising(adapter, advertiser)
+        advertiser = wiring.startAdvertising(adapter, secret?.let { BleAdvert.memberTag(it, w) }, info)
+        advertisedWindow = w
+        advertisedInfo = info
+    }
+
+    /** The members code of this window and its neighbours, cached per window. */
+    @Synchronized
+    private fun isMemberTag(tag: ByteArray?, now: Long): Boolean {
+        val s = secret ?: return false
+        val w = BleAdvert.window(now)
+        if (w != tagWindow) {
+            memberTags = (w - 1..w + 1).map { BleAdvert.memberTag(s, it) }
+            tagWindow = w
+        }
+        return tag != null && memberTags.any { it.contentEquals(tag) }
     }
 
     private val serverCallback = object : BluetoothGattServerCallback() {
@@ -311,14 +375,34 @@ class BluetoothTransport internal constructor(
 
     private val scanConsumer: (android.bluetooth.le.ScanResult) -> Unit = { result ->
         val address = result.device.address
-        rssi[address] = RssiSample(result.rssi, clock())
+        val now = clock()
+        rssi[address] = RssiSample(result.rssi, now)
+        val parsed = BleAdvert.parseRecord(result.scanRecord?.bytes)
+        parsed.info?.let { info ->
+            if (now - (lastAdvertSeen[address] ?: 0L) >= ADVERT_EVENT_MS) {
+                lastAdvertSeen[address] = now
+                events.tryEmit(TransportEvent.NetworkAdvertSeen(address, info, id))
+            }
+        }
+        // Only our own members: phones of other networks never take a connection slot,
+        // and a listening phone connects only when asked to (connect()).
+        val wanted = when {
+            listening -> false
+            secret == null -> true
+            else -> isMemberTag(parsed.tag, now)
+        }
+        if (wanted) connectTo(result.device)
+    }
+
+    private fun connectTo(device: BluetoothDevice) {
+        val address = device.address
         // A scan reports the same phone many times a second: one connection attempt at a
         // time, or each report opens another BluetoothGatt to it.
         if (running && clients.size < MAX_PEERS && !clients.containsKey(address) && connecting.add(address)) {
             events.tryEmit(TransportEvent.PeerRadioVisible(address, id))
             scheduleDelayed(CONNECT_TIMEOUT_MS) { connecting.remove(address) }
             try {
-                result.device.connectGatt(
+                device.connectGatt(
                     context, false, clientCallback, BluetoothDevice.TRANSPORT_LE,
                 )
             } catch (_: SecurityException) {
@@ -327,30 +411,69 @@ class BluetoothTransport internal constructor(
     }
 
     private fun startCentral() {
+        startScanNow(clock())
+    }
+
+    private fun startScanNow(now: Long) {
+        wiring.stopScan(adapter, scannerCallback)
         scannerCallback = wiring.startScan(adapter, scanConsumer)
+        scanning = true
+        scanStartedAt = now
+    }
+
+    private fun stopScanNow() {
+        wiring.stopScan(adapter, scannerCallback)
+        scannerCallback = null
+        scanning = false
     }
 
     /**
-     * Link supervisor: BLE gives no delivery feedback, so when nothing is connected we
-     * re-arm the scan periodically instead of waiting forever (FR-3.6a failover).
+     * Battery: scanning is the costly part. Continuous for [FAST_SCAN_MS] after the start
+     * and after any link appears or drops (a member is missing or just came), always while
+     * listening; otherwise a [BURST_MS] burst every [SLOW_PERIOD_MS] (enough to notice a
+     * new member). Existing links never depend on scanning. Also rolls the members code.
+     */
+    internal fun tickRadios(now: Long = clock()) {
+        if (!running || !radiosUp) return
+        val links = clients.size + serverDevices.size
+        if (links != lastLinkCount) {
+            lastLinkCount = links
+            fastScanUntil = now + FAST_SCAN_MS
+        }
+        val fast = listening || now < fastScanUntil
+        when {
+            // Nothing connected: re-arm the scan now and then, it can stall silently.
+            fast && scanning && links == 0 && now - scanStartedAt >= RESCAN_MS -> startScanNow(now)
+            fast && !scanning -> {
+                DebugLog.d { "Bluetooth scan: continuous ($links links)" }
+                startScanNow(now)
+            }
+            !fast && scanning && now - scanStartedAt >= BURST_MS -> {
+                stopScanNow()
+                nextBurstAt = now + SLOW_PERIOD_MS - BURST_MS
+                DebugLog.d { "Bluetooth scan: paused, next burst in ${(SLOW_PERIOD_MS - BURST_MS) / 1000} s ($links links)" }
+            }
+            !fast && !scanning && now >= nextBurstAt -> startScanNow(now)
+        }
+        refreshAdvert(now)
+    }
+
+    /**
+     * Link supervisor: brings the radios up or down with Bluetooth, drops dead links,
+     * refreshes signal strength and runs the scan/advertising policy ([tickRadios]).
      */
     private fun armSupervisor() {
         scheduleDelayed(SUPERVISOR_INTERVAL_MS) {
             if (running) {
                 val wasUp = radiosUp
                 if (!wasUp) bringUp() else if (adapter?.isEnabled != true) bringDown()
-                // A freshly started scan needs no restart on the same tick.
                 if (wasUp && radiosUp) {
                     pruneStaleLinks()
                     // Fresh signal strength for the link metrics (answered in onReadRemoteRssi).
-                    clients.values.forEach { g -> try { g.readRemoteRssi() } catch (_: Exception) {} }
-                    if (clients.isEmpty() && serverDevices.isEmpty()) {
-                        try {
-                            adapter?.bluetoothLeScanner?.stopScan(scannerCallback)
-                        } catch (_: SecurityException) {
-                        }
-                        scannerCallback = wiring.startScan(adapter, scanConsumer)
+                    if (supervisorTicks++ % RSSI_EVERY_TICKS == 0) {
+                        clients.values.forEach { g -> try { g.readRemoteRssi() } catch (_: Exception) {} }
                     }
+                    tickRadios()
                 }
                 // Keep supervising while Bluetooth is off too, so it comes back on its own.
                 armSupervisor()
@@ -539,7 +662,14 @@ class BluetoothTransport internal constructor(
         private const val CONNECT_TIMEOUT_MS = 12_000L
         /** Must exceed the beacon interval: peers only speak once per delta. */
         internal const val LINK_TIMEOUT_MS = 180_000L
-        internal const val SUPERVISOR_INTERVAL_MS = 15_000L
+        internal const val SUPERVISOR_INTERVAL_MS = 5_000L
+        private const val RSSI_EVERY_TICKS = 3
+        internal const val FAST_SCAN_MS = 120_000L
+        internal const val BURST_MS = 5_000L
+        internal const val SLOW_PERIOD_MS = 60_000L
+        internal const val RESCAN_MS = 15_000L
+        /** A findable network is reported at most this often per phone. */
+        private const val ADVERT_EVENT_MS = 5_000L
         private const val DEFAULT_MTU = 23
         private const val ATT_OVERHEAD = 3
     }

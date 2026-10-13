@@ -19,6 +19,7 @@ import com.icegood.findmeinwood.transport.api.SessionConfig
 import com.icegood.findmeinwood.transport.api.Transport
 import com.icegood.findmeinwood.transport.api.RadioState
 import com.icegood.findmeinwood.transport.api.TransportEvent
+import com.icegood.findmeinwood.transport.api.SendResult
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -166,14 +167,30 @@ class SessionManager(
         return member
     }
 
-    /** Sends an already-encoded management frame on every transport (no AEAD). */
-    suspend fun sendMgmt(wire: ByteArray) {
+    /** A findable network's advertised info, the radio peer advertising it, and the radio. */
+    var onNetworkAdvert: ((ByteArray, String, TransportId) -> Unit)? = null
+
+    /** Shows (info) or hides (null) this network to new people on every radio. */
+    fun setFindable(info: ByteArray?) = transports.forEach { it.setFindable(info) }
+
+    /** Opens a link to a radio peer seen advertising a network, to ask to join. */
+    fun connect(transport: TransportId, radioPeerId: String) =
+        transports.firstOrNull { it.id == transport }?.connect(radioPeerId)
+
+    /**
+     * Sends an already-encoded management frame on every transport (no AEAD); true when
+     * at least one radio actually sent it.
+     */
+    suspend fun sendMgmt(wire: ByteArray): Boolean {
+        var sent = false
         live().forEach { t ->
             val r = runCatching { t.send(wire) }
+            if (r.getOrNull() == SendResult.Sent) sent = true
             com.icegood.findmeinwood.transport.api.DebugLog.d {
                 "tx mgmt ${wire.size}B type=${wire.getOrNull(3)} via ${t.id}: ${r.getOrNull() ?: r.exceptionOrNull()}"
             }
         }
+        return sent
     }
 
     fun transportIds(): List<TransportId> = transports.map { it.id }
@@ -197,9 +214,11 @@ class SessionManager(
             t to t.start(
                 SessionConfig(
                     profile.networkId, transports.map { it.id }.toSet(),
-                    groupSecret = com.icegood.findmeinwood.core.crypto.Hkdf.derive(
+                    // Listening holds a throwaway key: nothing to share with anyone.
+                    groupSecret = if (!beaconsEnabled) null else com.icegood.findmeinwood.core.crypto.Hkdf.derive(
                         profile.trafficKey, ByteArray(32), "fmiw-wifi-direct-group".toByteArray(), 32,
                     ),
+                    listening = !beaconsEnabled,
                 ),
             )
         }
@@ -213,6 +232,7 @@ class SessionManager(
                         // A new radio link: introduce ourselves now (offers included), so
                         // the handshake starts at once rather than with the next beacon.
                         is TransportEvent.LinkUp -> links?.let { it.announceNow(); replyNow(force = true) }
+                        is TransportEvent.NetworkAdvertSeen -> onNetworkAdvert?.invoke(ev.info, ev.radioPeerId, ev.transport)
                         is TransportEvent.StateChanged ->
                             _radioStates.value = _radioStates.value + (t.id to ev.state)
                     }

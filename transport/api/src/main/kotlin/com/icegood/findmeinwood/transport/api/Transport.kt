@@ -15,6 +15,8 @@ sealed interface TransportEvent {
     /** Cleartext management frame (US-8 discovery/handshake) as raw wire bytes. */
     data class MgmtFrameReceived(val wire: ByteArray, val source: TransportId) : TransportEvent
     data class StateChanged(val state: RadioState) : TransportEvent
+    /** A findable network's advertised info (BleAdvert.Info bytes) and the radio peer advertising it. */
+    data class NetworkAdvertSeen(val radioPeerId: String, val info: ByteArray, val transport: TransportId) : TransportEvent
 }
 
 sealed interface SendResult {
@@ -33,6 +35,11 @@ data class SessionConfig(
      * that need credentials (the Wi-Fi Direct group) derive them from it.
      */
     val groupSecret: ByteArray? = null,
+    /**
+     * Only looking for networks to join: no members code, no automatic connections (a
+     * link is opened with [Transport.connect] to ask a member), no Wi-Fi Direct group.
+     */
+    val listening: Boolean = false,
 )
 
 interface Transport {
@@ -45,4 +52,13 @@ interface Transport {
 
     /** Sends one encoded wire frame. Must not throw for normal failures. */
     suspend fun send(wireFrame: ByteArray): SendResult
+
+    /**
+     * Network info to advertise to new people (BleAdvert.Info bytes), or null to stop
+     * being findable. Members reach each other either way.
+     */
+    fun setFindable(info: ByteArray?) {}
+
+    /** Opens a link to [radioPeerId] (seen in [TransportEvent.NetworkAdvertSeen]) to ask to join. */
+    fun connect(radioPeerId: String) {}
 }

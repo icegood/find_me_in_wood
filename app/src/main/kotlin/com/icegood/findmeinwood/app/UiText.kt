@@ -33,4 +33,14 @@ internal object UiText {
             .filter { (t, s) -> t != TransportId.INTERNET && t != TransportId.SMS && (t != TransportId.LORA || s == RadioState.READY) }
             .sortedBy { it.key.ordinal.let { o -> if (it.key == TransportId.BLUETOOTH) -1 else o } }
             .map { (t, s) -> "${name(t)}: ${state(s)}" }
+
+    /** The active network's findability, e.g. "findable by new members: 7 min left". */
+    fun findable(untilMs: Long, nowMs: Long): String {
+        val left = untilMs - nowMs
+        return if (left <= 0) {
+            "not findable by new members (members still reach each other)"
+        } else {
+            "findable by new members: ${(left + 59_999) / 60_000} min left"
+        }
+    }
 }

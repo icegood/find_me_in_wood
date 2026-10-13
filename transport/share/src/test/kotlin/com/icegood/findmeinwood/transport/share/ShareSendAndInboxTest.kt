@@ -42,25 +42,26 @@ class ShareSendAndInboxTest {
     }
 
     @Test
-    fun `send buffers the envelope without opening any UI`() = runBlocking<Unit> {
+    fun `send keeps the newest frame in memory, opens no UI and writes no file`() = runBlocking<Unit> {
         val t = ShareTransport(FlakyContext(appCtx, failures = Int.MAX_VALUE))
+        val dir = ShareTransport.beaconDir(appCtx)
+        val before = dir.listFiles()?.size ?: 0
         // FR-9.2: beacons must never trigger a share sheet on their own.
         assertIs<SendResult.HandedToUser>(t.send(byteArrayOf(1, 2, 3)))
-        val file = ShareTransport.beaconFile(appCtx, System.currentTimeMillis())
-        assertTrue(file.name.endsWith(".fmiw1"))
-        assertTrue(ShareTransport.parseEnvelope(file.readText())!!.contentEquals(byteArrayOf(1, 2, 3)))
+        assertTrue(t.latest!!.contentEquals(byteArrayOf(1, 2, 3)))
+        assertEquals(before, dir.listFiles()?.size ?: 0)
     }
 
     @Test
-    fun `old beacon files are pruned`() = runBlocking<Unit> {
+    fun `old beacon files are pruned when sharing`() = runBlocking<Unit> {
         val dir = ShareTransport.beaconDir(appCtx)
         repeat(ShareTransport.MAX_BEACON_FILES + 5) { i ->
             ShareTransport.beaconFile(appCtx, 1_700_000_000_000L + i * 1000L).writeText("old")
         }
-        ShareTransport(appCtx).send(byteArrayOf(4, 5, 6))
+        ShareTransport(appCtx).shareBeacon(byteArrayOf(4, 5, 6))
         val left = dir.listFiles()!!.filter { it.name.endsWith(".fmiw1") }
         assertEquals(ShareTransport.MAX_BEACON_FILES, left.size)
-        // the newest (just sent) envelope survives
+        // the newest (just shared) envelope survives
         assertTrue(left.any { ShareTransport.parseEnvelope(it.readText())?.contentEquals(byteArrayOf(4, 5, 6)) == true })
     }
 

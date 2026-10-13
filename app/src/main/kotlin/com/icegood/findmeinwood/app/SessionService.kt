@@ -18,6 +18,7 @@ import com.icegood.findmeinwood.core.model.NetworkProfile
 import com.icegood.findmeinwood.core.model.JoinPolicy
 import com.icegood.findmeinwood.core.model.TransportId
 import com.icegood.findmeinwood.transport.api.DebugLog
+import com.icegood.findmeinwood.core.crypto.BleAdvert
 import com.icegood.findmeinwood.core.session.GnssSource
 import com.icegood.findmeinwood.core.crypto.MgmtCodec
 import com.icegood.findmeinwood.core.session.DiscoveryManager
@@ -133,7 +134,7 @@ class SessionService : Service() {
             ShareTransport(this),
         )
         val identityPair = IdentityHolder.keyPair(this)
-        val discovery = DiscoveryManager(profile, identityPair, { System.currentTimeMillis() }, advertise = !listen)
+        val discovery = DiscoveryManager(profile, identityPair, { System.currentTimeMillis() })
         discovery.ownerSecret = Prefs.secretFor(this, profile.networkId.bytes.joinToString("") { "%02x".format(it) })
         val clock = { System.currentTimeMillis() }
         val manager = SessionManager(
@@ -155,7 +156,13 @@ class SessionService : Service() {
         }
         DiscoveryBridge.onRequestJoin = { netId ->
             val wire = discovery.buildJoinRequest(netId, Prefs.currentDisplayName(this@SessionService))
-            scope.launch { manager.sendMgmt(wire) }
+            // A listening phone holds no links: open one to a phone advertising the network,
+            // then send the request once, as soon as a radio really carries it.
+            discovery.radioPeersOf(netId).takeLast(MAX_JOIN_LINKS).forEach { (t, peer) -> manager.connect(t, peer) }
+            scope.launch {
+                val deadline = System.currentTimeMillis() + JOIN_LINK_WAIT_MS
+                while (!manager.sendMgmt(wire) && System.currentTimeMillis() < deadline) delay(1_000)
+            }
         }
         DiscoveryBridge.onApprove = { joiner ->
             val wire = discovery.approve(joiner)
@@ -165,6 +172,7 @@ class SessionService : Service() {
                 )
             } else {
                 scope.launch { manager.sendMgmt(wire) }
+                SessionBus.setFindable(true) // others may be waiting to join too
                 val sas = discovery.ownerSas.value ?: "------"
                 SessionBus.publishOwnerNote("approved — compare SAS $sas")
             }
@@ -186,13 +194,20 @@ class SessionService : Service() {
             discovery.outcome.value?.let(::onJoinOutcome)
             discovery.clearOutcome()
         }
+        manager.onNetworkAdvert = { info, peer, transport ->
+            BleAdvert.decodeInfo(info)?.let { discovery.onAdvert(it, peer, transport) }
+            SessionBus.publishDiscovered(discovery.discovered.value)
+        }
+        // Findable by new people: on for a while after Start (and Invite, approvals), then
+        // off by itself; members reach each other either way.
+        val canBeFound = !listen && profile.policy != JoinPolicy.CODE
+        SessionBus.setFindable(canBeFound)
+        val advert = BleAdvert.encodeInfo(BleAdvert.Info(profile.networkId, profile.policy, profile.name))
         scope.launch {
             while (true) {
+                manager.setFindable(if (canBeFound && SessionBus.isFindable()) advert else null)
                 delay(5_000)
                 discovery.pruneStale()
-                if (discovery.helloDue()) {
-                    manager.sendMgmt(discovery.buildHello(manager.transportIds()))
-                }
                 SessionBus.publishDiscovered(discovery.discovered.value)
                 SessionBus.publishPending(discovery.pendingJoins.value)
                 discovery.outcome.value?.let(::onJoinOutcome)
@@ -438,6 +453,9 @@ class SessionService : Service() {
         private const val CHANNEL = "session"
         private const val NOTIFICATION_ID = 1
         const val ACTION_STOP = "com.icegood.findmeinwood.action.STOP"
+        /** How long a join request waits for a link to the member it asks. */
+        private const val JOIN_LINK_WAIT_MS = 20_000L
+        private const val MAX_JOIN_LINKS = 2
         /** LNP/3 SMS link cadence (FR-3.9): one position SMS per peer on an SMS link per 30 min. */
         const val SMS_INTERVAL_MS = 30 * 60_000L
         const val ACTION_DEBUG_MUTE = "com.icegood.findmeinwood.debug.MUTE"

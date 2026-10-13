@@ -344,6 +344,12 @@ class MainActivity : ComponentActivity() {
         val lastWire by SessionBus.lastWireFrame.collectAsState()
         val listening by SessionBus.listening.collectAsState()
         val radios by SessionBus.radioStates.collectAsState()
+        val findableUntil by SessionBus.findableUntil.collectAsState()
+        // Ticks so "findable: N min left" counts down and ends by itself.
+        var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+        LaunchedEffect(findableUntil) {
+            while (true) { nowMs = System.currentTimeMillis(); kotlinx.coroutines.delay(10_000) }
+        }
 
         Scaffold(
             topBar = { TopAppBar(title = { Text("find me in wood") }) },
@@ -376,9 +382,13 @@ class MainActivity : ComponentActivity() {
                             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(p.name, style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    if (isRunning) "● running — members nearby can see and find you" else "not running",
+                                    if (isRunning) "● active — members reach each other" else "not active",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                if (isRunning) Text(
+                                    UiText.findable(findableUntil, nowMs),
+                                    style = MaterialTheme.typography.bodySmall,
                                 )
                                 if (code != null) {
                                     Text(
@@ -393,14 +403,19 @@ class MainActivity : ComponentActivity() {
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     if (isRunning) {
-                                        OutlinedButton(onClick = { SessionService.stop(this@MainActivity) }) { Text("Stop") }
+                                        // Discovery only: the network keeps running for its members either way.
+                                        if (findableUntil > nowMs) {
+                                            OutlinedButton(onClick = { SessionBus.setFindable(false) }) { Text("Stop discovery") }
+                                        } else {
+                                            Button(onClick = { SessionBus.setFindable(true) }) { Text("Start discovery") }
+                                        }
+                                        OutlinedButton(onClick = { sharing = p; SessionBus.setFindable(true) }) { Text("Invite") }
                                     } else {
                                         Button(onClick = {
                                             if (!granted()) { requestRadioPermissions(); return@Button }
                                             SessionService.start(this@MainActivity, p)
-                                        }) { Text(if (runningId != null) "Switch to this" else "Start") }
+                                        }) { Text("Use this network") }
                                     }
-                                    OutlinedButton(onClick = { sharing = p }) { Text("Invite") }
                                     TextButton(onClick = { deleting = p }) { Text("Delete") }
                                 }
                             }
@@ -428,7 +443,7 @@ class MainActivity : ComponentActivity() {
                     when {
                         runningId != null -> "Radios"
                         listening -> "Looking for networks to join (see Discover)"
-                        else -> "Nothing running: start a network to be found"
+                        else -> "No network active: tap “Use this network”"
                     },
                     style = MaterialTheme.typography.labelMedium,
                 )

@@ -78,13 +78,14 @@ fun DiscoverScreen(
             !running -> {
                 Text(
                     "Turn on the radios to see networks nearby. A network shows up only while " +
-                        "at least one of its members has it started.",
+                        "one of its members has discovery on (Start discovery or Invite on their phone).",
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Button(onClick = onListen, modifier = Modifier.fillMaxWidth()) { Text("Look for networks") }
             }
             listening -> Text(
-                "Looking… networks appear within about 15 seconds.",
+                "Looking… a network appears within seconds once a member nearby has discovery on " +
+                    "(Start discovery or Invite on their phone).",
                 style = MaterialTheme.typography.bodySmall,
             )
             else -> Text(

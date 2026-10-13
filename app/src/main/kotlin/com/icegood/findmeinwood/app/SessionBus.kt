@@ -51,6 +51,19 @@ object SessionBus {
     val linkStatuses: StateFlow<List<com.icegood.findmeinwood.core.model.LinkStatus>> = _linkStatuses
     fun publishLinkStatuses(list: List<com.icegood.findmeinwood.core.model.LinkStatus>) { _linkStatuses.value = list }
 
+    /** Until when the running network is findable by new people (0: not findable). */
+    private val _findableUntil = MutableStateFlow(0L)
+    val findableUntil: StateFlow<Long> = _findableUntil
+
+    /** Findable for [FINDABLE_MS] from [now], or not at all. */
+    fun setFindable(on: Boolean, now: Long = System.currentTimeMillis()) {
+        _findableUntil.value = if (on) now + FINDABLE_MS else 0L
+    }
+
+    fun isFindable(now: Long = System.currentTimeMillis()) = now < _findableUntil.value
+
+    const val FINDABLE_MS = 10 * 60_000L
+
     private val _ownerNote = MutableStateFlow<String?>(null)
     val ownerNote: StateFlow<String?> = _ownerNote
 
@@ -105,6 +118,7 @@ object SessionBus {
         // joined network, and the joiner still has to compare the code shown with it.
         _radioStates.value = emptyMap()
         _linkStatuses.value = emptyList()
+        _findableUntil.value = 0L
         // Swap out the chat replay buffer entirely: a stale session's payloads must
         // not replay into a fresh collector after Stop (same "buffer still shown"
         // class of bug, but for messages).

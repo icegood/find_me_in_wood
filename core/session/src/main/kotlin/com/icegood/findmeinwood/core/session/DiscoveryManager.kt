@@ -1,13 +1,13 @@
 package com.icegood.findmeinwood.core.session
 
 import com.icegood.findmeinwood.core.crypto.AesGcmAead
+import com.icegood.findmeinwood.core.crypto.BleAdvert
 import com.icegood.findmeinwood.core.crypto.FrameCodec
 import com.icegood.findmeinwood.core.crypto.JoinCrypto
 import com.icegood.findmeinwood.core.crypto.MgmtCodec
 import com.icegood.findmeinwood.core.crypto.MgmtFrame
 import com.icegood.findmeinwood.core.crypto.NetworkKeysFactory
 import com.icegood.findmeinwood.core.model.DiscoveredNetwork
-import com.icegood.findmeinwood.core.model.HelloPayload
 import com.icegood.findmeinwood.core.model.JoinAcceptPayload
 import com.icegood.findmeinwood.core.model.JoinPolicy
 import com.icegood.findmeinwood.core.model.JoinRejectPayload
@@ -30,13 +30,14 @@ sealed interface JoinOutcome {
 }
 
 /**
- * FR-8.1–FR-8.6: cleartext HELLO discovery plus the on-radio join handshake.
+ * FR-8.1–FR-8.6: networks found from their radio adverts (only while a member makes the
+ * network findable), plus the on-radio join handshake.
  *
  * Pure Kotlin. Every frame carries the sender's device public key and is signed with
  * it; unsigned or badly signed frames are dropped. Keys are pinned to a member id on
  * first sight (trust-on-first-use), and any later frame from that id under a different
- * key is dropped. Join replies are only accepted from a device that advertised the
- * network we asked for (every member holds the secret, so any of them may answer).
+ * key is dropped. Any member may answer a join request (every member holds the secret);
+ * an accept only counts when its secret derives exactly the network we asked for.
  *
  * Key exchange: the joiner sends an ephemeral public key in JOIN_REQ; the owner answers
  * with its own ephemeral public key in JOIN_ACCEPT, so both sides derive the same ECDH
@@ -46,15 +47,11 @@ class DiscoveryManager(
     private val profile: NetworkProfile,
     private val identity: KeyPair,
     private val nowMs: () -> Long,
-    private val helloIntervalMs: Long = 15_000,
     private val staleAfterMs: Long = 90_000,
-    /** False while only listening for networks to join: no HELLO of our own. */
-    private val advertise: Boolean = true,
 ) {
     // Mutators are @Synchronized: the app calls them from every transport collector (IO)
     // and from UI callbacks at the same time, and the state below is plain HashMaps.
     private val myId: MemberId = profile.myMemberId
-    private var lastHelloAtMs = 0L
     private var nonceCounter = JoinCrypto.nonce()
 
     /** Network secret, held by the owner only, used to answer approved join requests. */
@@ -78,8 +75,8 @@ class DiscoveryManager(
     private var myEphemeral: KeyPair? = null
     /** Network our outstanding JOIN_REQ targets: answers for any other network are ignored. */
     private var requestedNetworkId: NetworkId? = null
-    /** Devices that sent HELLO per network: only they may answer a join request for it. */
-    private val advertisers = HashMap<NetworkId, MutableSet<MemberId>>()
+    /** Radio peers seen advertising each network: where to connect to ask to join. */
+    private val radioPeers = HashMap<NetworkId, LinkedHashMap<String, TransportId>>()
 
     private class JoinRequest(
         val joinerPub: ByteArray,
@@ -92,21 +89,6 @@ class DiscoveryManager(
     fun clearOutcome() { _outcome.value = null }
 
     // ----------------------------------------------------------------- outgoing
-
-    fun helloDue(now: Long = nowMs()): Boolean = advertise && now - lastHelloAtMs >= helloIntervalMs
-
-    @Synchronized
-    fun buildHello(activeTransports: List<TransportId>): ByteArray {
-        lastHelloAtMs = nowMs()
-        val payload = HelloPayload(
-            name = if (profile.policy == JoinPolicy.CODE) null else profile.name, // FR-8.1 hidden
-            ownerMemberId = profile.ownerMemberId.bytes,
-            ownerNick = null,
-            policy = profile.policy,
-            activeTransports = activeTransports,
-        )
-        return send(MgmtType.HELLO, profile.networkId, PayloadCodec.encodeHello(payload))
-    }
 
     @Synchronized
     fun buildJoinRequest(peerNetworkId: NetworkId, joinerNick: String?): ByteArray {
@@ -166,29 +148,35 @@ class DiscoveryManager(
         if (!MgmtCodec.verify(frame, key)) return // unsigned, forged or key changed: drop
         pinnedKeys.putIfAbsent(frame.senderId, key)
         when (frame.type) {
-            MgmtType.HELLO -> onHello(frame)
+            MgmtType.HELLO -> Unit // no longer sent: networks are found from radio adverts
             MgmtType.JOIN_REQ -> onJoinRequest(frame)
             MgmtType.JOIN_ACCEPT -> onJoinAccept(frame)
             MgmtType.JOIN_REJECT -> onJoinReject(frame)
         }
     }
 
-    private fun onHello(frame: MgmtFrame) {
-        val payload = runCatching { PayloadCodec.decodeHello(frame.payload) }.getOrNull() ?: return
-        if (payload.policy == JoinPolicy.CODE) return // hidden: never listed
-        if (frame.networkId == profile.networkId) return // our own network: nothing to join
-        advertisers.getOrPut(frame.networkId) { HashSet() } += frame.senderId
+    /** A findable network seen in a radio advert from [radioPeerId]. */
+    @Synchronized
+    fun onAdvert(info: BleAdvert.Info, radioPeerId: String, transport: TransportId) {
+        if (info.policy == JoinPolicy.CODE) return // hidden: never listed
+        if (info.networkId == profile.networkId) return // our own network: nothing to join
+        radioPeers.getOrPut(info.networkId) { LinkedHashMap() }[radioPeerId] = transport
         val entry = DiscoveredNetwork(
-            networkId = frame.networkId,
-            name = payload.name,
-            ownerMemberId = MemberId(payload.ownerMemberId),
-            ownerNick = payload.ownerNick,
-            policy = payload.policy,
-            activeTransports = payload.activeTransports,
+            networkId = info.networkId,
+            name = info.name,
+            ownerMemberId = MemberId(ByteArray(32)), // adverts name no member
+            ownerNick = null,
+            policy = info.policy,
+            activeTransports = listOf(transport),
             lastSeenMs = nowMs(),
         )
         _discovered.value = _discovered.value.filterNot { it.networkId == entry.networkId } + entry
     }
+
+    /** Radio peers that advertised [networkId], newest last: connect to one to ask to join. */
+    @Synchronized
+    fun radioPeersOf(networkId: NetworkId): List<Pair<TransportId, String>> =
+        radioPeers[networkId].orEmpty().map { (peer, t) -> t to peer }
 
     private fun onJoinRequest(frame: MgmtFrame) {
         if (frame.networkId != profile.networkId) return
@@ -239,11 +227,7 @@ class DiscoveryManager(
         _outcome.value = JoinOutcome.Rejected(payload?.reason ?: "rejected by owner")
     }
 
-    private fun isAnswerToMyRequest(frame: MgmtFrame): Boolean {
-        if (frame.networkId != requestedNetworkId) return false
-        val known = advertisers[frame.networkId] ?: return true // never advertised to us
-        return frame.senderId in known
-    }
+    private fun isAnswerToMyRequest(frame: MgmtFrame): Boolean = frame.networkId == requestedNetworkId
 
     @Synchronized
     fun pruneStale(now: Long = nowMs()) {

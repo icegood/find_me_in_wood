@@ -16,6 +16,8 @@ import android.bluetooth.le.ScanSettings
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.ParcelUuid
+import com.icegood.findmeinwood.core.crypto.BleAdvert
+import com.icegood.findmeinwood.transport.api.DebugLog
 
 /**
  * Radio-stack wiring (platform/HW border surface): opens the GATT server, builds the
@@ -51,27 +53,51 @@ internal class BluetoothGattWiring(private val context: Context) {
         return service
     }
 
-    fun startAdvertising(adapter: BluetoothAdapter?): AdvertiseCallback? =
+    /**
+     * Advertises our service with the members code [tag]; [info] (network info for new
+     * people) goes into the scan response only while the network is findable, and then
+     * the advertisement is sent more often so newcomers see it quickly.
+     */
+    fun startAdvertising(adapter: BluetoothAdapter?, tag: ByteArray?, info: ByteArray?): AdvertiseCallback? =
         adapter?.bluetoothLeAdvertiser?.let { adv ->
             val cb = object : AdvertiseCallback() {
                 override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
+                    DebugLog.d { "Bluetooth advertising: code=${tag != null} findable=${info != null}" }
                 }
                 override fun onStartFailure(errorCode: Int) {
+                    DebugLog.d { "Bluetooth advertising failed: error $errorCode" }
                 }
             }
-            adv.startAdvertising(
-                AdvertiseSettings.Builder()
-                    .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
-                    .setConnectable(true)
-                    .build(),
-                AdvertiseData.Builder()
-                    .setIncludeDeviceName(false)
-                    .addServiceUuid(ParcelUuid(BluetoothTransport.SERVICE_UUID))
-                    .build(),
-                cb,
-            )
+            val data = AdvertiseData.Builder()
+                .setIncludeDeviceName(false)
+                .addServiceUuid(ParcelUuid(BluetoothTransport.SERVICE_UUID))
+                .apply { tag?.let { addManufacturerData(BleAdvert.COMPANY_ID, it) } }
+                .build()
+            val settings = AdvertiseSettings.Builder()
+                .setAdvertiseMode(
+                    if (info != null) AdvertiseSettings.ADVERTISE_MODE_BALANCED
+                    else AdvertiseSettings.ADVERTISE_MODE_LOW_POWER,
+                )
+                .setConnectable(true)
+                .build()
+            if (info != null) {
+                val response = AdvertiseData.Builder().addManufacturerData(BleAdvert.COMPANY_ID, info).build()
+                adv.startAdvertising(settings, data, response, cb)
+            } else {
+                adv.startAdvertising(settings, data, cb)
+            }
             cb
         }
+
+    fun stopAdvertising(adapter: BluetoothAdapter?, cb: AdvertiseCallback?) {
+        cb ?: return
+        runCatching { adapter?.bluetoothLeAdvertiser?.stopAdvertising(cb) }
+    }
+
+    fun stopScan(adapter: BluetoothAdapter?, cb: ScanCallback?) {
+        cb ?: return
+        runCatching { adapter?.bluetoothLeScanner?.stopScan(cb) }
+    }
 
     /**
      * Some controllers (e.g. Huawei P30 Pro) report 0 offloaded scan filters, so a
