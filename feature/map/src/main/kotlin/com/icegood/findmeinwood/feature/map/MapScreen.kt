@@ -67,6 +67,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.NetworkProfile
 import com.icegood.findmeinwood.core.session.PeerState
+import com.icegood.findmeinwood.core.session.SpoofGuard
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -92,7 +93,7 @@ import org.maplibre.android.maps.Style
  * derived from consecutive GPS fixes.
  */
 /** My GNSS fix plus the movement heading derived from consecutive fixes. */
-data class DeviceFix(val location: Location, val headingDeg: Float?)
+data class DeviceFix(val location: Location, val headingDeg: Float?, val gpsSpoofed: Boolean = false)
 
 /** FR-6.4: distance (m) and bearing (deg, 0 = north) from [from] to [to]. */
 internal fun distanceBearing(from: Location, toLatE7: Int, toLonE7: Int): Pair<Double, Double> {
@@ -550,7 +551,7 @@ fun MapScreen(
         Card(Modifier.padding(12.dp).align(Alignment.TopStart).fillMaxWidth()) {
             Text(
                 "${p?.name ?: "No network running"} · ${ps.size} other${if (ps.size == 1) "" else "s"} heard" +
-                    " · ${if (me != null) "GPS ±${me.accuracy.toInt()} m" else "waiting for GPS"}",
+                    " · " + myFixText(fix),
                 Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.labelMedium,
             )
@@ -1116,7 +1117,7 @@ private fun lastView(context: Context): LastView? {
     // First run: whatever location the phone already knows (no new fix is requested).
     val lm = context.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager ?: return null
     val known = runCatching {
-        lm.getProviders(true).mapNotNull { lm.getLastKnownLocation(it) }.maxByOrNull { it.time }
+        trustedLastKnown(lm.getProviders(true).mapNotNull { lm.getLastKnownLocation(it) })
     }.getOrNull() ?: return null
     return LastView(known.latitude, known.longitude, INITIAL_ZOOM)
 }
@@ -1194,17 +1195,34 @@ internal fun scaleBar(metersPerPx: Double, maxPx: Float): Pair<Int, Float>? {
     return if (best == 0) null else best to (best / metersPerPx).toFloat()
 }
 
-/** FR-4.1/FR-6.2: my own position + movement bearing from consecutive GNSS fixes. */
+/** The status-line words for my own position. */
+internal fun myFixText(fix: DeviceFix?): String = when {
+    fix == null -> "waiting for GPS"
+    fix.gpsSpoofed -> "GPS faked nearby, using network ±${fix.location.accuracy.toInt()} m"
+    fix.location.provider == LocationManager.GPS_PROVIDER -> "GPS ±${fix.location.accuracy.toInt()} m"
+    else -> "network ±${fix.location.accuracy.toInt()} m"
+}
+
+/**
+ * FR-4.1/FR-6.2: my own position + movement bearing from consecutive GNSS fixes; FR-4.5:
+ * faked satellite positions are dropped and Wi-Fi/cell ones used meanwhile.
+ */
 @SuppressLint("MissingPermission")
 @Composable
 private fun rememberDeviceFix(context: Context): DeviceFix? {
     var location by remember { mutableStateOf<Location?>(null) }
     var heading by remember { mutableStateOf<Float?>(null) }
     var lastFix by remember { mutableStateOf<Location?>(null) }
+    var spoofed by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
+        val guard = SpoofGuard()
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val listener = object : LocationListener {
             override fun onLocationChanged(loc: Location) {
+                val raw = loc.toRawFix() ?: return
+                val passed = guard.offer(raw)
+                spoofed = guard.gpsSpoofed
+                if (passed == null) return
                 val prev = lastFix
                 lastFix = loc
                 if (prev != null) {
@@ -1225,19 +1243,14 @@ private fun rememberDeviceFix(context: Context): DeviceFix? {
             override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
         }
         try {
-            for (provider in listOf(
+            val providers = listOf(
                 LocationManager.GPS_PROVIDER,
                 LocationManager.NETWORK_PROVIDER,
                 LocationManager.PASSIVE_PROVIDER,
-            )) {
-                if (!lm.isProviderEnabled(provider)) continue
-                val last = lm.getLastKnownLocation(provider)
-                if (last != null && (location == null || last.time > location!!.time)) {
-                    location = last
-                    lastFix = last
-                }
-                lm.requestLocationUpdates(provider, 2_000L, 0f, listener, Looper.getMainLooper())
-            }
+            ).filter { lm.isProviderEnabled(it) }
+            // The last known ones in time order prime the check and give a start position.
+            providers.mapNotNull { lm.getLastKnownLocation(it) }.sortedBy { it.time }.forEach(listener::onLocationChanged)
+            providers.forEach { lm.requestLocationUpdates(it, 2_000L, 0f, listener, Looper.getMainLooper()) }
         } catch (_: SecurityException) {
             // no location permission: map stays without "me" (UI gates session start)
         } catch (_: IllegalArgumentException) {
@@ -1245,7 +1258,7 @@ private fun rememberDeviceFix(context: Context): DeviceFix? {
         }
         onDispose { lm.removeUpdates(listener) }
     }
-    return location?.let { DeviceFix(it, heading) }
+    return location?.let { DeviceFix(it, heading, spoofed) }
 }
 
 /** Device azimuth (heading the top of the phone points to) from accel + magnetometer. */

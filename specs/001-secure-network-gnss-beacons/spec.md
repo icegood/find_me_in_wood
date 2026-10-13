@@ -84,6 +84,12 @@ frame is encrypted and authenticated with the network's key.
 - FR-4.3 No fix = beacon without position (peers see "unlocated, last seen …").
 - FR-4.4 **Pause sharing**: one tap on the active network stops sending my position;
   beacons continue without it, so I stay reachable and still see others.
+- FR-4.5 **Faked satellites**: electronic warfare broadcasts fake satellite signals, and the
+  phone then reports a confident position far away. A satellite position is dropped when it
+  disagrees with a Wi-Fi/cell position of the last 10 min by more than both errors allow
+  (at least 2 km) or, without one, lies further from the last trusted position than 360 km/h
+  allows; mock-location apps count too. Meanwhile Wi-Fi/cell positions are used and sent,
+  the map says "GPS faked nearby", and the first satellite position that passes ends it.
 
 ### US-5 — Beacons
 - FR-5.1 Beacon: header {networkId, senderId, seq, ttl, sentAt} + encrypted payload

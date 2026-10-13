@@ -392,7 +392,7 @@ class SessionService : Service() {
 
     private fun lastKnownFix(): GnssFix? = runCatching {
         val lm = getSystemService(android.location.LocationManager::class.java)
-        lm.getProviders(true).mapNotNull { lm.getLastKnownLocation(it) }.maxByOrNull { it.time }
+        com.icegood.findmeinwood.feature.map.trustedLastKnown(lm.getProviders(true).mapNotNull { lm.getLastKnownLocation(it) })
             ?.let { GnssFix(it.latitude, it.longitude, it.accuracy, it.altitude, it.time) }
     }.getOrNull()
 
