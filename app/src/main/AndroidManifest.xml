@@ -30,10 +30,17 @@
         android:name=".FmiwApp"
         android:label="find me in wood"
         android:theme="@style/Theme.FindMeInWood">
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- FR-2.6: invite QR codes scanned with the phone's camera app. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="fmiw" android:host="join" />
             </intent-filter>
         </activity>
         <!-- Incoming LNP/1 SMS position reports for the running session. -->

@@ -176,11 +176,25 @@ internal fun PasswordDialog(
     askName: Boolean = false,
     onJoin: (String) -> String?,
     onJoinNamed: ((String, String) -> String?)? = null,
+    /** Filled in from an invite QR code opened with the phone's camera app (FR-2.6). */
+    initial: JoinInvite? = null,
 ) {
-    var name by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var name by remember(initial) { mutableStateOf(initial?.name.orEmpty()) }
+    var password by remember(initial) { mutableStateOf(initial?.password.orEmpty()) }
     var show by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Keyboards like to append a space; no password starts or ends with one.
+    fun join(n: String, pw: String) = if (askName) onJoinNamed?.invoke(n.trim(), pw.trim()) else onJoin(pw.trim())
+    // A scanned invite joins at once: name and password come from the master's phone.
+    val scan = rememberInviteScanner { invite ->
+        if (invite == null) {
+            error = "That QR code is not a network invite."
+        } else {
+            name = invite.name
+            password = invite.password
+            error = join(invite.name, invite.password)
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -198,17 +212,14 @@ internal fun PasswordDialog(
                     visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = { TextButton(onClick = { show = !show }) { Text(if (show) "Hide" else "Show") } },
                 )
+                OutlinedButton(onClick = scan) { Text("Scan QR") }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = {
             TextButton(
                 enabled = password.isNotEmpty() && (!askName || name.isNotBlank()),
-                onClick = {
-                    // Keyboards like to append a space; no password starts or ends with one.
-                    val pw = password.trim()
-                    error = if (askName) onJoinNamed?.invoke(name.trim(), pw) else onJoin(pw)
-                },
+                onClick = { error = join(name, password) },
             ) { Text("Join") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },

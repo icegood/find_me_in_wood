@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,8 +77,23 @@ class MainActivity : ComponentActivity() {
     private val shareTransport by lazy { ShareTransport(this) }
     private val authManager by lazy { AuthManager(this) }
 
+    /** FR-2.6: an invite QR code opened with the phone's camera app, waiting to be joined. */
+    private var pendingInvite by mutableStateOf<JoinInvite?>(null)
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        takeInvite(intent)
+    }
+
+    private fun takeInvite(intent: android.content.Intent?) {
+        if (intent?.action == android.content.Intent.ACTION_VIEW) {
+            JoinInvite.parse(intent.dataString)?.let { pendingInvite = it }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) takeInvite(intent)
         // Only when something is missing: an (even instantly answered) permission request
         // puts a transparent screen on top that swallowed the first tap after every launch.
         if (!granted()) permissionLauncher.launch(permissions.toTypedArray())
@@ -154,6 +170,7 @@ class MainActivity : ComponentActivity() {
         darkTheme: Boolean,
     ) {
         var tab by remember { mutableStateOf("networks") }
+        LaunchedEffect(pendingInvite) { if (pendingInvite != null) tab = "networks" }
         var mapLayer by remember {
             mutableStateOf(
                 com.icegood.findmeinwood.feature.map.MapLayer(
@@ -499,11 +516,12 @@ class MainActivity : ComponentActivity() {
                 },
             )
         }
-        if (showJoin) {
+        if (showJoin || pendingInvite != null) {
             PasswordDialog(
                 title = "Join by password",
                 askName = true,
-                onDismiss = { showJoin = false },
+                initial = pendingInvite,
+                onDismiss = { showJoin = false; pendingInvite = null },
                 onJoin = { null },
                 onJoinNamed = { name, password ->
                     // If the network is around, take its real name and catch a mistyped password.
@@ -515,6 +533,7 @@ class MainActivity : ComponentActivity() {
                             Prefs.setSecretFor(this, r.profile.networkIdHex, password)
                             profiles = ProfileStore.load(this)
                             showJoin = false
+                            pendingInvite = null
                             createError = null
                             null
                         }
@@ -618,12 +637,20 @@ class MainActivity : ComponentActivity() {
                     if (password == null) {
                         Text("This phone does not have the password of this network.")
                     } else {
+                        val qr = remember(p.name, password) {
+                            qrBitmap(JoinInvite(p.name, password).toUri(), 600).asImageBitmap()
+                        }
+                        androidx.compose.foundation.Image(
+                            qr, contentDescription = "Invite QR code",
+                            modifier = Modifier.size(220.dp).align(Alignment.CenterHorizontally),
+                        )
                         Text("Password", style = MaterialTheme.typography.labelMedium)
                         androidx.compose.foundation.text.selection.SelectionContainer {
                             Text(password, style = MaterialTheme.typography.titleLarge)
                         }
                         Text(
-                            "The other phone opens Discover, taps Look for networks, picks " +
+                            "The other phone scans this code: Scan QR when joining, or its camera app. " +
+                                "Or it opens Discover, taps Look for networks, picks " +
                                 "“${p.name}” and enters this password. This network must be started here " +
                                 "so it can be seen. Out of range: Networks → Join by password.\n\n" +
                                 "Or skip the password: they tap Ask a member and you tap Accept in Members.",

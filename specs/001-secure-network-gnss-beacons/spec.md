@@ -47,6 +47,10 @@ frame is encrypted and authenticated with the network's key.
 - FR-2.4 An accept counts only when its password derives exactly the network asked for.
 - FR-2.5 After joining by asking, the joiner starts the network with the master recorded;
   after joining by password it learns the master from the first valid member list.
+- FR-2.6 Join by QR code: the master's Invite shows the password as a QR code holding
+  `fmiw://join?n=<name>&p=<password>`. The joiner taps "Scan QR" in any password dialog,
+  or scans it with the phone's own camera app, which opens this app on "Join by password"
+  with name and password filled in; it then joins as FR-2.2.
 
 ### US-3 — Links between members (mesh)
 - FR-3.1 Each pair of members uses one agreed link; a member may run several radios at
