@@ -12,7 +12,6 @@ import androidx.core.view.WindowCompat
 import com.icegood.findmeinwood.core.model.ThemeMode
 import com.icegood.findmeinwood.feature.map.OfflineRegion
 import com.icegood.findmeinwood.feature.map.OfflineRegions
-import com.icegood.findmeinwood.feature.map.ProviderStat
 import com.icegood.findmeinwood.feature.map.TileProvider
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
@@ -37,12 +36,10 @@ import com.icegood.findmeinwood.core.session.GnssSource
 import com.icegood.findmeinwood.transport.api.SendResult
 import com.icegood.findmeinwood.feature.map.MapScreen
 import com.icegood.findmeinwood.transport.share.ShareTransport
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     /**
@@ -711,47 +708,21 @@ class MainActivity : ComponentActivity() {
                         Text("Offline maps", style = MaterialTheme.typography.titleSmall)
                         var regions by remember { mutableStateOf<List<OfflineRegion>>(emptyList()) }
                         var totalBytes by remember { mutableLongStateOf(0L) }
-                        var stats by remember { mutableStateOf<List<ProviderStat>>(emptyList()) }
-                        // Sizing walks the tile cache and queries cache.db: keep it off the main thread.
                         fun refreshRegions() {
-                            uiScope.launch {
-                                val ctx = this@MainActivity
-                                val (r, total, st) = withContext(Dispatchers.IO) {
-                                    Triple(
-                                        OfflineRegions.load(ctx).map {
-                                            it.copy(sizeBytes = OfflineRegions.regionSizeBytes(ctx, it))
-                                        },
-                                        OfflineRegions.cacheSizeBytes(ctx),
-                                        OfflineRegions.providerStats(ctx),
-                                    )
-                                }
+                            OfflineRegions.load(this@MainActivity) { r ->
                                 regions = r
-                                totalBytes = total
-                                stats = st
+                                totalBytes = OfflineRegions.cacheSizeBytes(this@MainActivity)
                             }
                         }
                         LaunchedEffect(Unit) { refreshRegions() }
                         Text(
-                            "saved areas: ${regions.size} · cache ${"%.1f".format(totalBytes / (1024.0 * 1024.0))} MB",
+                            "saved areas: ${regions.size} · map data on phone ${"%.1f".format(totalBytes / (1024.0 * 1024.0))} MB",
                             style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            softWrap = false,
                         )
-                        if (stats.isNotEmpty()) {
-                            Text("cached by provider", style = MaterialTheme.typography.labelMedium)
-                            stats.forEach { s ->
-                                val label = TileProvider.byId(s.providerId)?.label ?: s.providerId
-                                Text(
-                                    "$label · ${s.tileCount} tiles · ${"%.1f".format(s.sizeBytes / (1024.0 * 1024.0))} MB",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                )
-                            }
-                        }
                         Text(
-                            "To save an area: on the map press ↓, drag a rectangle and download it. " +
-                                "Without internet, choose OFFLINE on the map.",
+                            "To save an area: on the map press ↓ and drag a rectangle. Places you " +
+                                "look at are kept too (up to 512 MB, oldest dropped first). Without " +
+                                "internet, choose Offline on the map.",
                             style = MaterialTheme.typography.bodySmall,
                         )
                         regions.forEach { r ->
@@ -762,9 +733,9 @@ class MainActivity : ComponentActivity() {
                                 Column(Modifier.weight(1f)) {
                                     Text(r.name, style = MaterialTheme.typography.bodyMedium)
                                     Text(
-                                        "${TileProvider.byId(r.sourceName)?.label ?: r.sourceName} · " +
-                                            "zoom ${r.zoomMin}–${r.zoomMax} · ${r.tileCount} tiles · " +
-                                            "${"%.1f".format(r.sizeBytes / (1024.0 * 1024.0))} MB",
+                                        "${TileProvider.byId(r.providerId)?.label ?: r.providerId} · " +
+                                            "${"%.1f".format(r.sizeBytes / (1024.0 * 1024.0))} MB" +
+                                            if (r.complete) "" else " · incomplete",
                                         style = MaterialTheme.typography.labelSmall,
                                         maxLines = 1,
                                         softWrap = false,
@@ -775,13 +746,9 @@ class MainActivity : ComponentActivity() {
                                     color = MaterialTheme.colorScheme.outlineVariant,
                                 )
                                 TextButton(onClick = {
-                                    OfflineRegions.deleteTiles(this@MainActivity, r) { ok ->
+                                    OfflineRegions.delete(this@MainActivity, r) {
                                         refreshRegions()
-                                        uiScope.launch {
-                                            snackbar.showSnackbar(
-                                                if (ok) "offline area deleted" else "offline area delete failed",
-                                            )
-                                        }
+                                        uiScope.launch { snackbar.showSnackbar("offline area deleted") }
                                     }
                                 }) { Text("Delete", maxLines = 1, softWrap = false) }
                             }
@@ -793,9 +760,10 @@ class MainActivity : ComponentActivity() {
                         ) {
                             OutlinedButton(
                                 onClick = {
-                                    OfflineRegions.clear(this@MainActivity)
-                                    refreshRegions()
-                                    uiScope.launch { snackbar.showSnackbar("all offline maps cleared") }
+                                    OfflineRegions.clear(this@MainActivity) {
+                                        refreshRegions()
+                                        uiScope.launch { snackbar.showSnackbar("all offline maps cleared") }
+                                    }
                                 },
                                 modifier = Modifier.weight(1f),
                             ) { Text("Clear all", maxLines = 1, softWrap = false) }

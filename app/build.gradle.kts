@@ -22,6 +22,8 @@ android {
         val googleClientId = (project.findProperty("google.webClientId") as String?)
             ?: properties["google.webClientId"] as String? ?: ""
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleClientId\"")
+        // Phones only: the map engine's native code for x86 emulators doubled the APK.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
     // Release signing: fmiw.* in ~/.gradle/gradle.properties locally, KEYSTORE_* env in
     // CI (release.yml decodes the ANDROID_KEYSTORE_* secrets). Without either, release

@@ -95,21 +95,26 @@ frame is encrypted and authenticated with the network's key.
 
 ### US-6 — Seeing members
 - FR-6.1 Peer table from verified beacons only: name, position, last seen, link.
-- FR-6.2 Map shows me + located members; remembers the last view; scale bar. The map
-  chooser lists Offline and every tile provider: streets (OpenStreetMap, CARTO dark) and
-  satellite (USGS — USA only, Esri World Imagery, MapTiler, Mapbox). Offline shows only
-  the tiles saved from the chosen provider.
+- FR-6.2 Map (MapLibre) shows me + located members (named; greyed while searching for
+  someone else); remembers the last view; scale bar; north stays up. The map chooser lists
+  Offline and every provider: OpenFreeMap (default: free vector map data, no key, drawn on
+  the phone in light or dark colours with the theme), OpenStreetMap and CARTO dark (raster
+  streets), and satellite: USGS (USA only), Esri World Imagery, MapTiler, Mapbox. Offline
+  shows only what of the chosen provider is on the phone.
 - FR-6.2a Each provider has its own options, opened from it once selected: the fields that
   service takes (API key, access token…, required or optional) and where to get them.
   Values are sealed per provider and sent only to that provider. Choosing a provider that
   lacks a required option opens its options; until set, the map says what is missing.
 - FR-6.2b Saving an offline area takes no zoom choice: every area is saved from the overview
-  (zoom 8) down to the provider's trail detail (OpenStreetMap 16, others 17); deeper zooms
-  enlarge those tiles offline. OpenStreetMap areas are capped at 300 tiles (its tile policy
-  allows modest look-ahead, not bulk download); the size shows while drawing and a too
-  large area is refused ("draw smaller"), never saved without detail.
-- FR-6.2c Tiles viewed outside saved areas are kept as a queue of at most 512 MB, oldest
-  dropped first, and are shown offline while kept; saved areas are never dropped by it.
+  down to the provider's detail (OpenFreeMap vector data to zoom 14, drawn sharp at any
+  deeper zoom; OpenStreetMap raster 16; other rasters 17, enlarged beyond). OpenFreeMap areas
+  include both colour styles. OpenStreetMap areas are capped at 300 tiles and fetch no lower
+  zooms ahead (its tile policy allows modest look-ahead only); the size shows while drawing
+  and a too large area is refused ("draw smaller"), never saved without detail.
+- FR-6.2c Map data viewed outside saved areas is kept up to 512 MB, oldest dropped first, and
+  is shown offline while kept; saved areas are never dropped by it. Settings lists saved
+  areas (provider, size, incomplete) with Delete and Clear all.
+- FR-6.2d Map requests carry a User-Agent naming the app and its project page.
 - FR-6.3 Inactive after 3 missed keep-alives; purged after 24 h.
 - FR-6.4 List view: distance and bearing. Rough fixes show uncertainty ("1,9 km (±600 m)");
   a direct Bluetooth/Wi-Fi Direct link that contradicts positions shows

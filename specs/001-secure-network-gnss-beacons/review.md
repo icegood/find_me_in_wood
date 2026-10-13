@@ -22,6 +22,7 @@ only (no unit test can see it). Tests: `./gradlew test coverageVerify` (green).
 | FR-4.2 interval 5–300 s, default 60 s | `Prefs` | OK |
 | FR-4.4 pause sharing | `SessionManager.sharingPaused`, card "Pause" | **Fixed** — was missing; test `FR-4_4` |
 | FR-5.3 signature bound to member id; unsigned refused | `SessionManager.verifyOrigin` | **Fixed** — any member could pin a fake key for another member id, unsigned beacons were accepted; test `FR-5_3` |
+| FR-6.2 map, providers, options, offline areas | `MapScreen`, `TileProviders`, `OfflineRegions` (MapLibre) | **Changed** — osmdroid replaced by MapLibre: OpenFreeMap vector default, per-provider options, CARTO needed a key, OSM offline download capped by its tile policy; device: online, saved area, offline with internet off, dark |
 | FR-6.3 inactive after 3 missed keep-alives | `PeerTracker(keepAliveMs)` | **Fixed** — used a fixed 60 s, so with a 5 min interval members flickered "unlocated"; test `FR-6_3` |
 | FR-6.4 distance texts | `distanceText`, `uncertainty` | OK — tested |
 | FR-6.5 local rename | `MemberNaming` | OK — tested |

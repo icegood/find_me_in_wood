@@ -1,12 +1,18 @@
 package com.icegood.findmeinwood.feature.map
 
-import org.osmdroid.api.IGeoPoint
-import org.osmdroid.util.BoundingBox
-import org.osmdroid.util.GeoPoint
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.tan
+
+/** A point on the map. */
+data class GeoPoint(val latitude: Double, val longitude: Double)
+
+/** A rectangle on the map. */
+data class GeoBox(val latNorth: Double, val lonEast: Double, val latSouth: Double, val lonWest: Double) {
+    val centerLatitude: Double get() = (latNorth + latSouth) / 2
+    val centerLongitude: Double get() = (lonEast + lonWest) / 2
+}
 
 /** Hard ceiling on a single offline area, so a stray drag cannot request millions of tiles. */
 const val MAX_TILES_PER_AREA = 20_000L
@@ -19,7 +25,7 @@ const val ESTIMATED_TILE_BYTES = 18_000L
  * well-formed regardless of the drag direction. Returns null when the drag covers
  * less than a couple of metres, which is almost certainly an accidental tap.
  */
-fun dragToBoundingBox(a: IGeoPoint, b: IGeoPoint, minSpanDegrees: Double = 0.0005): BoundingBox? {
+fun dragToGeoBox(a: GeoPoint, b: GeoPoint, minSpanDegrees: Double = 0.0005): GeoBox? {
     val latNorth = maxOf(a.latitude, b.latitude)
     val latSouth = minOf(a.latitude, b.latitude)
     var lonWest = a.longitude
@@ -30,26 +36,22 @@ fun dragToBoundingBox(a: IGeoPoint, b: IGeoPoint, minSpanDegrees: Double = 0.000
         lonEast = t
     }
     if (latNorth - latSouth < minSpanDegrees || lonEast - lonWest < minSpanDegrees) return null
-    return BoundingBox(latNorth, lonEast, latSouth, lonWest)
+    return GeoBox(latNorth, lonEast, latSouth, lonWest)
 }
 
 /** Rough on-screen size of the drag in degrees, for the "too small" hint. */
-fun dragSpanDegrees(a: IGeoPoint, b: IGeoPoint): Pair<Double, Double> =
+fun dragSpanDegrees(a: GeoPoint, b: GeoPoint): Pair<Double, Double> =
     (maxOf(a.latitude, b.latitude) - minOf(a.latitude, b.latitude)) to
         (maxOf(a.longitude, b.longitude) - minOf(a.longitude, b.longitude))
 
 /**
- * Number of slippy-map tiles covering [bbox] at [zoom].
- *
- * This is computed analytically instead of via `CacheManager.getTilesCoverage`, which
- * materialises every tile index in a list — fine for a viewport, but a deep zoom range
- * over a wide area would allocate millions of entries just to show a count.
+ * Number of slippy-map tiles covering [bbox] at [zoom], computed rather than listed so a
+ * wide area at a deep zoom costs nothing to count.
  *
  * Tiles that merely *intersect* the box are counted (floor on the low edge, ceil on the
- * high edge), matching osmdroid's own tile-rect behaviour: a drag smaller than one tile
- * still needs the single tile that covers it.
+ * high edge): a drag smaller than one tile still needs the single tile that covers it.
  */
-fun estimateTilesAtZoom(bbox: BoundingBox, zoom: Int): Long {
+fun estimateTilesAtZoom(bbox: GeoBox, zoom: Int): Long {
     val n = 1L shl zoom.coerceIn(0, 24)
     val lonWest = minOf(bbox.lonWest, bbox.lonEast)
     val lonEast = maxOf(bbox.lonWest, bbox.lonEast)
@@ -82,7 +84,7 @@ private fun mercatorFraction(lat: Double): Double {
  * *above* the cap: returning the cap itself made `estimateTiles(..) > cap` checks
  * impossible, so oversized requests were never narrowed.
  */
-fun estimateTiles(bbox: BoundingBox, zoomMin: Int, zoomMax: Int): Long {
+fun estimateTiles(bbox: GeoBox, zoomMin: Int, zoomMax: Int): Long {
     var total = 0L
     for (z in zoomMin..zoomMax) {
         total += estimateTilesAtZoom(bbox, z)
@@ -98,16 +100,14 @@ const val OFFLINE_MIN_ZOOM = 8
 fun offlineZooms(provider: TileProvider): IntRange = OFFLINE_MIN_ZOOM..provider.detailZoom
 
 /** Tiles [bbox] needs from [provider], or null when that is more than the provider allows. */
-fun offlineTiles(bbox: BoundingBox, provider: TileProvider): Long? {
+fun offlineTiles(bbox: GeoBox, provider: TileProvider): Long? {
     val z = offlineZooms(provider)
     return estimateTiles(bbox, z.first, z.last).takeIf { it <= provider.downloadTiles }
 }
 
 /** Human-readable estimate for the confirmation dialog. */
-fun estimateLabel(tiles: Long): String = when {
-    tiles >= 1000 -> "%.1f k tiles · ~%.0f MB".format(tiles / 1000.0, tiles * ESTIMATED_TILE_BYTES / 1048576.0)
-    else -> "$tiles tiles · ~%.1f MB".format(tiles * ESTIMATED_TILE_BYTES / 1048576.0)
+fun estimateLabel(tiles: Long, tileBytes: Long = ESTIMATED_TILE_BYTES): String = when {
+    tiles >= 1000 -> "%.1f k tiles · ~%.0f MB".format(tiles / 1000.0, tiles * tileBytes / 1048576.0)
+    else -> "$tiles tiles · ~%.1f MB".format(tiles * tileBytes / 1048576.0)
 }
 
-/** Convenience: a [GeoPoint] usable with osmdroid APIs from a drag corner. */
-fun IGeoPoint.toGeoPoint(): GeoPoint = GeoPoint(latitude, longitude)

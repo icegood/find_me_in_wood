@@ -1,296 +1,236 @@
 package com.icegood.findmeinwood.feature.map
 
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import android.os.Handler
-import android.os.Looper
-import org.osmdroid.config.Configuration
-import org.osmdroid.config.IConfigurationProvider
-import org.osmdroid.tileprovider.cachemanager.CacheManager
-import org.osmdroid.tileprovider.modules.SqlTileWriter
-import org.osmdroid.util.BoundingBox
-import org.osmdroid.util.MapTileIndex
+import org.json.JSONObject
+import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.offline.OfflineManager
+import org.maplibre.android.offline.OfflineRegionError
+import org.maplibre.android.offline.OfflineRegionStatus
+import org.maplibre.android.offline.OfflineTilePyramidRegionDefinition
+import org.maplibre.android.storage.FileSource
 import java.io.File
 import java.util.UUID
+import org.maplibre.android.offline.OfflineRegion as MlRegion
 
-/** One saved offline map area (Google-Maps-style "offline map"). */
-data class OfflineRegion(
-    val id: String,
-    val name: String,
-    val latNorth: Double,
-    val lonEast: Double,
-    val latSouth: Double,
-    val lonWest: Double,
-    val zoomMin: Int,
-    val zoomMax: Int,
-    val tileCount: Int,
-    val sizeBytes: Long,
-    val createdAt: Long,
-    val sourceName: String,
-) {
-    fun boundingBox(): BoundingBox = BoundingBox(latNorth, lonEast, latSouth, lonWest)
-}
-
-/** Cached tile count and bytes for one provider, read straight from osmdroid's cache.db. */
-data class ProviderStat(
-    val providerId: String,
-    val tileCount: Int,
-    val sizeBytes: Long,
-)
-
-/** Upper bound for the tile cache (cache.db) before osmdroid starts trimming it. */
-private const val TILE_CACHE_MAX_BYTES = 4L shl 30 // 4 GB
-private const val TILE_CACHE_TRIM_BYTES = 3L shl 30
-
-/**
- * One place for osmdroid's global configuration (paths, user agent, cache size).
- *
- * osmdroid's defaults (600 MB, trimmed to 500 MB, oldest tiles first) silently evict saved
- * offline areas once a few big ones exist, so the cache is allowed to grow much larger;
- * osmdroid still caps it by the free space on the device.
- */
-internal fun configureOsmdroid(ctx: Context): IConfigurationProvider = Configuration.getInstance().apply {
-    userAgentValue = ctx.packageName
-    osmdroidBasePath = File(ctx.filesDir, "osmdroid")
-    osmdroidTileCache = File(osmdroidBasePath, "tiles")
-    tileFileSystemCacheMaxBytes = TILE_CACHE_MAX_BYTES
-    tileFileSystemCacheTrimBytes = TILE_CACHE_TRIM_BYTES
-}
-
-/** Room for tiles viewed outside saved areas, reused offline until pushed out. */
+/** Room for map data viewed outside saved areas: reused offline, oldest dropped first. */
 const val VIEWED_CACHE_MAX_BYTES = 512L shl 20 // 512 MB
 
-/** One row of osmdroid's cache.db. */
-internal data class CachedTile(val provider: String, val key: Long, val bytes: Long)
+/** One saved offline area as the user sees it (one or more MapLibre regions). */
+data class OfflineRegion(
+    val group: String,
+    val name: String,
+    val providerId: String,
+    val createdAt: Long,
+    val sizeBytes: Long,
+    val complete: Boolean,
+)
 
-/**
- * Viewed tiles to drop so the rest fit [maxBytes]: [queue] is oldest first, and tiles of
- * saved areas ([saved] keys per provider) are neither counted nor dropped.
- */
-internal fun viewedToEvict(queue: List<CachedTile>, saved: Map<String, Set<Long>>, maxBytes: Long): List<CachedTile> {
-    val viewed = queue.filter { saved[it.provider]?.contains(it.key) != true }
-    var over = viewed.sumOf { it.bytes } - maxBytes
-    if (over <= 0) return emptyList()
-    return viewed.takeWhile { t -> (over > 0).also { if (it) over -= t.bytes } }
+/** What a saved area records about itself, kept as each MapLibre region's metadata. */
+internal data class AreaInfo(val group: String, val name: String, val providerId: String, val createdAt: Long) {
+    fun encode(): ByteArray = JSONObject()
+        .put("group", group).put("name", name).put("provider", providerId).put("created", createdAt)
+        .toString().toByteArray()
+
+    companion object {
+        fun decode(bytes: ByteArray): AreaInfo? = runCatching {
+            val o = JSONObject(String(bytes))
+            AreaInfo(o.getString("group"), o.getString("name"), o.getString("provider"), o.getLong("created"))
+        }.getOrNull()
+    }
 }
 
-/** Persistent store + cache helpers for the offline map areas. */
+/** Progress of a running offline-area download. */
+data class DownloadUi(
+    val title: String,
+    val done: Long = 0,
+    val total: Long = 0,
+    val errors: Int = 0,
+    val finished: Boolean = false,
+)
+
+/** Saved offline areas, kept by MapLibre: saved areas are never dropped to make room. */
 object OfflineRegions {
-    private const val PREFS = "offline_regions"
-
-    private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-    fun load(ctx: Context): List<OfflineRegion> = buildList {
-        prefs(ctx).all.values.forEach { raw ->
-            (raw as? String)?.let { runCatching { add(decode(it)) } }
-        }
-    }.sortedByDescending { it.createdAt }
-
-    fun add(ctx: Context, region: OfflineRegion) {
-        val p = prefs(ctx)
-        p.edit().putString(region.id, encode(region)).apply()
+    private fun manager(ctx: Context): OfflineManager {
+        initMapLibre(ctx)
+        return OfflineManager.getInstance(ctx.applicationContext)
     }
 
-    fun remove(ctx: Context, id: String) {
-        prefs(ctx).edit().remove(id).apply()
-    }
-
-    fun cacheSizeBytes(ctx: Context): Long = cacheDir(ctx).walkTopDown()
-        .filter { it.isFile }.sumOf { it.length() }
-
-    fun clear(ctx: Context) {
-        cacheDir(ctx).deleteRecursively()
-        cacheDir(ctx).mkdirs()
-        prefs(ctx).edit().clear().apply()
-    }
-
-    fun regionSizeBytes(ctx: Context, region: OfflineRegion): Long {
-        val dbFile = File(cacheDir(ctx), "cache.db")
-        if (!dbFile.exists()) return 0L
-        val keys = cacheKeys(region).toList()
-        if (keys.isEmpty()) return 0L
-        return runCatching { queryChunked(dbFile, keys, region.sourceName, "SUM(length(tile))") }
-            .getOrDefault(0L)
+    /** Viewed map data forms a bounded queue next to the saved areas. */
+    fun configure(ctx: Context) {
+        manager(ctx).setMaximumAmbientCacheSize(VIEWED_CACHE_MAX_BYTES, null)
     }
 
     /**
-     * Sums [expr] over the cached tiles of [provider] whose key is in [keys], chunked to stay under
-     * SQLite's per-statement host-parameter limit. Tiles are keyed by (key, provider), so the
-     * provider filter keeps same-zoom tiles from other providers out of the total.
+     * The styles an area of [provider] is saved for: both OpenFreeMap themes (they share the
+     * map data, so the second costs only its colours), or the provider's raster style file.
      */
-    private fun queryChunked(dbFile: File, keys: List<Long>, provider: String, expr: String): Long {
-        val db = SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READONLY)
-        var total = 0L
-        try {
-            keys.chunked(400).forEach { chunk ->
-                val placeholders = chunk.joinToString(",") { "?" }
-                // The keys are Longs derived from zoom/x/y above, never user input, so binding them
-                // as literals keeps the statement under SQLite's host-parameter cap.
-                val args: Array<String> = arrayOf(provider) + chunk.map { it.toString() }
-                db.rawQuery(
-                    "SELECT $expr FROM tiles WHERE provider=? AND key IN ($placeholders)",
-                    args,
-                ).use { c -> if (c.moveToFirst() && !c.isNull(0)) total += c.getLong(0) }
+    private fun styleUrls(ctx: Context, provider: TileProvider, values: Map<String, String>): List<String> =
+        if (provider.vector) {
+            listOf(vectorStyleUrl(isDark = false), vectorStyleUrl(isDark = true))
+        } else {
+            val dir = File(ctx.filesDir, "map_styles").apply { mkdirs() }
+            val f = File(dir, "${provider.id}.json")
+            f.writeText(rasterStyleJson(provider, values, offline = false, isDark = false))
+            listOf("file://${f.absolutePath}")
+        }
+
+    /** A started download; [cancel] stops it and drops what it saved. */
+    class Download internal constructor(private val regions: MutableList<MlRegion>) {
+        @Volatile internal var cancelled = false
+        fun cancel() {
+            cancelled = true
+            regions.forEach { it.setDownloadState(MlRegion.STATE_INACTIVE); it.delete(noDelete) }
+        }
+    }
+
+    /**
+     * Saves [area] of [provider] from the overview down to its trail detail. Progress and the
+     * end come on the main thread.
+     */
+    fun download(
+        ctx: Context,
+        area: GeoBox,
+        name: String,
+        provider: TileProvider,
+        values: Map<String, String>,
+        onProgress: (DownloadUi) -> Unit,
+        onDone: (DownloadUi) -> Unit,
+    ): Download {
+        val info = AreaInfo(UUID.randomUUID().toString(), name, provider.id, System.currentTimeMillis())
+        val bounds = LatLngBounds.from(area.latNorth, area.lonEast, area.latSouth, area.lonWest)
+        val zooms = offlineZooms(provider)
+        val urls = styleUrls(ctx, provider, values)
+        val regions = mutableListOf<MlRegion>()
+        val download = Download(regions)
+        val statuses = HashMap<Long, OfflineRegionStatus>()
+        var errors = 0
+        var finished = false
+        val title = "Downloading \"$name\""
+        onProgress(DownloadUi(title))
+
+        fun report() {
+            if (finished || download.cancelled) return
+            val done = statuses.values.sumOf { it.completedResourceCount }
+            val total = statuses.values.sumOf { it.requiredResourceCount }
+            if (statuses.size == urls.size && statuses.values.all { it.isComplete }) {
+                finished = true
+                onDone(DownloadUi("Saved \"$name\" for offline use", done, total, errors, finished = true))
+            } else {
+                onProgress(DownloadUi(title, done, total, errors))
             }
-        } finally {
-            db.close()
         }
-        return total
+
+        urls.forEach { url ->
+            val definition = OfflineTilePyramidRegionDefinition(
+                url, bounds,
+                provider.mapZoom(zooms.first).coerceAtLeast(0).toDouble(),
+                provider.mapZoom(zooms.last).toDouble(),
+                ctx.resources.displayMetrics.density,
+            )
+            manager(ctx).createOfflineRegion(
+                definition, info.encode(),
+                object : OfflineManager.CreateOfflineRegionCallback {
+                    override fun onCreate(offlineRegion: MlRegion) {
+                        val region = offlineRegion
+                        regions += region
+                        if (download.cancelled) { region.delete(noDelete); return }
+                        region.setObserver(object : MlRegion.OfflineRegionObserver {
+                            override fun onStatusChanged(status: OfflineRegionStatus) {
+                                statuses[region.id] = status
+                                if (status.isComplete) region.setDownloadState(MlRegion.STATE_INACTIVE)
+                                report()
+                            }
+                            // MapLibre keeps retrying by itself; count it so the user sees trouble.
+                            override fun onError(error: OfflineRegionError) {
+                                errors++
+                                report()
+                            }
+                            override fun mapboxTileCountLimitExceeded(limit: Long) = Unit
+                        })
+                        region.setDownloadState(MlRegion.STATE_ACTIVE)
+                    }
+
+                    override fun onError(error: String) {
+                        if (finished) return
+                        finished = true
+                        onDone(DownloadUi("Download error: $error", errors = errors + 1, finished = true))
+                    }
+                },
+            )
+        }
+        return download
     }
 
-    /**
-     * cache.db keys of every tile [region] covers. CacheManager.getTilesCoverage yields
-     * MapTileIndex values, but cache.db is keyed by SqlTileWriter.getIndex(x, y, z) —
-     * different formulas, so convert.
-     */
-    internal fun cacheKeys(region: OfflineRegion): Set<Long> = buildSet {
-        for (z in region.zoomMin..region.zoomMax) {
-            for (k in CacheManager.getTilesCoverage(region.boundingBox(), z)) {
-                add(
-                    SqlTileWriter.getIndex(
-                        MapTileIndex.getX(k).toLong(),
-                        MapTileIndex.getY(k).toLong(),
-                        MapTileIndex.getZoom(k).toLong(),
-                    ),
+    /** Every saved area, with its size, on the main thread. */
+    fun load(ctx: Context, onResult: (List<OfflineRegion>) -> Unit) {
+        manager(ctx).listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+            override fun onList(offlineRegions: Array<MlRegion>?) {
+                val all = offlineRegions.orEmpty().toList()
+                if (all.isEmpty()) { onResult(emptyList()); return }
+                val statuses = HashMap<Long, OfflineRegionStatus?>()
+                fun got(r: MlRegion, s: OfflineRegionStatus?) {
+                    statuses[r.id] = s
+                    if (statuses.size == all.size) onResult(group(all, statuses))
+                }
+                all.forEach { r ->
+                    r.getStatus(object : MlRegion.OfflineRegionStatusCallback {
+                        override fun onStatus(status: OfflineRegionStatus?) = got(r, status)
+                        override fun onError(error: String?) = got(r, null)
+                    })
+                }
+            }
+
+            override fun onError(error: String) = onResult(emptyList())
+        })
+    }
+
+    private fun group(all: List<MlRegion>, statuses: Map<Long, OfflineRegionStatus?>): List<OfflineRegion> =
+        all.mapNotNull { r -> AreaInfo.decode(r.metadata)?.let { it to r } }
+            .groupBy({ it.first.group }, { it })
+            .map { (_, parts) ->
+                val info = parts.first().first
+                val st = parts.map { statuses[it.second.id] }
+                OfflineRegion(
+                    group = info.group, name = info.name, providerId = info.providerId,
+                    createdAt = info.createdAt,
+                    sizeBytes = st.sumOf { it?.completedResourceSize ?: 0L },
+                    complete = st.all { it?.isComplete == true },
                 )
             }
-        }
-    }
+            .sortedByDescending { it.createdAt }
 
-    /**
-     * Tiles of [region] that no other saved area of the same provider still covers.
-     * Overlapping areas share cache rows, so deleting the whole coverage would punch
-     * holes into the areas the user kept.
-     */
-    internal fun exclusiveKeys(region: OfflineRegion, others: List<OfflineRegion>): Set<Long> {
-        val keep = others
-            .filter { it.id != region.id && it.sourceName == region.sourceName }
-            .flatMapTo(HashSet()) { cacheKeys(it) }
-        return cacheKeys(region) - keep
-    }
-
-    /**
-     * Remove the tiles only [region] uses from the cache and drop its metadata.
-     *
-     * The delete runs on a worker thread; [onFinished] is invoked on the main thread once
-     * the rows are gone, so the caller can refresh the statistics only after the cache
-     * has actually changed.
-     */
-    fun deleteTiles(
-        ctx: Context,
-        region: OfflineRegion,
-        onFinished: (Boolean) -> Unit = { },
-    ) {
-        remove(ctx, region.id)
-        val others = load(ctx)
-        val dbFile = File(cacheDir(ctx), "cache.db")
-        Thread {
-            val ok = runCatching {
-                if (dbFile.exists()) deleteKeys(dbFile, exclusiveKeys(region, others).toList(), region.sourceName)
-                true
-            }.getOrDefault(false)
-            Handler(Looper.getMainLooper()).post { onFinished(ok) }
-        }.apply { isDaemon = true }.start()
-    }
-
-    /** Deletes [provider]'s rows for [keys], chunked like [queryChunked]. */
-    internal fun deleteKeys(dbFile: File, keys: List<Long>, provider: String) {
-        val db = SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READWRITE)
-        try {
-            db.beginTransaction()
-            try {
-                keys.chunked(400).forEach { chunk ->
-                    val placeholders = chunk.joinToString(",") { "?" }
-                    val args: Array<Any> = (listOf<Any>(provider) + chunk.map { it.toString() }).toTypedArray()
-                    db.execSQL("DELETE FROM tiles WHERE provider=? AND key IN ($placeholders)", args)
+    /** Deletes the saved [area]; what it shares with other areas stays for them. */
+    fun delete(ctx: Context, area: OfflineRegion, onDone: () -> Unit) {
+        manager(ctx).listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+            override fun onList(offlineRegions: Array<MlRegion>?) {
+                val mine = offlineRegions.orEmpty().filter { AreaInfo.decode(it.metadata)?.group == area.group }
+                if (mine.isEmpty()) { onDone(); return }
+                var left = mine.size
+                val each = object : MlRegion.OfflineRegionDeleteCallback {
+                    override fun onDelete() { if (--left == 0) onDone() }
+                    override fun onError(error: String) { if (--left == 0) onDone() }
                 }
-                db.setTransactionSuccessful()
-            } finally {
-                db.endTransaction()
+                mine.forEach { it.delete(each) }
             }
-        } finally {
-            db.close()
-        }
+
+            override fun onError(error: String) = onDone()
+        })
     }
 
-    /**
-     * Keeps tiles viewed outside saved areas as a queue of at most [maxBytes]: the oldest go
-     * first, saved areas are never touched. Viewed tiles stay usable offline until pushed out.
-     * Runs on a worker thread.
-     */
-    fun trimViewed(ctx: Context, maxBytes: Long = VIEWED_CACHE_MAX_BYTES) {
-        val dbFile = File(cacheDir(ctx), "cache.db")
-        if (!dbFile.exists()) return
-        val regions = load(ctx)
-        Thread {
-            runCatching {
-                val saved = regions.groupBy { it.sourceName }
-                    .mapValues { (_, rs) -> rs.flatMapTo(HashSet()) { cacheKeys(it) } }
-                val rows = readQueue(dbFile)
-                viewedToEvict(rows, saved, maxBytes).groupBy({ it.provider }, { it.key })
-                    .forEach { (provider, keys) -> deleteKeys(dbFile, keys, provider) }
-            }
-        }.apply { isDaemon = true }.start()
+    /** Deletes every saved area and everything viewed. */
+    fun clear(ctx: Context, onDone: () -> Unit) {
+        manager(ctx).resetDatabase(object : OfflineManager.FileSourceCallback {
+            override fun onSuccess() = onDone()
+            override fun onError(message: String) = onDone()
+        })
     }
 
-    /** Every cached tile, oldest first (osmdroid's expiry grows with the time it was stored). */
-    private fun readQueue(dbFile: File): List<CachedTile> {
-        val db = SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READONLY)
-        try {
-            return db.rawQuery("SELECT provider, key, length(tile) FROM tiles ORDER BY expires ASC", null).use { c ->
-                buildList { while (c.moveToNext()) add(CachedTile(c.getString(0), c.getLong(1), c.getLong(2))) }
-            }
-        } finally {
-            db.close()
-        }
+    /** Bytes of map data on the phone: saved areas plus what was viewed. */
+    fun cacheSizeBytes(ctx: Context): Long =
+        File(FileSource.getResourcesCachePath(ctx), "mbgl-offline.db").length()
+
+    private val noDelete = object : MlRegion.OfflineRegionDeleteCallback {
+        override fun onDelete() = Unit
+        override fun onError(error: String) = Unit
     }
-
-    /** Per-provider tile counts and bytes currently held in the osmdroid cache. */
-    fun providerStats(ctx: Context): List<ProviderStat> {
-        val dbFile = File(cacheDir(ctx), "cache.db")
-        if (!dbFile.exists()) return emptyList()
-        return try {
-            SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READONLY).use { db ->
-                db.rawQuery("SELECT provider, COUNT(*), SUM(length(tile)) FROM tiles GROUP BY provider", null)
-                    .use { c ->
-                        buildList {
-                            while (c.moveToNext()) {
-                                add(
-                                    ProviderStat(
-                                        providerId = c.getString(0) ?: "",
-                                        tileCount = c.getInt(1),
-                                        sizeBytes = if (c.isNull(2)) 0L else c.getLong(2),
-                                    ),
-                                )
-                            }
-                        }
-                    }
-            }
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    private fun cacheDir(ctx: Context): File = configureOsmdroid(ctx).osmdroidTileCache
-
-    // '|' is the field separator: a user-typed name containing it made the record
-    // undecodable, and load() then silently dropped the area.
-    internal fun encode(r: OfflineRegion): String = listOf(
-        r.id, r.name.replace('|', '/'), r.latNorth, r.lonEast, r.latSouth, r.lonWest, r.zoomMin, r.zoomMax,
-        r.tileCount, r.sizeBytes, r.createdAt, r.sourceName,
-    ).joinToString("|")
-
-    internal fun decode(s: String): OfflineRegion {
-        val p = s.split("|")
-        fun d(i: Int) = p[i].toDouble()
-        fun l(i: Int) = p[i].toLong()
-        fun int(i: Int) = p[i].toInt()
-        return OfflineRegion(
-            id = p[0], name = p[1], latNorth = d(2), lonEast = d(3), latSouth = d(4),
-            lonWest = d(5), zoomMin = int(6), zoomMax = int(7), tileCount = int(8),
-            sizeBytes = l(9), createdAt = l(10), sourceName = p[11],
-        )
-    }
-
-    fun newId(): String = UUID.randomUUID().toString()
 }

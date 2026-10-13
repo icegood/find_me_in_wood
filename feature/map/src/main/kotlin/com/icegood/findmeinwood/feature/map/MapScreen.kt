@@ -31,7 +31,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,9 +41,9 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +56,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -67,38 +67,24 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.NetworkProfile
 import com.icegood.findmeinwood.core.session.PeerState
-import java.io.File
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.flow.StateFlow
-import org.osmdroid.api.IGeoPoint
-import org.osmdroid.events.MapListener
-import org.osmdroid.events.ScrollEvent
-import org.osmdroid.events.ZoomEvent
-import org.osmdroid.tileprovider.MapTileProviderArray
-import org.osmdroid.tileprovider.modules.MapTileApproximater
-import org.osmdroid.tileprovider.MapTileProviderBasic
-import org.osmdroid.tileprovider.cachemanager.CacheManager
-import org.osmdroid.tileprovider.modules.MBTilesFileArchive
-import org.osmdroid.tileprovider.modules.MapTileFileArchiveProvider
-import org.osmdroid.tileprovider.modules.MapTileSqlCacheProvider
-import org.osmdroid.tileprovider.modules.MapTileModuleProviderBase
-import org.osmdroid.tileprovider.modules.SqlTileWriter
-import org.osmdroid.tileprovider.tilesource.XYTileSource
-import org.osmdroid.tileprovider.util.SimpleRegisterReceiver
-import org.osmdroid.util.BoundingBox
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.ScaleBarOverlay
+import org.maplibre.android.MapLibre
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapLibreMapOptions
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.Projection
+import org.maplibre.android.maps.Style
 
 /**
- * FR-6.2/FR-6.5: shows my position (device GNSS) plus every located peer on OSM tiles.
- * Tiles come from the network by default (NFR-2 note: INTERNET is already used for
- * Google sign-in); when an MBTiles archive is dropped in files/maps/offline.mbtiles the
- * map switches to that archive and stays offline.
+ * FR-6.2/FR-6.5: shows my position (device GNSS) plus every located peer on a MapLibre map:
+ * OpenFreeMap vector data by default, or a raster provider with its own options. Offline
+ * shows only what is on the phone (saved areas and places viewed before).
  *
  * Extra navigation aids: pick a member to find (tap their marker, or "Find" in the peer
  * list) — others turn grey, an arrow points at them with the distance at its tip, and a
@@ -190,14 +176,13 @@ private fun compass(bearing: Double): String {
  */
 @Composable
 private fun OfflineAreaDialog(
-    bbox: BoundingBox,
+    bbox: GeoBox,
     provider: TileProvider,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, zoomMin: Int, zoomMax: Int) -> Unit,
+    onConfirm: (name: String) -> Unit,
 ) {
     val initialName = remember(bbox) { "Area %.3f°, %.3f°".format(bbox.centerLatitude, bbox.centerLongitude) }
     var name by remember(bbox) { mutableStateOf(initialName) }
-    val zooms = offlineZooms(provider)
     val tiles = remember(bbox, provider) { offlineTiles(bbox, provider) }
 
     AlertDialog(
@@ -214,7 +199,7 @@ private fun OfflineAreaDialog(
                 )
                 Text(
                     if (tiles != null) {
-                        "${provider.label}, down to trail detail · ${estimateLabel(tiles)}"
+                        "${provider.label}, down to trail detail · ${estimateLabel(tiles, provider.tileBytes())}"
                     } else {
                         "Too large for ${provider.label} (at most ${provider.downloadTiles} tiles " +
                             "at trail detail): draw a smaller area."
@@ -227,14 +212,14 @@ private fun OfflineAreaDialog(
         confirmButton = {
             Button(
                 enabled = tiles != null,
-                onClick = { onConfirm(name.trim().ifBlank { initialName }, zooms.first, zooms.last) },
+                onClick = { onConfirm(name.trim().ifBlank { initialName }) },
             ) { Text("Download") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
 
-private const val INITIAL_ZOOM = 15.0
+private const val INITIAL_ZOOM = 14.0
 
 @Composable
 fun MapScreen(
@@ -271,13 +256,11 @@ fun MapScreen(
 
     // Offline-area picking: drag a rectangle on the map, then name it and confirm.
     var selecting by remember { mutableStateOf(false) }
-    var dragStart by remember { mutableStateOf<IGeoPoint?>(null) }
-    var dragEnd by remember { mutableStateOf<IGeoPoint?>(null) }
-    var pendingArea by remember { mutableStateOf<BoundingBox?>(null) }
+    var dragStart by remember { mutableStateOf<GeoPoint?>(null) }
+    var dragEnd by remember { mutableStateOf<GeoPoint?>(null) }
+    var pendingArea by remember { mutableStateOf<GeoBox?>(null) }
     var downloadUi by remember { mutableStateOf<DownloadUi?>(null) }
-    val activeCacheManager = remember { mutableStateOf<CacheManager?>(null) }
-    // Current map zoom, so the offline-area dialog can default to the level actually in view.
-    var mapZoom by remember { mutableIntStateOf(INITIAL_ZOOM.toInt()) }
+    val activeDownload = remember { mutableStateOf<OfflineRegions.Download?>(null) }
 
     fun exitSelection() {
         selecting = false
@@ -286,85 +269,154 @@ fun MapScreen(
         pendingArea = null
     }
 
-    // Recreate the mapView whenever the tile source, theme or API key changes:
-    // AndroidView's factory lambda only runs once per node, so the whole subtree
-    // (view creation + effects + HUD overlay) is scoped under key(...).
     val accent = MaterialTheme.colorScheme.primary
     val myDirColor = MaterialTheme.colorScheme.secondary
     val labelBg = MaterialTheme.colorScheme.primary
     val labelFg = MaterialTheme.colorScheme.onPrimary
+    val greyBg = MaterialTheme.colorScheme.surfaceVariant
+    val greyFg = MaterialTheme.colorScheme.onSurfaceVariant
     val textMeasurer = rememberTextMeasurer()
     val peer = follow?.let { ps[it] }
 
     Box(modifier.fillMaxSize()) {
-        // offline is part of the key: online -> offline keeps the same provider, and without
-        // it the online view (with data connection) was reused in offline mode.
-        key(layer, providerValues) {
-            val mapView = remember { createMapView(context, layer.offline, isDarkTheme, provider, providerValues) }
+        // A new map whenever the layer, its options or the theme change: the style and the
+        // connection mode belong to the view (AndroidView's factory runs once per node).
+        key(layer, providerValues, isDarkTheme) {
+            val mapView = remember { createMapView(context) }
+            var map by remember { mutableStateOf<MapLibreMap?>(null) }
+            var centered by remember { mutableStateOf(false) }
+            val currentFollow by rememberUpdatedState(follow)
+            val currentPeers by rememberUpdatedState(ps)
+            val currentOnFind by rememberUpdatedState(onFindTargetChange)
+            val tapRadius = with(LocalDensity.current) { 32.dp.toPx() }
 
             DisposableEffect(mapView) {
+                // Offline shows only what is on the phone: saved areas and places viewed.
+                MapLibre.setConnected(!layer.offline)
+                mapView.onStart()
                 mapView.onResume()
+                mapView.getMapAsync { m ->
+                    m.uiSettings.apply {
+                        setLogoEnabled(false)
+                        setAttributionEnabled(false) // our own attribution card
+                        setCompassEnabled(false) // our own compass card
+                        setRotateGesturesEnabled(false) // north stays up, as the compass assumes
+                        setTiltGesturesEnabled(false)
+                    }
+                    // Open where the map was last left (or at the last known location), not
+                    // in the ocean while waiting for the first GPS fix.
+                    lastView(context)?.let {
+                        m.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.lat, it.lon), it.zoom))
+                    }
+                    // OpenStreetMap's tile policy: fetch what is viewed, no lower zooms ahead.
+                    m.setPrefetchZoomDelta(if (layer.provider == TileProvider.MAPNIK) 0 else 4)
+                    m.setStyle(mapStyle(layer, providerValues, isDarkTheme))
+                    m.addOnCameraMoveListener { mapVersion++ }
+                    m.addOnCameraIdleListener { mapVersion++ }
+                    m.addOnMapClickListener { ll ->
+                        // With no target yet, tapping a member picks them; once set, a stray
+                        // tap must never switch or drop the person being searched for.
+                        if (currentFollow != null) return@addOnMapClickListener false
+                        val tap = m.projection.toScreenLocation(ll)
+                        val hit = currentPeers.values.mapNotNull { peer ->
+                            peer.lastPosition?.let { pos ->
+                                val pt = m.projection.toScreenLocation(LatLng(pos.latE7 / 1e7, pos.lonE7 / 1e7))
+                                peer to kotlin.math.hypot(pt.x - tap.x, pt.y - tap.y)
+                            }
+                        }.filter { it.second <= tapRadius }.minByOrNull { it.second }?.first
+                        hit?.let { currentOnFind(it.memberId) }
+                        hit != null
+                    }
+                    map = m
+                    mapVersion++
+                }
                 onDispose {
-                    saveLastView(context, mapView)
-                    // Viewed tiles are a bounded queue; saved areas are kept whole.
-                    OfflineRegions.trimViewed(context)
+                    map?.let { saveLastView(context, it) }
                     mapView.onPause()
-                    mapView.onDetach()
+                    mapView.onStop()
+                    mapView.onDestroy()
                 }
             }
 
-            DisposableEffect(mapView) {
-                // No tap-to-clear: a stray tap must never drop the person being searched for.
-                val listener = object : MapListener {
-                    override fun onScroll(event: ScrollEvent): Boolean { mapVersion++; return true }
-                    override fun onZoom(event: ZoomEvent): Boolean {
-                        mapVersion++
-                        mapZoom = event.zoomLevel.toInt()
-                        return true
+            // Bring a fresh map onto me once, or onto the first located member while I have
+            // no fix of my own and the map still shows the whole world.
+            LaunchedEffect(map, me != null) {
+                val m = map ?: return@LaunchedEffect
+                if (me != null && !centered) {
+                    centered = true
+                    m.animateCamera(CameraUpdateFactory.newLatLng(LatLng(me.latitude, me.longitude)))
+                }
+            }
+            LaunchedEffect(map, ps) {
+                val m = map ?: return@LaunchedEffect
+                if (me == null && m.cameraPosition.zoom < 9.0) {
+                    ps.values.firstNotNullOfOrNull { it.lastPosition }?.let {
+                        m.animateCamera(CameraUpdateFactory.newLatLng(LatLng(it.latE7 / 1e7, it.lonE7 / 1e7)))
                     }
                 }
-                mapView.addMapListener(listener)
-                onDispose { mapView.removeMapListener(listener) }
             }
 
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { mapView },
-            ) { mv -> renderMarkers(mv, p, ps, me, follow, onFindTargetChange) }
+            AndroidView(modifier = Modifier.fillMaxSize(), factory = { mapView })
 
-            // HUD, two arrows: my own direction (movement heading or compass) at my position,
-            // and the direction to the member being searched for, ending at that member when
-            // visible or on the screen edge with the distance written there.
+            // Everything on the map is drawn here: members (named; greyed while searching for
+            // someone else), me with my direction, and the arrow to the member being searched
+            // for, ending at them when visible or on the screen edge with the distance there.
             Canvas(Modifier.fillMaxSize()) {
                 val tick = mapVersion
-                if (!(mapView.width > 0 && mapView.height > 0)) return@Canvas
+                val proj = map?.projection ?: return@Canvas
+                fun px(lat: Double, lon: Double) = proj.toScreenLocation(LatLng(lat, lon)).let { Offset(it.x, it.y) }
+                fun label(text: String, at: Offset, bg: Color, fg: Color) {
+                    val layout = textMeasurer.measure(
+                        text, style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = fg),
+                    )
+                    val pad = 4.dp.toPx()
+                    val w = layout.size.width + 2 * pad
+                    val h = layout.size.height + pad
+                    val top = Offset(at.x - w / 2, at.y + 12.dp.toPx())
+                    drawRoundRect(bg, top, Size(w, h), androidx.compose.ui.geometry.CornerRadius(h / 2, h / 2))
+                    drawText(layout, topLeft = Offset(top.x + pad, top.y + pad / 2))
+                }
+                ps.values.forEach { peer ->
+                    val pos = peer.lastPosition ?: return@forEach
+                    val at = px(pos.latE7 / 1e7, pos.lonE7 / 1e7)
+                    val greyed = follow != null && peer.memberId != follow
+                    drawCircle(Color.White, 9.dp.toPx(), at)
+                    drawCircle(if (greyed) Color.Gray else accent, 7.dp.toPx(), at)
+                    label(
+                        (if (peer.memberId == follow) "→ " else "") + (peer.nickname ?: "member"),
+                        at, if (greyed) greyBg else labelBg, if (greyed) greyFg else labelFg,
+                    )
+                }
                 val meNow = me
                 if (meNow != null) {
-                    val myPx = mapView.projection.toPixels(GeoPoint(meNow.latitude, meNow.longitude), null)
-                    val my = Offset(myPx.x.toFloat(), myPx.y.toFloat())
+                    val my = px(meNow.latitude, meNow.longitude)
+                    // How rough my own fix is, as a faint disc.
+                    val mpp = metersPerPx(proj, my)
+                    if (mpp > 0) {
+                        drawCircle(myDirColor.copy(alpha = 0.12f), (meNow.accuracy / mpp).toFloat(), my)
+                    }
                     // My direction: movement heading from consecutive fixes, falling back
                     // to the compass azimuth so it always shows (not only while walking).
                     val myDirection = fix?.headingDeg ?: azimuth.value
                     if (myDirection != null) {
                         rotate(myDirection, pivot = my) {
-                            drawPath(
-                                Path().apply {
-                                    moveTo(my.x, my.y - 16.dp.toPx())
-                                    lineTo(my.x - 7.dp.toPx(), my.y + 9.dp.toPx())
-                                    lineTo(my.x, my.y + 3.dp.toPx())
-                                    lineTo(my.x + 7.dp.toPx(), my.y + 9.dp.toPx())
-                                    close()
-                                },
-                                color = myDirColor,
-                            )
+                            val arrow = Path().apply {
+                                moveTo(my.x, my.y - 16.dp.toPx())
+                                lineTo(my.x - 7.dp.toPx(), my.y + 9.dp.toPx())
+                                lineTo(my.x, my.y + 3.dp.toPx())
+                                lineTo(my.x + 7.dp.toPx(), my.y + 9.dp.toPx())
+                                close()
+                            }
+                            drawPath(arrow, color = Color.White, style = Stroke(3.dp.toPx()))
+                            drawPath(arrow, color = myDirColor)
                         }
+                    } else {
+                        drawCircle(Color.White, 9.dp.toPx(), my)
+                        drawCircle(myDirColor, 7.dp.toPx(), my)
                     }
                     val target = follow?.let { ps[it] }?.lastPosition
                     if (target != null) {
-                        val tp = mapView.projection.toPixels(
-                            GeoPoint(target.latE7 / 1e7, target.lonE7 / 1e7), null,
-                        )
-                        val t = Offset(tp.x.toFloat(), tp.y.toFloat())
+                        val t = px(target.latE7 / 1e7, target.lonE7 / 1e7)
                         val ring = 18.dp.toPx()
                         val end = arrowEnd(my.x, my.y, t.x, t.y, size.width, size.height, 12.dp.toPx())
                         if (end != null && !end.offScreen) {
@@ -409,6 +461,22 @@ fun MapScreen(
                         }
                     }
                 }
+                // Scale bar, bottom-left.
+                val barLeft = Offset(16.dp.toPx(), size.height - 20.dp.toPx())
+                val mpp = metersPerPx(proj, barLeft)
+                scaleBar(mpp, 100.dp.toPx())?.let { (meters, len) ->
+                    val barColor = if (isDarkTheme) Color(0xFFDDDDDD) else Color(0xFF222222)
+                    val right = Offset(barLeft.x + len, barLeft.y)
+                    val tickH = 6.dp.toPx()
+                    drawLine(barColor, barLeft, right, strokeWidth = 3.dp.toPx())
+                    drawLine(barColor, barLeft, Offset(barLeft.x, barLeft.y - tickH), strokeWidth = 3.dp.toPx())
+                    drawLine(barColor, right, Offset(right.x, right.y - tickH), strokeWidth = 3.dp.toPx())
+                    val layout = textMeasurer.measure(
+                        formatDistance(meters.toDouble()),
+                        style = TextStyle(fontSize = 13.sp, color = barColor),
+                    )
+                    drawText(layout, topLeft = Offset(barLeft.x, barLeft.y - tickH - layout.size.height))
+                }
                 tick.hashCode()
             }
 
@@ -419,18 +487,14 @@ fun MapScreen(
                 val a = dragStart
                 val b = dragEnd
                 Canvas(Modifier.fillMaxSize()) {
+                    val proj = map?.projection ?: return@Canvas
                     if (a == null || b == null) return@Canvas
-                    val pa = mapView.projection.toPixels(a.toGeoPoint(), null)
-                    val pb = mapView.projection.toPixels(b.toGeoPoint(), null)
-                    val tl = Offset(minOf(pa.x, pb.x).toFloat(), minOf(pa.y, pb.y).toFloat())
-                    val br = Offset(maxOf(pa.x, pb.x).toFloat(), maxOf(pa.y, pb.y).toFloat())
-                    val r = kotlin.math.abs(br.x - tl.x)
+                    val pa = proj.toScreenLocation(LatLng(a.latitude, a.longitude))
+                    val pb = proj.toScreenLocation(LatLng(b.latitude, b.longitude))
+                    val tl = Offset(minOf(pa.x, pb.x), minOf(pa.y, pb.y))
+                    val br = Offset(maxOf(pa.x, pb.x), maxOf(pa.y, pb.y))
                     val rect = androidx.compose.ui.geometry.Rect(tl, br)
-                    drawRect(
-                        color = boxColor.copy(alpha = 0.18f),
-                        topLeft = tl,
-                        size = androidx.compose.ui.geometry.Size(r, kotlin.math.abs(br.y - tl.y)),
-                    )
+                    drawRect(color = boxColor.copy(alpha = 0.18f), topLeft = tl, size = rect.size)
                     drawRect(color = boxColor, topLeft = tl, size = rect.size, style = Stroke(2.dp.toPx()))
                     // Corner handles make it obvious a rectangle (not a path) is being picked.
                     listOf(tl, Offset(br.x, tl.y), br, Offset(tl.x, br.y)).forEach { c ->
@@ -439,20 +503,19 @@ fun MapScreen(
                 }
                 Box(
                     Modifier.fillMaxSize().pointerInput(Unit) {
+                        fun at(o: Offset): GeoPoint? = map?.projection
+                            ?.fromScreenLocation(android.graphics.PointF(o.x, o.y))
+                            ?.let { GeoPoint(it.latitude, it.longitude) }
                         detectDragGestures(
                             onDragStart = { off ->
-                                val p = mapView.projection.fromPixels(off.x.toInt(), off.y.toInt())
-                                dragStart = p
-                                dragEnd = p
+                                dragStart = at(off)
+                                dragEnd = dragStart
                             },
                             onDrag = { change, _ ->
                                 change.consume()
-                                dragEnd = mapView.projection.fromPixels(
-                                    change.position.x.toInt(),
-                                    change.position.y.toInt(),
-                                )
+                                dragEnd = at(change.position)
                             },
-                            onDragEnd = { dragStart?.let { dragEnd?.let { end -> pendingArea = dragToBoundingBox(it, end) } } },
+                            onDragEnd = { dragStart?.let { dragEnd?.let { end -> pendingArea = dragToGeoBox(it, end) } } },
                             onDragCancel = { dragStart = null; dragEnd = null },
                         )
                     },
@@ -462,7 +525,7 @@ fun MapScreen(
             // Recenter the map on my current location.
             if (me != null) {
                 SmallFloatingActionButton(
-                    onClick = { mapView.controller.animateTo(GeoPoint(me.latitude, me.longitude)) },
+                    onClick = { map?.animateCamera(CameraUpdateFactory.newLatLng(LatLng(me.latitude, me.longitude))) },
                     modifier = Modifier.align(Alignment.CenterEnd).padding(16.dp),
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -644,26 +707,17 @@ fun MapScreen(
                 bbox = area,
                 provider = provider,
                 onDismiss = { pendingArea = null },
-                onConfirm = { name, zoomMin, zoomMax ->
+                onConfirm = { name ->
                     pendingArea = null
                     selecting = false
                     dragStart = null
                     dragEnd = null
-                    startOfflineDownload(
-                        context = context,
-                        area = area,
-                        name = name,
-                        zoomMin = zoomMin,
-                        zoomMax = zoomMax,
-                        provider = provider,
-                        options = providerValues,
-                        onProgress = { ui, cm ->
-                            downloadUi = ui
-                            if (cm != null) activeCacheManager.value = cm
-                        },
-                        onDone = { ui ->
-                            downloadUi = ui
-                            activeCacheManager.value = null
+                    activeDownload.value = OfflineRegions.download(
+                        context, area, name, provider, providerValues,
+                        onProgress = { downloadUi = it },
+                        onDone = {
+                            downloadUi = it
+                            activeDownload.value = null
                         },
                     )
                 },
@@ -682,8 +736,7 @@ fun MapScreen(
                     )
                     Text(
                         buildString {
-                            if (ui.total > 0) append("${ui.done} / ${ui.total} tiles") else append("preparing…")
-                            if (ui.zoom > 0) append(" · z${ui.zoom}")
+                            if (ui.total > 0) append("${ui.done} / ${ui.total} parts") else append("preparing…")
                             if (ui.errors > 0) append(" · ${ui.errors} error(s)")
                         },
                         style = MaterialTheme.typography.labelSmall,
@@ -692,7 +745,8 @@ fun MapScreen(
                         Button(onClick = { downloadUi = null }) { Text("Done") }
                     } else {
                         TextButton(onClick = {
-                            activeCacheManager.value?.cancelAllJobs()
+                            activeDownload.value?.cancel()
+                            activeDownload.value = null
                             downloadUi = ui.copy(title = "cancelling…", finished = true)
                         }) { Text("Cancel") }
                     }
@@ -700,101 +754,6 @@ fun MapScreen(
             }
         }
     }
-}
-
-/** Progress of a running offline-area download. */
-data class DownloadUi(
-    val title: String,
-    val done: Int = 0,
-    val total: Int = 0,
-    val zoom: Int = 0,
-    val errors: Int = 0,
-    val finished: Boolean = false,
-)
-
-/**
- * Runs a [CacheManager] download for [area] on a worker thread, reporting progress through
- * [onProgress] and the final state through [onDone]. Kept out of the composable so the
- * threading and region bookkeeping are testable and not buried in UI code.
- */
-fun startOfflineDownload(
-    context: Context,
-    area: BoundingBox,
-    name: String,
-    zoomMin: Int,
-    zoomMax: Int,
-    provider: TileProvider,
-    options: Map<String, String> = emptyMap(),
-    onProgress: (DownloadUi, CacheManager?) -> Unit = { _, _ -> },
-    onDone: (DownloadUi) -> Unit = { },
-) {
-    val handler = Handler(Looper.getMainLooper())
-    fun post(fn: () -> Unit) = handler.post(fn)
-    val title = "Downloading \"$name\""
-    onProgress(DownloadUi(title), null)
-
-    Thread {
-        var ui = DownloadUi(title)
-        try {
-            configureOsmdroid(context)
-            // Options are part of the URL, never the source name, so they can't affect cache identity.
-            val cm = CacheManager(buildTileSource(provider, options), SqlTileWriter(), zoomMin, zoomMax)
-            val total = cm.possibleTilesInArea(area, zoomMin, zoomMax)
-            post { ui = ui.copy(total = total); onProgress(ui, cm) }
-            val region = OfflineRegion(
-                id = OfflineRegions.newId(),
-                name = name,
-                latNorth = area.latNorth, lonEast = area.lonEast,
-                latSouth = area.latSouth, lonWest = area.lonWest,
-                zoomMin = zoomMin, zoomMax = zoomMax,
-                tileCount = total,
-                sizeBytes = 0L,
-                createdAt = System.currentTimeMillis(),
-                sourceName = provider.id,
-            )
-            cm.downloadAreaAsyncNoUI(
-                context, area, zoomMin, zoomMax,
-                object : CacheManager.CacheManagerCallback {
-                    override fun downloadStarted() = Unit
-                    override fun setPossibleTilesInArea(n: Int) {
-                        post { ui = ui.copy(total = n); onProgress(ui, cm) }
-                    }
-                    // osmdroid's signature is (progress, currentZoomLevel, zoomMin, zoomMax).
-                    override fun updateProgress(progress: Int, currentZoom: Int, zMin: Int, zMax: Int) {
-                        post {
-                            ui = ui.copy(done = progress, zoom = currentZoom)
-                            onProgress(ui, cm)
-                        }
-                    }
-                    override fun onTaskComplete() = saveRegion {
-                        ui.copy(title = "Saved \"$name\" for offline use", done = ui.total, finished = true)
-                    }
-                    // osmdroid passes the number of failed tile downloads, not an error code.
-                    override fun onTaskFailed(errors: Int) = saveRegion {
-                        ui.copy(
-                            title = "Download finished with $errors error(s)",
-                            done = ui.total,
-                            errors = errors,
-                            finished = true,
-                        )
-                    }
-
-                    // Sizing walks every tile key and queries cache.db: keep it off the main thread.
-                    private fun saveRegion(final: () -> DownloadUi) {
-                        Thread {
-                            val size = OfflineRegions.regionSizeBytes(context, region)
-                            OfflineRegions.add(context, region.copy(sizeBytes = size))
-                            post { onDone(final()) }
-                        }.apply { isDaemon = true }.start()
-                    }
-                },
-            )
-            // downloadAreaAsync returns immediately; keep the CacheManager reachable so the
-            // UI can cancel, and let the callbacks above drive completion.
-        } catch (e: Exception) {
-            post { onDone(ui.copy(title = "Download error: ${e.message}", finished = true)) }
-        }
-    }.apply { isDaemon = true }.start()
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDirectionArrow(
@@ -1162,93 +1121,77 @@ private fun lastView(context: Context): LastView? {
     return LastView(known.latitude, known.longitude, INITIAL_ZOOM)
 }
 
-private fun saveLastView(context: Context, mv: MapView) {
-    val c = mv.mapCenter
-    // A never-laid-out view still sits at 0,0: nothing worth remembering.
+private fun saveLastView(context: Context, m: MapLibreMap) {
+    val c = m.cameraPosition.target ?: return
+    // A never-laid-out map still sits at 0,0: nothing worth remembering.
     if (c.latitude == 0.0 && c.longitude == 0.0) return
     context.getSharedPreferences("map_view", Context.MODE_PRIVATE).edit()
         .putFloat("lat", c.latitude.toFloat())
         .putFloat("lon", c.longitude.toFloat())
-        .putFloat("zoom", mv.zoomLevelDouble.toFloat())
+        .putFloat("zoom", m.cameraPosition.zoom.toFloat())
         .apply()
 }
 
-private fun createMapView(
-    context: Context,
-    offline: Boolean,
-    isDarkTheme: Boolean,
-    provider: TileProvider,
-    options: Map<String, String>,
-): MapView {
-    configureOsmdroid(context)
+private fun createMapView(context: Context): MapView {
+    initMapLibre(context)
+    OfflineRegions.configure(context)
+    // A texture view, so the members and arrows drawn above it stay in step while panning.
+    return MapView(context, MapLibreMapOptions.createFromAttributes(context).textureMode(true)).apply { onCreate(null) }
+}
 
-    val archive = context.getExternalFilesDir(null)?.let { File(it, "maps/offline.mbtiles") }
-    val haveArchive = archive?.exists() == true
-
-    // Tile source shared by online download and the offline cache: cache reuse only
-    // works when the same provider id is used in both paths. In OFFLINE the caller
-    // passes the provider that was last used online, so saved areas are found.
-    val tiles = buildTileSource(provider, options)
-
-    val mv = MapView(context).apply {
-        if (offline) {
-            val src = XYTileSource("mbtiles", 0, 19, 256, ".png", arrayOf())
-            val providers = mutableListOf<MapTileModuleProviderBase>()
-            // MBTiles archive takes priority, then the on-device tile cache so saved
-            // offline areas (and anything viewed online) are usable while fully offline.
-            // Downloads and online browsing both go to osmdroid's SQLite cache (cache.db),
-            // so that is what must be read here — the folder-based filesystem provider
-            // never sees those tiles and the map stayed an empty grid.
-            if (haveArchive) {
-                providers += MapTileFileArchiveProvider(
-                    SimpleRegisterReceiver(context), src,
-                    arrayOf(MBTilesFileArchive.getDatabaseFileArchive(archive!!)),
-                )
+/**
+ * MapLibre with a User-Agent naming the app and where to reach its authors, as the
+ * OpenStreetMap tile policy asks of every app using its tiles.
+ */
+internal fun initMapLibre(context: Context) {
+    if (MapLibre.hasInstance()) return
+    MapLibre.getInstance(context.applicationContext)
+    val version = runCatching {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName
+    }.getOrNull() ?: "?"
+    val agent = "FindMeInWood/$version (+$PROJECT_URL)"
+    org.maplibre.android.module.http.HttpRequestUtil.setOkHttpClient(
+        okhttp3.OkHttpClient.Builder()
+            .addNetworkInterceptor { chain ->
+                chain.proceed(chain.request().newBuilder().header("User-Agent", agent).build())
             }
-            val saved = MapTileSqlCacheProvider(SimpleRegisterReceiver(context), tiles)
-            providers += saved
-            // Areas are saved down to trail detail only; deeper zooms enlarge those tiles
-            // instead of showing an empty grid.
-            providers += MapTileApproximater().apply { addProvider(saved) }
-            tileProvider = MapTileProviderArray(tiles, SimpleRegisterReceiver(context), providers.toTypedArray())
-            setUseDataConnection(false)
-        } else {
-            tileProvider = MapTileProviderBasic(context, tiles)
-            setUseDataConnection(true)
-        }
-        setBackgroundColor(if (isDarkTheme) 0xFF1A1A1A.toInt() else android.graphics.Color.WHITE)
-        setMultiTouchControls(true)
-        setBuiltInZoomControls(false)
-        // Open where the map was last left (or at the last known location), not at 0°,0°
-        // in the ocean while waiting for the first GPS fix.
-        val last = lastView(context)
-        controller.setZoom(last?.zoom ?: INITIAL_ZOOM)
-        last?.let { controller.setCenter(GeoPoint(it.lat, it.lon)) }
-        // Bottom-left scale bar (theme-aware colors).
-        val barText = if (isDarkTheme) 0xFFDDDDDD.toInt() else 0xFF222222.toInt()
-        overlays.add(
-            ScaleBarOverlay(this).apply {
-                setCentred(false)
-                setAlignBottom(true)
-                setAlignRight(false)
-                setScaleBarOffset(12, 12)
-                setUnitsOfMeasure(ScaleBarOverlay.UnitsOfMeasure.metric)
-                setLineWidth(3f * resources.displayMetrics.density)
-                setTextPaint(android.graphics.Paint().apply {
-                    color = barText
-                    textSize = 13f * resources.displayMetrics.scaledDensity
-                })
-                setBarPaint(android.graphics.Paint().apply {
-                    // Default FILL style closes the bar path into a solid black box.
-                    style = android.graphics.Paint.Style.STROKE
-                    color = barText
-                    strokeWidth = 3f * resources.displayMetrics.density
-                })
-            },
-        )
+            .build(),
+    )
+}
+
+private const val PROJECT_URL = "https://github.com/icegood/find_me_in_wood"
+
+/** The MapLibre style of [layer]: OpenFreeMap's own style, or one raster provider. */
+private fun mapStyle(layer: MapLayer, values: Map<String, String>, isDark: Boolean): Style.Builder =
+    if (layer.provider.vector) {
+        Style.Builder().fromUri(vectorStyleUrl(isDark))
+    } else {
+        Style.Builder().fromJson(rasterStyleJson(layer.provider, values, layer.offline, isDark))
     }
 
-    return mv
+/** Ground metres per screen pixel around [at]. */
+private fun metersPerPx(proj: Projection, at: Offset): Double {
+    val a = proj.fromScreenLocation(android.graphics.PointF(at.x, at.y))
+    val b = proj.fromScreenLocation(android.graphics.PointF(at.x + 100f, at.y))
+    val out = FloatArray(1)
+    Location.distanceBetween(a.latitude, a.longitude, b.latitude, b.longitude, out)
+    return out[0] / 100.0
+}
+
+/**
+ * The longest round distance (1, 2 or 5 × 10ⁿ m) whose bar fits in [maxPx] at [metersPerPx],
+ * with its length in pixels; null when the scale is unknown.
+ */
+internal fun scaleBar(metersPerPx: Double, maxPx: Float): Pair<Int, Float>? {
+    if (!(metersPerPx > 0) || metersPerPx.isInfinite()) return null
+    val maxM = metersPerPx * maxPx
+    var best = 0
+    var step = 1
+    while (step <= 10_000_000) {
+        for (k in intArrayOf(1, 2, 5)) if (k * step <= maxM) best = k * step
+        step *= 10
+    }
+    return if (best == 0) null else best to (best / metersPerPx).toFloat()
 }
 
 /** FR-4.1/FR-6.2: my own position + movement bearing from consecutive GNSS fixes. */
@@ -1346,72 +1289,6 @@ private fun rememberCompassAzimuth(context: Context): State<Float?> {
     }
     return azimuth
 }
-
-// Maps recentered once per (re)created MapView so a fresh view with a default
-// center (0,0, mid-Atlantic) is brought onto the user instead of staying blank.
-private val centeredOnce: MutableSet<MapView> =
-    java.util.Collections.newSetFromMap(java.util.WeakHashMap<MapView, Boolean>())
-
-private fun renderMarkers(
-    mv: MapView,
-    profile: NetworkProfile?,
-    peers: Map<MemberId, PeerState>,
-    me: Location?,
-    follow: MemberId?,
-    onSelect: (MemberId?) -> Unit,
-) {
-    mv.overlays.removeAll { it is Marker }
-    if (me != null) {
-        mv.overlays.add(
-            Marker(mv).apply {
-                position = GeoPoint(me.latitude, me.longitude)
-                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                title = "You"
-                snippet = "±${me.accuracy.toInt()} m"
-            },
-        )
-        if (!centeredOnce.contains(mv)) {
-            centeredOnce.add(mv)
-            mv.controller.animateTo(GeoPoint(me.latitude, me.longitude))
-        }
-    }
-    peers.values.forEach { peer ->
-        val pos = peer.lastPosition ?: return@forEach
-        val isTarget = peer.memberId == follow
-        mv.overlays.add(
-            Marker(mv).apply {
-                position = GeoPoint(pos.latE7 / 1e7, pos.lonE7 / 1e7)
-                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                title = (if (isTarget) "→ " else "") + (peer.nickname ?: "member")
-                snippet = peer.link?.let { "link " + viaLabel(it) } ?: viaLabel(peer.transport)
-                if (follow != null && !isTarget) {
-                    // While searching for someone, everyone else stays visible but greyed out.
-                    icon = icon?.mutate()?.apply {
-                        colorFilter = android.graphics.ColorMatrixColorFilter(
-                            android.graphics.ColorMatrix().apply { setSaturation(0f) },
-                        )
-                    }
-                    alpha = 0.45f
-                } else if (follow == null) {
-                    // With no target yet, tapping a member picks them; once set, taps only
-                    // show the info bubble so the target is not switched by accident.
-                    setOnMarkerClickListener { _, _ -> onSelect(peer.memberId); true }
-                }
-            },
-        )
-    }
-    if (me == null) {
-        peers.values.firstNotNullOfOrNull { it.lastPosition }?.let { first ->
-            if (mv.zoomLevelDouble < 10.0) {
-                mv.controller.animateTo(GeoPoint(first.latE7 / 1e7, first.lonE7 / 1e7))
-            }
-        }
-    }
-    mv.invalidate()
-}
-
-private fun hasPeerPosition(peers: Map<MemberId, PeerState>): Boolean =
-    peers.values.any { it.lastPosition != null }
 
 /** One provider's own options: each field as that service names it, plus where to get it. */
 @Composable

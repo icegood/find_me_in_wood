@@ -47,7 +47,7 @@ val gateScopeExcludes = coverageExcludes + listOf(
     "**/MainActivity*", "**/SessionService*",
     "**/AndroidGnssSource*",        // LocationManager listener glue
     "**/Prefs*",                    // SharedPreferences glue
-    "**/MapScreenKt*",              // Composable + osmdroid view wiring
+    "**/MapScreenKt*",              // Composable + MapLibre view wiring
     "**/AuthContentProvider*",      // SQLite + ContentProvider glue
     "**/ChatContentProvider*",      // SQLite + ContentProvider glue
     "**/SQLiteAuthStore*",          // Android SQLite (Robolectric classloader mismatch)
