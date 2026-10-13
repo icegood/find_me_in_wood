@@ -12,17 +12,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [29])
 class TileProviderTest {
-    @Test
-    fun `OSM resolves to a different provider per theme`() {
-        assertEquals(TileProvider.MAPNIK, TileProvider.forSource(TileSource.OSM, isDarkTheme = false))
-        assertEquals(TileProvider.CARTO_DARK, TileProvider.forSource(TileSource.OSM, isDarkTheme = true))
-    }
-
-    @Test
-    fun `satellite always resolves to USGS regardless of theme`() {
-        assertEquals(TileProvider.USGS_SAT, TileProvider.forSource(TileSource.SATELLITE, isDarkTheme = false))
-        assertEquals(TileProvider.USGS_SAT, TileProvider.forSource(TileSource.SATELLITE, isDarkTheme = true))
-    }
+    private val index = org.osmdroid.util.MapTileIndex.getTileIndex(5, 17, 11)
 
     @Test
     fun `provider ids round-trip`() {
@@ -32,57 +22,57 @@ class TileProviderTest {
     }
 
     @Test
-    fun `a stored key never reaches a keyless provider`() {
-        // The bug this guards: a single "OSM" key used to be appended to both Mapnik and
-        // CartoDB, breaking both. USGS is public too, so none of the current providers
-        // may carry a token.
+    fun `every keyed service has an option named as that service expects`() {
+        val params = TileProvider.entries.associateWith { p -> p.options.map { it.param } }
+        assertEquals(listOf("key"), params[TileProvider.CARTO_DARK])
+        assertEquals(listOf("token"), params[TileProvider.ESRI_SAT])
+        assertEquals(listOf("key"), params[TileProvider.MAPTILER_SAT])
+        assertEquals(listOf("access_token"), params[TileProvider.MAPBOX_SAT])
+        assertEquals(emptyList(), params[TileProvider.MAPNIK])
+        assertEquals(emptyList(), params[TileProvider.USGS_SAT])
+        // Whoever needs something says where to get it.
+        TileProvider.entries.filter { it.options.isNotEmpty() }.forEach { assertTrue(it.signUp != null, it.id) }
+    }
+
+    @Test
+    fun `required options decide whether a provider can serve tiles`() {
+        assertEquals(listOf("access_token"), TileProvider.MAPBOX_SAT.missing(emptyMap()).map { it.param })
+        assertEquals(emptyList(), TileProvider.MAPBOX_SAT.missing(mapOf("access_token" to "pk.x")))
+        assertEquals(1, TileProvider.CARTO_DARK.missing(mapOf("key" to "  ")).size)
+        // Esri's token is optional: the public service works without it.
+        assertEquals(emptyList(), TileProvider.ESRI_SAT.missing(emptyMap()))
+        assertEquals(emptyList(), TileProvider.MAPNIK.missing(emptyMap()))
+    }
+
+    @Test
+    fun `each provider sends its own option and nothing else`() {
+        // One map holding every service's parameter: each provider picks only its own.
+        val all = mapOf("key" to "K", "token" to "T", "access_token" to "A")
+        fun url(p: TileProvider) = buildTileSource(p, all).getTileURLString(index)
+        assertTrue(url(TileProvider.CARTO_DARK).endsWith("/rastertiles/dark_all/5/17/11.png?key=K"), url(TileProvider.CARTO_DARK))
+        assertTrue(url(TileProvider.MAPTILER_SAT).endsWith("/maps/satellite/256/5/17/11.jpg?key=K"), url(TileProvider.MAPTILER_SAT))
+        assertTrue(url(TileProvider.MAPBOX_SAT).endsWith("/mapbox.satellite/5/17/11.jpg90?access_token=A"), url(TileProvider.MAPBOX_SAT))
+        assertTrue(url(TileProvider.ESRI_SAT).endsWith("/World_Imagery/MapServer/tile/5/11/17?token=T"), url(TileProvider.ESRI_SAT))
+        assertTrue(url(TileProvider.MAPNIK).endsWith("tile.openstreetmap.org/5/17/11.png"), url(TileProvider.MAPNIK))
+        assertTrue(url(TileProvider.USGS_SAT).endsWith("/MapServer/tile/5/11/17"), url(TileProvider.USGS_SAT))
+    }
+
+    @Test
+    fun `blank values send nothing and values are url-encoded`() {
         TileProvider.entries.forEach { p ->
-            assertFalse(p.needsApiKey, "${p.id} is a public service")
-            assertFalse(buildTileSource(p, "SECRET").imageFilenameEnding().contains("token"), p.id)
+            val values = p.options.associate { it.param to "   " }
+            assertFalse(buildTileSource(p, values).getTileURLString(index).contains("?"), p.id)
         }
-        assertEquals("", buildTileSource(TileProvider.USGS_SAT, "SECRET").imageFilenameEnding())
-    }
-
-    @Test
-    fun `providers that need no key stay key-free even when a key is stored`() {
-        val noKey = TileProvider.entries.filter { !it.needsApiKey }
-        assertTrue(noKey.isNotEmpty(), "some providers should need no key")
-        noKey.forEach { p ->
-            assertFalse(buildTileSource(p, "SECRET").imageFilenameEnding().contains("SECRET"), "${p.id} must ignore keys")
-        }
-    }
-
-    @Test
-    fun `blank key produces no token query`() {
-        TileProvider.entries.forEach { p ->
-            assertFalse(buildTileSource(p, "   ").imageFilenameEnding().contains("token"), "${p.id} with blank key")
-        }
-    }
-
-    @Test
-    fun `usgs tiles use arcgis z-y-x addressing`() {
-        val index = org.osmdroid.util.MapTileIndex.getTileIndex(5, 17, 11)
-        val url = buildTileSource(TileProvider.USGS_SAT, "").getTileURLString(index)
-        assertTrue(url.endsWith("/MapServer/tile/5/11/17"), url)
-        val osm = buildTileSource(TileProvider.MAPNIK, "").getTileURLString(index)
-        assertTrue(osm.endsWith("/5/17/11.png"), osm)
+        assertEquals("?access_token=a%2Bb%26c", optionQuery(TileProvider.MAPBOX_SAT, mapOf("access_token" to " a+b&c ")))
     }
 
     @Test
     fun `tile source name matches the provider id so cache rows stay bound`() {
         // osmdroid stores tiles under the tile source name; offline regions look the
-        // provider up by that same id, so the two must not drift apart.
+        // provider up by that same id, so the two must not drift apart, keys or not.
         TileProvider.entries.forEach { p ->
-            assertEquals(p.id, buildTileSource(p, "").name(), "${p.id} source name")
+            assertEquals(p.id, buildTileSource(p, mapOf("key" to "K")).name(), "${p.id} source name")
             assertEquals(p.id, tileSourceById(p.id).name(), "${p.id} lookup by id")
-        }
-    }
-
-    @Test
-    fun `generated tile urls never carry a stored key`() {
-        TileProvider.entries.forEach { p ->
-            val url = buildTileSource(p, "SECRET").getTileURLString(0L)
-            assertFalse(url.contains("token"), "${p.id} url must not carry a key: $url")
         }
     }
 
@@ -93,8 +83,12 @@ class TileProviderTest {
     }
 
     @Test
-    fun `only providers that need a key get a settings field`() {
-        assertTrue(TileProvider.keyed.all { it.needsApiKey })
-        assertEquals(TileProvider.entries.filter { it.needsApiKey }, TileProvider.keyed)
+    fun `chooser texts say coverage and what is missing`() {
+        assertEquals("satellite · USA only", providerHint(TileProvider.USGS_SAT, emptyMap()))
+        assertEquals("satellite · needs Access token", providerHint(TileProvider.MAPBOX_SAT, emptyMap()))
+        assertEquals("satellite · ArcGIS token set", providerHint(TileProvider.ESRI_SAT, mapOf("token" to "T")))
+        assertEquals("streets", providerHint(TileProvider.MAPNIK, emptyMap()))
+        assertEquals("Offline (OpenStreetMap)", layerLabel(MapLayer.DEFAULT))
+        assertEquals("Esri World Imagery", layerLabel(MapLayer(TileProvider.ESRI_SAT, offline = false)))
     }
 }

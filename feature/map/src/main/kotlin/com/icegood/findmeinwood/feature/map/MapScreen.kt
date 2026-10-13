@@ -164,17 +164,19 @@ internal fun arrowEnd(
 internal fun formatDistance(meters: Double): String =
     if (meters >= 1000) "%.1f km".format(meters / 1000) else "${meters.toInt()} m"
 
-private fun sourceLabel(s: TileSource) = when (s) {
-    TileSource.OFFLINE -> "Offline"
-    TileSource.OSM -> "Streets"
-    TileSource.SATELLITE -> "Satellite"
-}
+internal fun layerLabel(l: MapLayer) =
+    if (l.offline) "Offline (${l.provider.label})" else l.provider.label
 
-private fun sourceHint(s: TileSource) = when (s) {
-    TileSource.OFFLINE -> "areas saved with ↓ and places already viewed — no internet needed"
-    TileSource.OSM -> "OpenStreetMap, needs internet"
-    TileSource.SATELLITE -> "imagery, needs internet (USA only for now)"
-}
+/** The chooser's second line for a provider: what it is, coverage, and what it still needs. */
+internal fun providerHint(p: TileProvider, values: Map<String, String>): String = buildList {
+    add(if (p.satellite) "satellite" else "streets")
+    p.coverage?.let(::add)
+    val missing = p.missing(values)
+    when {
+        missing.isNotEmpty() -> add("needs ${missing.joinToString { it.label }}")
+        p.options.any { !values[it.param].isNullOrBlank() } -> add("${p.options.first().label} set")
+    }
+}.joinToString(" · ")
 
 private fun compass(bearing: Double): String {
     val dirs = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
@@ -264,9 +266,11 @@ fun MapScreen(
     peers: StateFlow<Map<MemberId, PeerState>>,
     modifier: Modifier = Modifier,
     isDarkTheme: Boolean = false,
-    tileSource: TileSource = TileSource.OFFLINE,
-    tileApiKeys: Map<TileProvider, String> = emptyMap(),
-    onTileSourceChange: (TileSource) -> Unit = {},
+    layer: MapLayer = MapLayer.DEFAULT,
+    /** Each provider's own option values (param -> value). */
+    tileOptions: Map<TileProvider, Map<String, String>> = emptyMap(),
+    onLayerChange: (MapLayer) -> Unit = {},
+    onTileOptions: (TileProvider, Map<String, String>) -> Unit = { _, _ -> },
     /**
      * The member being searched for. Hoisted so the choice survives tab switches and can
      * be made from the peer list; only the ✕ in the target card clears it.
@@ -282,18 +286,12 @@ fun MapScreen(
     val follow = findTarget
     var mapVersion by remember { mutableStateOf(0) }
     val azimuth = rememberCompassAzimuth(context)
-    // The source OFFLINE reads: the last source used while online, so saved offline
-    // areas (and anything previously viewed) appear without a connection.
-    var lastOnlineSource by remember { mutableStateOf(TileSource.OSM) }
-    LaunchedEffect(tileSource) {
-        if (tileSource != TileSource.OFFLINE) lastOnlineSource = tileSource
-    }
-    // The concrete provider actually being requested, and the api key that belongs to
-    // *that* provider (OSM resolves to Mapnik or CARTO dark depending on the theme).
-    val effectiveSource = if (tileSource == TileSource.OFFLINE) lastOnlineSource else tileSource
-    val provider = TileProvider.forSource(effectiveSource, isDarkTheme)
+    // Offline reads the tiles saved from the layer's provider, so saved areas appear
+    // without a connection; the option values belong to that provider only.
+    val provider = layer.provider
     val providerLabel = provider.label
-    val tileApiKey = tileApiKeys[provider].orEmpty()
+    val providerValues = tileOptions[provider].orEmpty()
+    var optionsFor by remember { mutableStateOf<TileProvider?>(null) }
 
     // Offline-area picking: drag a rectangle on the map, then name it and confirm.
     var selecting by remember { mutableStateOf(false) }
@@ -323,10 +321,10 @@ fun MapScreen(
     val peer = follow?.let { ps[it] }
 
     Box(modifier.fillMaxSize()) {
-        // tileSource is part of the key: OSM -> OFFLINE keeps the same provider, and without
-        // it the online view (with data connection) was reused in OFFLINE mode.
-        key(tileSource, provider, tileApiKey) {
-            val mapView = remember { createMapView(context, tileSource, isDarkTheme, provider, tileApiKey) }
+        // offline is part of the key: online -> offline keeps the same provider, and without
+        // it the online view (with data connection) was reused in offline mode.
+        key(layer, providerValues) {
+            val mapView = remember { createMapView(context, layer.offline, isDarkTheme, provider, providerValues) }
 
             DisposableEffect(mapView) {
                 mapView.onResume()
@@ -494,7 +492,7 @@ fun MapScreen(
             }
 
             // Pick a rectangle to save for offline use, Google-Maps style.
-            if (tileSource != TileSource.OFFLINE && !selecting && downloadUi == null) {
+            if (!layer.offline && !selecting && downloadUi == null) {
                 SmallFloatingActionButton(
                     onClick = {
                         selecting = true
@@ -532,21 +530,69 @@ fun MapScreen(
         Box(Modifier.padding(top = 80.dp, end = 12.dp).align(Alignment.TopEnd)) {
             var open by remember { mutableStateOf(false) }
             androidx.compose.material3.FilledTonalButton(onClick = { open = true }) {
-                Text("Map: ${sourceLabel(tileSource)} ▾", style = MaterialTheme.typography.labelMedium)
+                Text("Map: ${layerLabel(layer)} ▾", style = MaterialTheme.typography.labelMedium)
             }
             androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                TileSource.entries.forEach { src ->
+                androidx.compose.material3.DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text((if (layer.offline) "✓ " else "") + "Offline")
+                            Text(
+                                "saved areas and places viewed from ${provider.label} — no internet needed",
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    },
+                    onClick = { open = false; onLayerChange(layer.copy(offline = true)) },
+                )
+                TileProvider.entries.forEach { p ->
+                    val values = tileOptions[p].orEmpty()
+                    val selected = !layer.offline && p == provider
                     androidx.compose.material3.DropdownMenuItem(
                         text = {
                             Column {
-                                Text((if (src == tileSource) "✓ " else "") + sourceLabel(src))
-                                Text(sourceHint(src), style = MaterialTheme.typography.labelSmall)
+                                Text((if (selected) "✓ " else "") + p.label)
+                                Text(providerHint(p, values), style = MaterialTheme.typography.labelSmall)
                             }
                         },
-                        onClick = { open = false; onTileSourceChange(src) },
+                        onClick = {
+                            open = false
+                            onLayerChange(MapLayer(p, offline = false))
+                            // A provider that cannot serve tiles yet asks for what it needs at once.
+                            if (p.missing(values).isNotEmpty()) optionsFor = p
+                        },
                     )
+                    // The selected provider's own options: key, token… as that service names them.
+                    if (p == provider && p.options.isNotEmpty()) {
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("    ${p.label} options…", style = MaterialTheme.typography.labelMedium) },
+                            onClick = { open = false; optionsFor = p },
+                        )
+                    }
                 }
             }
+        }
+
+        // The selected provider still lacks a required option: say so instead of blank tiles.
+        if (!layer.offline && provider.missing(providerValues).isNotEmpty() && optionsFor == null) {
+            Card(Modifier.padding(16.dp).align(Alignment.Center)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "${provider.label} needs ${provider.missing(providerValues).joinToString { it.label }}",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Button(onClick = { optionsFor = provider }) { Text("Set it") }
+                }
+            }
+        }
+
+        optionsFor?.let { p ->
+            ProviderOptionsDialog(
+                provider = p,
+                values = tileOptions[p].orEmpty(),
+                onDismiss = { optionsFor = null },
+                onSave = { optionsFor = null; onTileOptions(p, it) },
+            )
         }
 
         if (follow != null && peer != null) {
@@ -633,7 +679,7 @@ fun MapScreen(
                         zoomMin = zoomMin,
                         zoomMax = zoomMax,
                         provider = provider,
-                        apiKey = tileApiKey,
+                        options = providerValues,
                         onProgress = { ui, cm ->
                             downloadUi = ui
                             if (cm != null) activeCacheManager.value = cm
@@ -701,7 +747,7 @@ fun startOfflineDownload(
     zoomMin: Int,
     zoomMax: Int,
     provider: TileProvider,
-    apiKey: String = "",
+    options: Map<String, String> = emptyMap(),
     onProgress: (DownloadUi, CacheManager?) -> Unit = { _, _ -> },
     onDone: (DownloadUi) -> Unit = { },
 ) {
@@ -714,8 +760,8 @@ fun startOfflineDownload(
         var ui = DownloadUi(title)
         try {
             configureOsmdroid(context)
-            // The key is part of the URL, never the source name, so it can't affect cache identity.
-            val cm = CacheManager(buildTileSource(provider, apiKey), SqlTileWriter(), zoomMin, zoomMax)
+            // Options are part of the URL, never the source name, so they can't affect cache identity.
+            val cm = CacheManager(buildTileSource(provider, options), SqlTileWriter(), zoomMin, zoomMax)
             val total = cm.possibleTilesInArea(area, zoomMin, zoomMax)
             post { ui = ui.copy(total = total); onProgress(ui, cm) }
             val region = OfflineRegion(
@@ -1152,10 +1198,10 @@ private fun saveLastView(context: Context, mv: MapView) {
 
 private fun createMapView(
     context: Context,
-    source: TileSource,
+    offline: Boolean,
     isDarkTheme: Boolean,
     provider: TileProvider,
-    apiKey: String,
+    options: Map<String, String>,
 ): MapView {
     configureOsmdroid(context)
 
@@ -1165,10 +1211,10 @@ private fun createMapView(
     // Tile source shared by online download and the offline cache: cache reuse only
     // works when the same provider id is used in both paths. In OFFLINE the caller
     // passes the provider that was last used online, so saved areas are found.
-    val tiles = buildTileSource(provider, apiKey)
+    val tiles = buildTileSource(provider, options)
 
     val mv = MapView(context).apply {
-        if (source == TileSource.OFFLINE) {
+        if (offline) {
             val src = XYTileSource("mbtiles", 0, 19, 256, ".png", arrayOf())
             val providers = mutableListOf<MapTileModuleProviderBase>()
             // MBTiles archive takes priority, then the on-device tile cache so saved
@@ -1385,3 +1431,39 @@ private fun renderMarkers(
 
 private fun hasPeerPosition(peers: Map<MemberId, PeerState>): Boolean =
     peers.values.any { it.lastPosition != null }
+
+/** One provider's own options: each field as that service names it, plus where to get it. */
+@Composable
+private fun ProviderOptionsDialog(
+    provider: TileProvider,
+    values: Map<String, String>,
+    onDismiss: () -> Unit,
+    onSave: (Map<String, String>) -> Unit,
+) {
+    var edited by remember(provider) { mutableStateOf(values) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${provider.label} options") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                provider.options.forEach { o ->
+                    androidx.compose.material3.OutlinedTextField(
+                        value = edited[o.param].orEmpty(),
+                        onValueChange = { edited = edited + (o.param to it) },
+                        label = { Text(o.label + if (o.required) "" else " (optional)") },
+                        supportingText = { Text("sent only to ${provider.label} as ?${o.param}=…") },
+                        singleLine = true,
+                    )
+                }
+                provider.signUp?.let { Text("Get one at $it", style = MaterialTheme.typography.bodySmall) }
+                provider.coverage?.let { Text("Coverage: $it", style = MaterialTheme.typography.bodySmall) }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                onSave(edited.mapValues { it.value.trim() }.filterValues { it.isNotEmpty() })
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}

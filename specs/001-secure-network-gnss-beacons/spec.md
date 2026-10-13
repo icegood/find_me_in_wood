@@ -95,8 +95,14 @@ frame is encrypted and authenticated with the network's key.
 
 ### US-6 — Seeing members
 - FR-6.1 Peer table from verified beacons only: name, position, last seen, link.
-- FR-6.2 Map shows me + located members; tile source chooser (offline / OSM / satellite);
-  remembers the last view; scale bar.
+- FR-6.2 Map shows me + located members; remembers the last view; scale bar. The map
+  chooser lists Offline and every tile provider: streets (OpenStreetMap, CARTO dark) and
+  satellite (USGS — USA only, Esri World Imagery, MapTiler, Mapbox). Offline shows only
+  the tiles saved from the chosen provider.
+- FR-6.2a Each provider has its own options, opened from it once selected: the fields that
+  service takes (API key, access token…, required or optional) and where to get them.
+  Values are sealed per provider and sent only to that provider. Choosing a provider that
+  lacks a required option opens its options; until set, the map says what is missing.
 - FR-6.3 Inactive after 3 missed keep-alives; purged after 24 h.
 - FR-6.4 List view: distance and bearing. Rough fixes show uncertainty ("1,9 km (±600 m)");
   a direct Bluetooth/Wi-Fi Direct link that contradicts positions shows
@@ -160,8 +166,8 @@ frame is encrypted and authenticated with the network's key.
 ### US-12 — Account and name
 - FR-12.1 Sign-in (local account or Google) gives the default display name; "Your name" in
   Settings overrides it. The name travels in link control and the member card.
-- FR-12.2 Settings: theme, beacon interval, this phone's number (SMS), map tile keys and
-  offline maps, LoRa node, Wi-Fi Direct role.
+- FR-12.2 Settings: theme, beacon interval, this phone's number (SMS), offline
+  maps, LoRa node, Wi-Fi Direct role.
 
 ## 4. Non-functional requirements
 

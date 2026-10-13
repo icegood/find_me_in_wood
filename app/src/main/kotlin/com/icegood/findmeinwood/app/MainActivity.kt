@@ -157,19 +157,22 @@ class MainActivity : ComponentActivity() {
         darkTheme: Boolean,
     ) {
         var tab by remember { mutableStateOf("networks") }
-        var mapTileSource by remember {
+        var mapLayer by remember {
             mutableStateOf(
-                runCatching {
-                    com.icegood.findmeinwood.feature.map.TileSource.valueOf(Prefs.tileSource(this@MainActivity))
-                }.getOrDefault(com.icegood.findmeinwood.feature.map.TileSource.OFFLINE),
+                com.icegood.findmeinwood.feature.map.MapLayer(
+                    Prefs.mapProvider(this@MainActivity)?.let { TileProvider.byId(it) }
+                        ?: com.icegood.findmeinwood.feature.map.MapLayer.DEFAULT.provider,
+                    Prefs.mapOffline(this@MainActivity),
+                ),
             )
         }
-        // Tile API keys are per *provider* (not per TileSource): OSM resolves to Mapnik
-        // in light theme and CARTO dark in dark theme, which are different services.
-        var mapTileKeys by remember {
+        // Each provider's own options (key, token…), stored per provider and parameter.
+        var tileOptions by remember {
             mutableStateOf(
-                com.icegood.findmeinwood.feature.map.TileProvider.keyed
-                    .associateWith { Prefs.mapTileApiKey(this@MainActivity, it.id) },
+                TileProvider.entries.associateWith { p ->
+                    p.options.associate { it.param to Prefs.tileOption(this@MainActivity, p.id, it.param) }
+                        .filterValues { it.isNotEmpty() }
+                },
             )
         }
         var openChat by remember { mutableStateOf<String?>(null) }
@@ -256,11 +259,15 @@ class MainActivity : ComponentActivity() {
                         profile = SessionBus.profile,
                         peers = namedPeers,
                         isDarkTheme = darkTheme,
-                        tileSource = mapTileSource,
-                        tileApiKeys = mapTileKeys,
-                        onTileSourceChange = {
-                            Prefs.setTileSource(this@MainActivity, it.name)
-                            mapTileSource = it
+                        layer = mapLayer,
+                        tileOptions = tileOptions,
+                        onLayerChange = {
+                            Prefs.setMapLayer(this@MainActivity, it.provider.id, it.offline)
+                            mapLayer = it
+                        },
+                        onTileOptions = { p, values ->
+                            p.options.forEach { Prefs.setTileOption(this@MainActivity, p.id, it.param, values[it.param]) }
+                            tileOptions = tileOptions + (p to values)
                         },
                         findTarget = findTarget,
                         onFindTargetChange = { findTarget = it },
@@ -299,8 +306,6 @@ class MainActivity : ComponentActivity() {
                     tab == "settings" -> SettingsScreen(
                         themeMode = themeMode,
                         onThemeModeChange = onThemeModeChange,
-                        tileApiKeys = mapTileKeys,
-                        onTileApiKey = { source, key -> mapTileKeys = mapTileKeys + (source to key) },
                     )
                     tab == "members" -> MembersScreen(onBack = { tab = "networks" })
                     else -> NetworksScreen(onDiscover = { tab = "discover" }, onMembers = { tab = "members" })
@@ -659,16 +664,13 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    /** Dedicated settings screen: theme, tile API keys and device/beacon options. */
+    /** Dedicated settings screen: theme, offline maps and device/beacon options. */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun SettingsScreen(
         themeMode: ThemeMode,
         onThemeModeChange: (ThemeMode) -> Unit,
-        tileApiKeys: Map<com.icegood.findmeinwood.feature.map.TileProvider, String>,
-        onTileApiKey: (com.icegood.findmeinwood.feature.map.TileProvider, String) -> Unit,
     ) {
-        var keys by remember(tileApiKeys) { mutableStateOf(tileApiKeys) }
         var showNodePicker by remember { mutableStateOf(false) }
         var intervalMs by remember { mutableLongStateOf(Prefs.intervalMs(this@MainActivity)) }
         var intervalInput by remember { mutableStateOf((Prefs.intervalMs(this@MainActivity) / 1000).toString()) }
@@ -677,8 +679,6 @@ class MainActivity : ComponentActivity() {
         val snackbar = remember { SnackbarHostState() }
         val uiScope = rememberCoroutineScope()
         val diag by SessionBus.diagnostics.collectAsState()
-        // Only providers that need a key get a field; keyless ones never appear here.
-        val providers = com.icegood.findmeinwood.feature.map.TileProvider.keyed
 
         Scaffold(
             topBar = { TopAppBar(title = { Text("Settings") }) },
@@ -703,34 +703,6 @@ class MainActivity : ComponentActivity() {
                                     OutlinedButton(onClick = { onThemeModeChange(mode) }) { Text(mode.name) }
                                 }
                             }
-                        }
-                    }
-                }
-                if (providers.isNotEmpty()) {
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Tile API keys", style = MaterialTheme.typography.titleSmall)
-                            providers.forEach { provider ->
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    OutlinedTextField(
-                                        value = keys[provider].orEmpty(),
-                                        onValueChange = { keys = keys + (provider to it) },
-                                        label = { Text(provider.label) },
-                                        placeholder = { Text("API key required") },
-                                        supportingText = { Text("sent as ?token=… to ${provider.id}") },
-                                        singleLine = true,
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                }
-                            }
-                            Button(onClick = {
-                                providers.forEach { provider ->
-                                    val key = keys[provider].orEmpty().trim()
-                                    Prefs.setMapTileApiKey(this@MainActivity, provider.id, key)
-                                    onTileApiKey(provider, key)
-                                }
-                                uiScope.launch { snackbar.showSnackbar("Tile API keys saved") }
-                            }) { Text("Save tile keys") }
                         }
                     }
                 }

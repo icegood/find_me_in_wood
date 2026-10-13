@@ -16,8 +16,9 @@ object Prefs {
     private const val KEY_SECRET_PREFIX = "secret_"
     private const val KEY_UNVERIFIED_PREFIX = "join_code_"
     private const val KEY_PAUSED_PREFIX = "sharing_paused_"
-    private const val KEY_TILE_SOURCE = "tile_source"
-    private const val KEY_TILE_API_KEY_PREFIX = "tile_api_key_"
+    private const val KEY_MAP_PROVIDER = "map_provider"
+    private const val KEY_MAP_OFFLINE = "map_offline"
+    private const val KEY_TILE_OPTION_PREFIX = "tile_option_"
     private const val KEY_P2P_OWNER = "p2p_group_owner"
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_MY_PHONE = "my_phone_number"
@@ -91,27 +92,26 @@ object Prefs {
         }.apply()
     }
 
-    /** FR-6.5: OFFLINE (default, NFR-2) / OSM / SATELLITE. */
-    fun tileSource(ctx: Context): String =
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_TILE_SOURCE, "OFFLINE") ?: "OFFLINE"
+    /** FR-6.2: map provider id and whether only saved tiles are shown (default, NFR-2). */
+    fun mapProvider(ctx: Context): String? =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_MAP_PROVIDER, null)
+    fun mapOffline(ctx: Context): Boolean =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY_MAP_OFFLINE, true)
 
-    fun setTileSource(ctx: Context, source: String) {
-        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString(KEY_TILE_SOURCE, source).apply()
+    fun setMapLayer(ctx: Context, providerId: String, offline: Boolean) {
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit()
+            .putString(KEY_MAP_PROVIDER, providerId).putBoolean(KEY_MAP_OFFLINE, offline).apply()
     }
 
     /**
-     * Tile API key for one concrete tile provider, identified by its [TileProvider.id]
-     * (e.g. `USGS_SAT`, `Mapnik`, `CartoDB-DarkMatter`) rather than by the coarser
-     * `TileSource`. This matters because OSM resolves to a different provider per theme,
-     * and each provider has its own credentials. The key is appended to that provider's
-     * download requests as `?token=<key>`; providers that need none never receive one.
+     * One option of one tile provider (API key, access token…), by the provider's id and
+     * the option's query parameter. Credentials are secrets: sealed like network secrets.
      */
-    fun mapTileApiKey(ctx: Context, providerId: String): String =
-        sealedString(ctx, KEY_TILE_API_KEY_PREFIX + providerId).orEmpty()
+    fun tileOption(ctx: Context, providerId: String, param: String): String =
+        sealedString(ctx, "$KEY_TILE_OPTION_PREFIX$providerId.$param").orEmpty()
 
-    /** Provider credentials are secrets too: sealed like the network secrets. */
-    fun setMapTileApiKey(ctx: Context, providerId: String, key: String?) =
-        putSealedString(ctx, KEY_TILE_API_KEY_PREFIX + providerId, key?.trim()?.ifBlank { null })
+    fun setTileOption(ctx: Context, providerId: String, param: String, value: String?) =
+        putSealedString(ctx, "$KEY_TILE_OPTION_PREFIX$providerId.$param", value?.trim()?.ifBlank { null })
 
     /**
      * This phone's own number, offered to members as the LNP/3 SMS link. Android cannot
