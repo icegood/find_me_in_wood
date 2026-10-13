@@ -36,10 +36,20 @@ enum class TileProvider(
     val options: List<TileOption>,
     /** Where to get the key or token, shown in the provider's options. */
     val signUp: String?,
+    /**
+     * The deepest zoom an offline area gets (trail detail): every area is saved from the
+     * overview down to it, and deeper zooms enlarge it while offline.
+     */
+    val detailZoom: Int = 17,
+    /** Most tiles one offline area may fetch from this service. */
+    val downloadTiles: Long = MAX_TILES_PER_AREA,
 ) {
     MAPNIK(
         "Mapnik", "OpenStreetMap", satellite = false, coverage = null,
         attribution = "© OpenStreetMap contributors", options = emptyList(), signUp = null,
+        // The OSM tile policy allows modest look-ahead, not bulk download: a forest of a few
+        // km across with its paths (zoom 16), nothing more.
+        detailZoom = 16, downloadTiles = 300,
     ),
     CARTO_DARK(
         "CartoDB-DarkMatter", "CARTO dark", satellite = false, coverage = null,

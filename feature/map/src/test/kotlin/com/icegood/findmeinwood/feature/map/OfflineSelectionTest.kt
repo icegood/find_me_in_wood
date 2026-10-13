@@ -86,46 +86,43 @@ class OfflineSelectionTest {
     }
 
     @Test
-    fun `clamped zoom range never exceeds the provider maximum`() {
-        val bb = BoundingBox(50.02, 30.02, 50.0, 30.0)
-        val r = clampZoomRange(providerMaxZoom = 17, requestedMin = 10, requestedMax = 19, bbox = bb)
-        assertTrue(r.last <= 17, "got $r")
+    fun `every area gets the overview down to the provider's trail detail`() {
+        assertEquals(8..16, offlineZooms(TileProvider.MAPNIK))
+        assertEquals(8..17, offlineZooms(TileProvider.ESRI_SAT))
     }
 
     @Test
-    fun `clamped zoom range is empty-safe and ordered`() {
-        val bb = BoundingBox(50.02, 30.02, 50.0, 30.0)
-        val r = clampZoomRange(providerMaxZoom = 19, requestedMin = 15, requestedMax = 12, bbox = bb)
-        assertTrue(r.first <= r.last, "got $r")
-        assertTrue(r.first >= MIN_ZOOM_FLOOR, "got $r")
+    fun `openstreetmap takes a forest of a few km but not a region`() {
+        // ~4 x 4 km at 48 N with paths: a modest look-ahead, allowed.
+        val forest = BoundingBox(48.32, 24.43, 48.285, 24.38)
+        val tiles = assertNotNull(offlineTiles(forest, TileProvider.MAPNIK))
+        assertTrue(tiles <= 300, "got $tiles")
+        // ~15 x 15 km: bulk, refused rather than saved without detail.
+        val region = BoundingBox(48.37, 24.5, 48.23, 24.3)
+        assertNull(offlineTiles(region, TileProvider.MAPNIK))
+        // Other providers keep the large budget.
+        assertNotNull(offlineTiles(region, TileProvider.ESRI_SAT))
     }
 
     @Test
-    fun `wide area at deep zoom is narrowed to fit the tile budget`() {
-        // A deliberately oversized request must come back affordable, not stay at 0..19.
-        val wide = BoundingBox(51.0, 31.0, 50.0, 30.0)
-        val r = clampZoomRange(
-            providerMaxZoom = 19, requestedMin = 8, requestedMax = 19, bbox = wide,
+    fun `estimate label gives tiles and size`() {
+        assertTrue(estimateLabel(500L).contains("500 tiles"), estimateLabel(500L))
+        assertTrue(estimateLabel(2500L).contains("2.5 k tiles"), estimateLabel(2500L))
+    }
+
+    @Test
+    fun `viewed tiles are a queue that never touches saved areas`() {
+        val q = listOf(
+            CachedTile("Mapnik", 1, 100), // oldest, saved area
+            CachedTile("Mapnik", 2, 100), // oldest viewed
+            CachedTile("USGS_SAT", 1, 100), // same key, other provider: viewed
+            CachedTile("Mapnik", 3, 100),
         )
-        val exact = (r.first..r.last).sumOf { estimateTilesAtZoom(wide, it) }
-        assertTrue(exact <= MAX_TILES_PER_AREA, "got $r with $exact tiles")
-        assertTrue(r.last < 19, "deep levels must be dropped, got $r")
-    }
-
-    @Test
-    fun `a big area framed zoomed out still gets walking detail when it fits the budget`() {
-        // ~4.5 x 4.5 km, the kind of chunk picked at zoom 13-14 and used on foot at 17.
-        val bb = BoundingBox(50.02, 30.06, 49.98, 30.0)
-        val r = clampZoomRange(providerMaxZoom = 19, requestedMin = 8, requestedMax = 17, bbox = bb)
-        assertEquals(17, r.last, "got $r")
-        assertTrue(estimateTiles(bb, r.first, r.last) <= MAX_TILES_PER_AREA)
-    }
-
-    @Test
-    fun `estimate label mentions a reduction when capped`() {
-        assertTrue(estimateLabel(MAX_TILES_PER_AREA + 1).contains("reduced"), estimateLabel(MAX_TILES_PER_AREA + 1))
-        assertTrue(!estimateLabel(MAX_TILES_PER_AREA).contains("reduced"), estimateLabel(MAX_TILES_PER_AREA))
-        assertTrue(estimateLabel(500L).contains("MB"), estimateLabel(500L))
+        val saved = mapOf("Mapnik" to setOf(1L))
+        assertEquals(emptyList(), viewedToEvict(q, saved, maxBytes = 300))
+        assertEquals(listOf(q[1]), viewedToEvict(q, saved, maxBytes = 250))
+        assertEquals(listOf(q[1], q[2]), viewedToEvict(q, saved, maxBytes = 100))
+        assertEquals(listOf(q[1], q[2], q[3]), viewedToEvict(q, saved, maxBytes = 0))
     }
 
     @Test
@@ -133,10 +130,6 @@ class OfflineSelectionTest {
         val (latSpan, lonSpan) = dragSpanDegrees(p(50.0, 30.0), p(50.5, 30.25))
         assertEquals(0.5, latSpan, 1e-9)
         assertEquals(0.25, lonSpan, 1e-9)
-    }
-
-    private companion object {
-        const val MIN_ZOOM_FLOOR = 8
     }
 
     @Test

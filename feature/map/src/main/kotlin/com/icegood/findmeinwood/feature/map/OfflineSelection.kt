@@ -91,34 +91,20 @@ fun estimateTiles(bbox: BoundingBox, zoomMin: Int, zoomMax: Int): Long {
     return total
 }
 
-/**
- * Zoom window to actually request: never above [providerMaxZoom], never below [floorZoom],
- * and narrowed from the deepest end until the tile count fits [maxTiles] so a wide area at
- * a deep zoom degrades gracefully instead of silently downloading nothing.
- */
-fun clampZoomRange(
-    providerMaxZoom: Int,
-    requestedMin: Int,
-    requestedMax: Int,
-    bbox: BoundingBox,
-    maxTiles: Long = MAX_TILES_PER_AREA,
-    floorZoom: Int = 8,
-): IntRange {
-    val top = requestedMax.coerceIn(floorZoom, providerMaxZoom)
-    val bottom = requestedMin.coerceIn(floorZoom, top)
-    var min = bottom
-    var max = top
-    while (min < max && estimateTiles(bbox, min, max) > maxTiles) max--
-    if (estimateTiles(bbox, min, max) > maxTiles) min = max
-    // Deliberately not capped at the zoom currently on screen: an offline area is picked
-    // zoomed out (to frame a big chunk) but used zoomed in, on foot. The tile budget
-    // above is what keeps the request sane.
-    return min..max
+/** Lowest zoom an offline area gets: the overview around it costs a handful of tiles. */
+const val OFFLINE_MIN_ZOOM = 8
+
+/** Zooms every offline area of [provider] gets: overview down to its trail detail. */
+fun offlineZooms(provider: TileProvider): IntRange = OFFLINE_MIN_ZOOM..provider.detailZoom
+
+/** Tiles [bbox] needs from [provider], or null when that is more than the provider allows. */
+fun offlineTiles(bbox: BoundingBox, provider: TileProvider): Long? {
+    val z = offlineZooms(provider)
+    return estimateTiles(bbox, z.first, z.last).takeIf { it <= provider.downloadTiles }
 }
 
 /** Human-readable estimate for the confirmation dialog. */
 fun estimateLabel(tiles: Long): String = when {
-    tiles > MAX_TILES_PER_AREA -> ">$MAX_TILES_PER_AREA tiles (will be reduced)"
     tiles >= 1000 -> "%.1f k tiles · ~%.0f MB".format(tiles / 1000.0, tiles * ESTIMATED_TILE_BYTES / 1048576.0)
     else -> "$tiles tiles · ~%.1f MB".format(tiles * ESTIMATED_TILE_BYTES / 1048576.0)
 }

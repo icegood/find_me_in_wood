@@ -57,6 +57,23 @@ internal fun configureOsmdroid(ctx: Context): IConfigurationProvider = Configura
     tileFileSystemCacheTrimBytes = TILE_CACHE_TRIM_BYTES
 }
 
+/** Room for tiles viewed outside saved areas, reused offline until pushed out. */
+const val VIEWED_CACHE_MAX_BYTES = 512L shl 20 // 512 MB
+
+/** One row of osmdroid's cache.db. */
+internal data class CachedTile(val provider: String, val key: Long, val bytes: Long)
+
+/**
+ * Viewed tiles to drop so the rest fit [maxBytes]: [queue] is oldest first, and tiles of
+ * saved areas ([saved] keys per provider) are neither counted nor dropped.
+ */
+internal fun viewedToEvict(queue: List<CachedTile>, saved: Map<String, Set<Long>>, maxBytes: Long): List<CachedTile> {
+    val viewed = queue.filter { saved[it.provider]?.contains(it.key) != true }
+    var over = viewed.sumOf { it.bytes } - maxBytes
+    if (over <= 0) return emptyList()
+    return viewed.takeWhile { t -> (over > 0).also { if (it) over -= t.bytes } }
+}
+
 /** Persistent store + cache helpers for the offline map areas. */
 object OfflineRegions {
     private const val PREFS = "offline_regions"
@@ -190,6 +207,38 @@ object OfflineRegions {
                 db.setTransactionSuccessful()
             } finally {
                 db.endTransaction()
+            }
+        } finally {
+            db.close()
+        }
+    }
+
+    /**
+     * Keeps tiles viewed outside saved areas as a queue of at most [maxBytes]: the oldest go
+     * first, saved areas are never touched. Viewed tiles stay usable offline until pushed out.
+     * Runs on a worker thread.
+     */
+    fun trimViewed(ctx: Context, maxBytes: Long = VIEWED_CACHE_MAX_BYTES) {
+        val dbFile = File(cacheDir(ctx), "cache.db")
+        if (!dbFile.exists()) return
+        val regions = load(ctx)
+        Thread {
+            runCatching {
+                val saved = regions.groupBy { it.sourceName }
+                    .mapValues { (_, rs) -> rs.flatMapTo(HashSet()) { cacheKeys(it) } }
+                val rows = readQueue(dbFile)
+                viewedToEvict(rows, saved, maxBytes).groupBy({ it.provider }, { it.key })
+                    .forEach { (provider, keys) -> deleteKeys(dbFile, keys, provider) }
+            }
+        }.apply { isDaemon = true }.start()
+    }
+
+    /** Every cached tile, oldest first (osmdroid's expiry grows with the time it was stored). */
+    private fun readQueue(dbFile: File): List<CachedTile> {
+        val db = SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READONLY)
+        try {
+            return db.rawQuery("SELECT provider, key, length(tile) FROM tiles ORDER BY expires ASC", null).use { c ->
+                buildList { while (c.moveToNext()) add(CachedTile(c.getString(0), c.getLong(1), c.getLong(2))) }
             }
         } finally {
             db.close()

@@ -78,6 +78,7 @@ import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
 import org.osmdroid.tileprovider.MapTileProviderArray
+import org.osmdroid.tileprovider.modules.MapTileApproximater
 import org.osmdroid.tileprovider.MapTileProviderBasic
 import org.osmdroid.tileprovider.cachemanager.CacheManager
 import org.osmdroid.tileprovider.modules.MBTilesFileArchive
@@ -184,44 +185,26 @@ private fun compass(bearing: Double): String {
 }
 
 /**
- * Confirmation sheet for an offline area: name it, pick the zoom window, see the tile/size
- * estimate before anything is downloaded. The zoom range is clamped so the request always
- * fits the provider and a sane tile budget.
+ * Confirmation sheet for an offline area: name it and see what it costs. The zooms are
+ * not a choice: overview down to the provider's trail detail, always.
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun OfflineAreaDialog(
     bbox: BoundingBox,
-    providerLabel: String,
-    currentZoom: Int,
+    provider: TileProvider,
     onDismiss: () -> Unit,
     onConfirm: (name: String, zoomMin: Int, zoomMax: Int) -> Unit,
 ) {
     val initialName = remember(bbox) { "Area %.3f°, %.3f°".format(bbox.centerLatitude, bbox.centerLongitude) }
     var name by remember(bbox) { mutableStateOf(initialName) }
-    // Default to the level the user is actually looking at: deeper levels are invisible and
-    // would dominate the tile count, so the slider starts there rather than at the max.
-    // Default to walking detail even when the area was framed zoomed out; the tile budget
-    // trims it back if the area is too big for that.
-    var zoomMax by remember(bbox, currentZoom) {
-        mutableIntStateOf(currentZoom.coerceAtLeast(DETAIL_ZOOM).coerceIn(MIN_ZOOM, PROVIDER_MAX_ZOOM))
-    }
-    val range = remember(bbox, zoomMax) { clampZoomRange(PROVIDER_MAX_ZOOM, MIN_ZOOM, zoomMax, bbox) }
-    val tiles = remember(bbox, range) { estimateTiles(bbox, range.first, range.last) }
-    val zoomCapped = zoomMax > range.last
+    val zooms = offlineZooms(provider)
+    val tiles = remember(bbox, provider) { offlineTiles(bbox, provider) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Save offline area") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    "provider: $providerLabel\n" +
-                        "bounds: %.4f, %.4f → %.4f, %.4f".format(
-                            bbox.latSouth, bbox.lonWest, bbox.latNorth, bbox.lonEast,
-                        ),
-                    style = MaterialTheme.typography.bodySmall,
-                )
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -229,36 +212,29 @@ private fun OfflineAreaDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Column {
-                    Text("Maximum zoom: $zoomMax", style = MaterialTheme.typography.labelMedium)
-                    Slider(
-                        value = zoomMax.toFloat(),
-                        onValueChange = { zoomMax = it.toInt() },
-                        valueRange = MIN_ZOOM.toFloat()..PROVIDER_MAX_ZOOM.toFloat(),
-                        steps = PROVIDER_MAX_ZOOM - MIN_ZOOM - 1,
-                    )
-                }
                 Text(
-                    "zoom ${range.first}–${range.last} · ${estimateLabel(tiles)}" +
-                        if (zoomCapped) "\nlimited to zoom ${range.last}: deeper levels exceed $MAX_TILES_PER_AREA tiles" else "",
+                    if (tiles != null) {
+                        "${provider.label}, down to trail detail · ${estimateLabel(tiles)}"
+                    } else {
+                        "Too large for ${provider.label} (at most ${provider.downloadTiles} tiles " +
+                            "at trail detail): draw a smaller area."
+                    },
                     style = MaterialTheme.typography.bodySmall,
+                    color = if (tiles != null) Color.Unspecified else MaterialTheme.colorScheme.error,
                 )
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(name.trim().ifBlank { initialName }, range.first, range.last) },
+                enabled = tiles != null,
+                onClick = { onConfirm(name.trim().ifBlank { initialName }, zooms.first, zooms.last) },
             ) { Text("Download") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
 
-private const val MIN_ZOOM = 8
-/** Street/trail detail needed on foot; the default deepest level of an offline area. */
-private const val DETAIL_ZOOM = 17
 private const val INITIAL_ZOOM = 15.0
-private const val PROVIDER_MAX_ZOOM = 19
 
 @Composable
 fun MapScreen(
@@ -330,6 +306,8 @@ fun MapScreen(
                 mapView.onResume()
                 onDispose {
                     saveLastView(context, mapView)
+                    // Viewed tiles are a bounded queue; saved areas are kept whole.
+                    OfflineRegions.trimViewed(context)
                     mapView.onPause()
                     mapView.onDetach()
                 }
@@ -641,12 +619,12 @@ fun MapScreen(
                         style = MaterialTheme.typography.bodySmall,
                     )
                     if (area != null) {
-                        val preview = clampZoomRange(
-                            PROVIDER_MAX_ZOOM, MIN_ZOOM, mapZoom.coerceAtLeast(DETAIL_ZOOM), area,
-                        )
+                        // Live while drawing, so the area is sized before anything is asked.
+                        val tiles = offlineTiles(area, provider)
                         Text(
-                            "zoom ${preview.first}–${preview.last} · ${estimateLabel(estimateTiles(area, preview.first, preview.last))}",
+                            tiles?.let { estimateLabel(it) } ?: "too large for ${provider.label}: draw smaller",
                             style = MaterialTheme.typography.labelSmall,
+                            color = if (tiles != null) Color.Unspecified else MaterialTheme.colorScheme.error,
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -664,8 +642,7 @@ fun MapScreen(
         pendingArea?.let { area ->
             OfflineAreaDialog(
                 bbox = area,
-                providerLabel = providerLabel,
-                currentZoom = mapZoom,
+                provider = provider,
                 onDismiss = { pendingArea = null },
                 onConfirm = { name, zoomMin, zoomMax ->
                     pendingArea = null
@@ -1228,7 +1205,11 @@ private fun createMapView(
                     arrayOf(MBTilesFileArchive.getDatabaseFileArchive(archive!!)),
                 )
             }
-            providers += MapTileSqlCacheProvider(SimpleRegisterReceiver(context), tiles)
+            val saved = MapTileSqlCacheProvider(SimpleRegisterReceiver(context), tiles)
+            providers += saved
+            // Areas are saved down to trail detail only; deeper zooms enlarge those tiles
+            // instead of showing an empty grid.
+            providers += MapTileApproximater().apply { addProvider(saved) }
             tileProvider = MapTileProviderArray(tiles, SimpleRegisterReceiver(context), providers.toTypedArray())
             setUseDataConnection(false)
         } else {

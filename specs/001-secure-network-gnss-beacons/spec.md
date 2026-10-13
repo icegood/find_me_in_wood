@@ -103,6 +103,13 @@ frame is encrypted and authenticated with the network's key.
   service takes (API key, access token…, required or optional) and where to get them.
   Values are sealed per provider and sent only to that provider. Choosing a provider that
   lacks a required option opens its options; until set, the map says what is missing.
+- FR-6.2b Saving an offline area takes no zoom choice: every area is saved from the overview
+  (zoom 8) down to the provider's trail detail (OpenStreetMap 16, others 17); deeper zooms
+  enlarge those tiles offline. OpenStreetMap areas are capped at 300 tiles (its tile policy
+  allows modest look-ahead, not bulk download); the size shows while drawing and a too
+  large area is refused ("draw smaller"), never saved without detail.
+- FR-6.2c Tiles viewed outside saved areas are kept as a queue of at most 512 MB, oldest
+  dropped first, and are shown offline while kept; saved areas are never dropped by it.
 - FR-6.3 Inactive after 3 missed keep-alives; purged after 24 h.
 - FR-6.4 List view: distance and bearing. Rough fixes show uncertainty ("1,9 km (±600 m)");
   a direct Bluetooth/Wi-Fi Direct link that contradicts positions shows
