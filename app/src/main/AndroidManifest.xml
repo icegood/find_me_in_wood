@@ -27,6 +27,7 @@
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
     <application
+        android:name=".FmiwApp"
         android:label="find me in wood"
         android:theme="@style/Theme.FindMeInWood">
         <activity android:name=".MainActivity" android:exported="true">

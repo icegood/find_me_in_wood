@@ -168,7 +168,12 @@ class SessionManager(
 
     /** Sends an already-encoded management frame on every transport (no AEAD). */
     suspend fun sendMgmt(wire: ByteArray) {
-        live().forEach { t -> runCatching { t.send(wire) } }
+        live().forEach { t ->
+            val r = runCatching { t.send(wire) }
+            com.icegood.findmeinwood.transport.api.DebugLog.d {
+                "tx mgmt ${wire.size}B type=${wire.getOrNull(3)} via ${t.id}: ${r.getOrNull() ?: r.exceptionOrNull()}"
+            }
+        }
     }
 
     fun transportIds(): List<TransportId> = transports.map { it.id }

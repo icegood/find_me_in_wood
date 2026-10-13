@@ -18,6 +18,7 @@ import android.annotation.SuppressLint
 import android.os.ParcelUuid
 import com.icegood.findmeinwood.core.crypto.FrameCodec
 import com.icegood.findmeinwood.core.crypto.MgmtCodec
+import com.icegood.findmeinwood.transport.api.DebugLog
 import com.icegood.findmeinwood.core.model.TransportId
 import com.icegood.findmeinwood.transport.api.RadioState
 import com.icegood.findmeinwood.transport.api.SendResult
@@ -365,6 +366,7 @@ class BluetoothTransport internal constructor(
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 if (clients[address].let { it != null && it !== g }) {
                     // Already linked to this phone: a duplicate would double every frame.
+                    DebugLog.d { "Bluetooth duplicate link to $address closed" }
                     try { g.disconnect() } catch (_: Exception) {}
                     try { g.close() } catch (_: Exception) {}
                     return
@@ -452,7 +454,10 @@ class BluetoothTransport internal constructor(
             lastInbound[key] = clock()
             // A second BluetoothGatt to the same phone gets every notification too: feeding
             // both copies into one reassembler garbles every frame (discovery never worked).
-            if (clients[key] !== gatt) return
+            if (clients[key] !== gatt) {
+                DebugLog.d { "Bluetooth notify from a duplicate link to $key ignored" }
+                return
+            }
             clientFramers.getOrPut(key) { framer() }.offer(value)?.let(::emitFrame)
         }
     }
@@ -504,6 +509,7 @@ class BluetoothTransport internal constructor(
     private fun framer() = FrameFramer.Reassembler(FrameCodec.MAGIC)
 
     private fun emitFrame(frame: ByteArray) {
+        DebugLog.d { "Bluetooth rx frame ${frame.size}B mgmt=${MgmtCodec.isMgmt(frame)}" }
         if (MgmtCodec.isMgmt(frame)) {
             events.tryEmit(TransportEvent.MgmtFrameReceived(frame, id))
             return

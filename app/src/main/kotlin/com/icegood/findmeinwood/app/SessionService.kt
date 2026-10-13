@@ -17,6 +17,7 @@ import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.NetworkProfile
 import com.icegood.findmeinwood.core.model.JoinPolicy
 import com.icegood.findmeinwood.core.model.TransportId
+import com.icegood.findmeinwood.transport.api.DebugLog
 import com.icegood.findmeinwood.core.session.GnssSource
 import com.icegood.findmeinwood.core.crypto.MgmtCodec
 import com.icegood.findmeinwood.core.session.DiscoveryManager
@@ -174,7 +175,12 @@ class SessionService : Service() {
         }
         activeDiscovery = discovery
         manager.onMgmtFrame = { wire, source ->
-            runCatching { discovery.onMgmtFrame(MgmtCodec.decode(wire)) }
+            val before = discovery.discovered.value.size
+            val r = runCatching { discovery.onMgmtFrame(MgmtCodec.decode(wire)) }
+            DebugLog.d {
+                "rx mgmt ${wire.size}B type=${wire.getOrNull(3)} via $source, networks listed $before->${discovery.discovered.value.size}" +
+                    (r.exceptionOrNull()?.let { " error=$it" } ?: "")
+            }
             SessionBus.publishPending(discovery.pendingJoins.value)
             SessionBus.publishDiscovered(discovery.discovered.value)
             discovery.outcome.value?.let(::onJoinOutcome)
