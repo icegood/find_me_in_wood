@@ -450,6 +450,7 @@ class MainActivity : ComponentActivity() {
                     when {
                         runningId != null -> "Radios"
                         listening -> "Looking for networks to join (see Discover)"
+                        profiles.isEmpty() -> "No networks yet: create one, or find one nearby to join"
                         else -> "No network active: tap “Use this network”"
                     },
                     style = MaterialTheme.typography.labelMedium,
@@ -471,6 +472,9 @@ class MainActivity : ComponentActivity() {
                             showCreate = false
                             createError = null
                             sharing = r.profile
+                            // New and nothing else running: start it, so it can be found
+                            // as the invite says (a running network is never switched away).
+                            if (runningId == null && granted()) SessionService.start(this, r.profile)
                         }
                         is CreateResult.Error -> createError = r.message
                     }
