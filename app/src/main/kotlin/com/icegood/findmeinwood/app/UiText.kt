@@ -44,6 +44,19 @@ internal object UiText {
         }
     }
 
+    /**
+     * FR-8.8: what stops discovery on this phone: networks are found over Bluetooth, and
+     * Android hides nearby phones while Location is off. [finding] words it for the joining
+     * phone, otherwise for the master who should be found. Null when nothing does.
+     */
+    fun discoveryBlocked(bluetoothOn: Boolean, locationOn: Boolean, finding: Boolean): String? {
+        val off = listOfNotNull("Bluetooth".takeIf { !bluetoothOn }, "Location".takeIf { !locationOn })
+        if (off.isEmpty()) return null
+        val what = off.joinToString(" and ") + if (off.size == 1) " is off" else " are off"
+        return if (finding) "$what: no network nearby can show up here."
+        else "Nobody can find this network: $what."
+    }
+
     /** How a member can be reached, from their card: "Bluetooth · Wi-Fi Direct · SMS +380…". */
     fun offers(offers: List<com.icegood.findmeinwood.core.model.LinkOffer>): String =
         if (offers.isEmpty()) "links not announced yet"

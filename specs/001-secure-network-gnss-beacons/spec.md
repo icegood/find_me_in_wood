@@ -157,7 +157,10 @@ frame is encrypted and authenticated with the network's key.
 - FR-8.7 Wi-Fi Direct joins the network's own group by credentials derived from the network
   key (no system dialogs, no strangers): try to join for 20–40 s, then host; an idle host
   gives way after 60–120 s.
-- FR-8.8 Location must be on for scans; the app says so and offers "Turn on Location".
+- FR-8.8 Discovery needs Bluetooth and Location on, on both phones (Android hides nearby
+  phones from scans while Location is off). Whatever is off is named in red with "Turn on"
+  buttons: on the master's running network card, in place of "findable…" ("Nobody can find
+  this network: Bluetooth is off."), and on the joining phone's Discover screen.
 
 ### US-9 — Messenger carrier
 - FR-9.1 "Send my position via messenger…" shares the newest encrypted frame as a

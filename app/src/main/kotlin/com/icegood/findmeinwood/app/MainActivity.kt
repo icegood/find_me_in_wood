@@ -383,7 +383,7 @@ class MainActivity : ComponentActivity() {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Button(
-                    onClick = { showCreate = true },
+                    onClick = { showCreate = true; createError = null },
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Create network") }
                 OutlinedButton(
@@ -423,7 +423,10 @@ class MainActivity : ComponentActivity() {
                                         }) { Text(if (paused) "Share again" else "Pause") }
                                     }
                                 }
-                                if (isRunning) Text(
+                                // The master learns at once when radios stop new people from finding it.
+                                val blocked = isRunning && book?.iAmMaster == true &&
+                                    nowMs >= 0 && DiscoveryBlockers(this@MainActivity, finding = false)
+                                if (isRunning && !blocked) Text(
                                     if (book?.iAmMaster == true) UiText.findable(findableUntil, nowMs)
                                     else "only the network's master can let new people in",
                                     style = MaterialTheme.typography.bodySmall,
@@ -497,7 +500,8 @@ class MainActivity : ComponentActivity() {
 
         if (showCreate) {
             CreateDialog(
-                onDismiss = { showCreate = false },
+                error = createError,
+                onDismiss = { showCreate = false; createError = null },
                 onCreate = { name, passphrase ->
                     when (val r = ProfileStore.create(name, passphrase)) {
                         is CreateResult.Ok -> {
@@ -982,7 +986,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun CreateDialog(onDismiss: () -> Unit, onCreate: (String, String) -> Unit) {
+    private fun CreateDialog(error: String?, onDismiss: () -> Unit, onCreate: (String, String) -> Unit) {
         var name by remember { mutableStateOf("") }
         var pass by remember { mutableStateOf("") }
         AlertDialog(
@@ -998,6 +1002,8 @@ class MainActivity : ComponentActivity() {
                         value = pass, onValueChange = { pass = it },
                         label = { Text("Password (empty = generate one)") }, singleLine = true,
                     )
+                    // Shown here: behind the dialog nobody would see why Create did nothing.
+                    error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 }
             },
             confirmButton = {

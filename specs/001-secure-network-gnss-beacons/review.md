@@ -22,6 +22,7 @@ only (no unit test can see it). Tests: `./gradlew test coverageVerify` (green).
 | FR-4.2 interval 5–300 s, default 60 s | `Prefs` | OK |
 | FR-4.4 pause sharing | `SessionManager.sharingPaused`, card "Pause" | **Fixed** — was missing; test `FR-4_4` |
 | FR-2.6 join by QR | `JoinInvite`, `InviteQr`, Invite dialog, `PasswordDialog` "Scan QR", `fmiw://join` link | OK — tested; QR decoded from the Pixel screen, link joined the P30 |
+| FR-8.8 radios that stop discovery | `UiText.discoveryBlocked`, `DiscoveryBlockers` on the network card and Discover | OK — tested; seen on the Pixel with Bluetooth off (master card and Discover) |
 | FR-4.5 faked satellites | `SpoofGuard`, `AndroidGnssSource`, map status line | OK — tested; seen live on the P30 (GPS said Lima, Wi-Fi Ukraine) |
 | FR-5.3 signature bound to member id; unsigned refused | `SessionManager.verifyOrigin` | **Fixed** — any member could pin a fake key for another member id, unsigned beacons were accepted; test `FR-5_3` |
 | FR-6.2 map, providers, options, offline areas | `MapScreen`, `TileProviders`, `OfflineRegions` (MapLibre) | **Changed** — osmdroid replaced by MapLibre: OpenFreeMap vector default, per-provider options, CARTO needed a key, OSM offline download capped by its tile policy; device: online, saved area, offline with internet off, dark |

@@ -57,21 +57,9 @@ fun DiscoverScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Networks around you", style = MaterialTheme.typography.titleMedium)
+        val blocked = tick >= 0 && DiscoveryBlockers(context, finding = true)
         when {
-            tick >= 0 && !locationOn(context) -> {
-                Text(
-                    "Location is off. Android hides nearby phones from Bluetooth and Wi-Fi " +
-                        "Direct searches while it is off, so no network can show up.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                Button(onClick = {
-                    context.startActivity(
-                        android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                    )
-                }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Location") }
-            }
+            blocked -> Unit
             !running -> {
                 Text(
                     "Turn on the radios to see networks nearby. A network shows up only while " +
@@ -161,6 +149,36 @@ fun DiscoverScreen(
             },
         )
     }
+}
+
+private fun bluetoothOn(ctx: android.content.Context): Boolean = runCatching {
+    ctx.getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled != false
+}.getOrDefault(true)
+
+/**
+ * FR-8.8: says in red what stops discovery here (Bluetooth or Location off), with buttons
+ * to turn it on; true when something does. Called again every few seconds by its screen.
+ */
+@Composable
+internal fun DiscoveryBlockers(ctx: android.content.Context, finding: Boolean): Boolean {
+    val bt = bluetoothOn(ctx)
+    val loc = locationOn(ctx)
+    val why = UiText.discoveryBlocked(bt, loc, finding) ?: return false
+    fun open(intent: android.content.Intent) = runCatching {
+        ctx.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+    Text(why, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (!bt) Button(onClick = {
+            open(android.content.Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE)).onFailure {
+                open(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
+            }
+        }) { Text("Turn on Bluetooth") }
+        if (!loc) Button(onClick = {
+            open(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+        }) { Text("Turn on Location") }
+    }
+    return true
 }
 
 private fun locationOn(ctx: android.content.Context): Boolean = runCatching {
