@@ -1001,6 +1001,8 @@ class MainActivity : ComponentActivity() {
                     OutlinedTextField(
                         value = pass, onValueChange = { pass = it },
                         label = { Text("Password (empty = generate one)") }, singleLine = true,
+                        // No suggestions or autocorrect: keyboards otherwise mangle and remember passwords.
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(autoCorrectEnabled = false, keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
                     )
                     // Shown here: behind the dialog nobody would see why Create did nothing.
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }

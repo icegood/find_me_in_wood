@@ -227,6 +227,8 @@ internal fun PasswordDialog(
                 OutlinedTextField(
                     value = password, onValueChange = { password = it; error = null },
                     label = { Text("Password") }, singleLine = true,
+                    // No suggestions or autocorrect: keyboards otherwise mangle and remember passwords.
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(autoCorrectEnabled = false, keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
                     visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = { TextButton(onClick = { show = !show }) { Text(if (show) "Hide" else "Show") } },
                 )

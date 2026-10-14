@@ -115,6 +115,7 @@ fun AuthScreen(
                 value = password, onValueChange = { password = it },
                 label = { Text("Password") }, singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(autoCorrectEnabled = false, keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
             )
             error?.let {
