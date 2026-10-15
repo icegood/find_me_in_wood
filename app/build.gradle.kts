@@ -8,6 +8,12 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+/** Commits up to HEAD; CI checks out the full history so it counts the same. */
+val commitCount: Int = runCatching {
+    providers.exec { commandLine("git", "rev-list", "--count", "HEAD") }
+        .standardOutput.asText.get().trim().toInt()
+}.getOrDefault(1)
+
 android {
     namespace = "com.icegood.findmeinwood.app"
     compileSdk = 36
@@ -16,8 +22,10 @@ android {
         applicationId = "com.icegood.findmeinwoods"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0"
+        // Every commit on main is released (ci.yml): the version counts the commits, so each
+        // release installs over the one before it.
+        versionCode = commitCount
+        versionName = "0.3.$commitCount"
 
         val googleClientId = (project.findProperty("google.webClientId") as String?)
             ?: properties["google.webClientId"] as String? ?: ""
@@ -26,7 +34,7 @@ android {
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
     // Release signing: fmiw.* in ~/.gradle/gradle.properties locally, KEYSTORE_* env in
-    // CI (release.yml decodes the ANDROID_KEYSTORE_* secrets). Without either, release
+    // CI (ci.yml's release job decodes the ANDROID_KEYSTORE_* secrets). Without either, release
     // outputs stay unsigned rather than silently carrying the debug key.
     // Release signing, same scheme as home_media_library: credentials live in a gitignored
     // keystore.properties at the repo root (storeFile/storePassword/keyAlias/keyPassword).
