@@ -123,12 +123,18 @@ class MainActivity : ComponentActivity() {
                 colorScheme = if (darkTheme) darkColorScheme() else lightColorScheme(),
             ) {
                 var currentUser by remember { mutableStateOf<UserProfile?>(null) }
+                // Signed in = a saved uid. While its profile loads from the encrypted DB the
+                // screen stays empty: drawing Sign In meanwhile flashed it on every launch.
+                var loading by remember { mutableStateOf(Prefs.currentUid(this@MainActivity) != null) }
                 LaunchedEffect(Unit) {
                     authManager.setCurrentUserId(Prefs.currentUid(this@MainActivity))
                     currentUser = authManager.getCurrentUser()
                     Prefs.setCurrentDisplayName(this@MainActivity, currentUser?.displayName)
+                    loading = false
                 }
-                if (currentUser == null) {
+                if (loading) {
+                    Surface(Modifier.fillMaxSize()) {}
+                } else if (currentUser == null) {
                     AuthScreen(
                         onAuthenticated = {
                             Prefs.setCurrentUid(this@MainActivity, it.uid)
