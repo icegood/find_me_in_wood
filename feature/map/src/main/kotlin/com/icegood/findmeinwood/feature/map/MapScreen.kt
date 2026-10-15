@@ -1105,6 +1105,8 @@ private fun age(lastSeenMs: Long): String {
 
 private data class LastView(val lat: Double, val lon: Double, val zoom: Double)
 
+// Without the permission getLastKnownLocation throws, and runCatching makes that "no view".
+@SuppressLint("MissingPermission")
 private fun lastView(context: Context): LastView? {
     val prefs = context.getSharedPreferences("map_view", Context.MODE_PRIVATE)
     if (prefs.contains("lat")) {

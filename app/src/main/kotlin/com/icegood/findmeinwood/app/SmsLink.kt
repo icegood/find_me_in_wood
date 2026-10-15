@@ -57,6 +57,8 @@ internal object SmsSender {
      * True when the phone is currently on a non-terrestrial (satellite) network — Android 15+
      * and READ_PHONE_STATE only; null when unknown. For the link log.
      */
+    // Without READ_PHONE_STATE serviceState throws, and runCatching makes that "unknown".
+    @android.annotation.SuppressLint("MissingPermission")
     fun onSatellite(ctx: Context): Boolean? = runCatching {
         if (android.os.Build.VERSION.SDK_INT < 35) return null
         ctx.getSystemService(TelephonyManager::class.java)?.serviceState?.isUsingNonTerrestrialNetwork

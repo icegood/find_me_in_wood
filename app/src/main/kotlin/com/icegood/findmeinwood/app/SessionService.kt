@@ -390,6 +390,8 @@ class SessionService : Service() {
         )
     }
 
+    // Without the permission getLastKnownLocation throws, and runCatching makes that "no fix".
+    @android.annotation.SuppressLint("MissingPermission")
     private fun lastKnownFix(): GnssFix? = runCatching {
         val lm = getSystemService(android.location.LocationManager::class.java)
         com.icegood.findmeinwood.feature.map.trustedLastKnown(lm.getProviders(true).mapNotNull { lm.getLastKnownLocation(it) })
