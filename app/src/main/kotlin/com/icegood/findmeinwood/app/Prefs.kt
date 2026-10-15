@@ -22,6 +22,15 @@ object Prefs {
     private const val KEY_P2P_OWNER = "p2p_group_owner"
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_MY_PHONE = "my_phone_number"
+    private const val KEY_HOME_ICON_OFFERED = "home_icon_offered"
+
+    /** The one-time "Add to Home screen" offer was made (FR-12.3). */
+    fun homeIconOffered(ctx: Context): Boolean =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY_HOME_ICON_OFFERED, false)
+
+    fun setHomeIconOffered(ctx: Context) {
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_HOME_ICON_OFFERED, true).apply()
+    }
 
     /** FR-4.2/FR-9.2: beacon + share cadence, 5–300 s, default 60 s. */
     const val MIN_INTERVAL_MS = 5_000L

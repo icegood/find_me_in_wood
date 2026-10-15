@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
         }
     }
     private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { offerHomeScreenIcon() }
     /** SMS rung (LNP/3): send + receive, and phone state for the satellite note in the log. */
     private val smsPermissions = arrayOf(
         Manifest.permission.SEND_SMS,
@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) takeInvite(intent)
         // Only when something is missing: an (even instantly answered) permission request
         // puts a transparent screen on top that swallowed the first tap after every launch.
-        if (!granted()) permissionLauncher.launch(permissions.toTypedArray())
+        if (!granted()) permissionLauncher.launch(permissions.toTypedArray()) else offerHomeScreenIcon()
         MemberNames.load(this)
         setContent {
             var themeMode by remember { mutableStateOf(Prefs.themeMode(this@MainActivity)) }
@@ -1016,6 +1016,33 @@ class MainActivity : ComponentActivity() {
             },
             dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
         )
+    }
+
+    /**
+     * FR-12.3: an APK installed by hand lands only in the app drawer (launchers add Play Store
+     * installs to the home screen by themselves), so the first launch offers Android's own
+     * "Add to Home screen" once. Launchers that put every app on the home screen anyway
+     * (Huawei, Honor) are not asked, or the icon would appear twice.
+     */
+    private fun offerHomeScreenIcon() {
+        if (Prefs.homeIconOffered(this)) return
+        Prefs.setHomeIconOffered(this)
+        val launcher = packageManager.resolveActivity(
+            android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME),
+            PackageManager.MATCH_DEFAULT_ONLY,
+        )?.activityInfo?.packageName.orEmpty()
+        if (!homeScreenNeedsOffer(launcher)) return
+        if (!androidx.core.content.pm.ShortcutManagerCompat.isRequestPinShortcutSupported(this)) return
+        val shortcut = androidx.core.content.pm.ShortcutInfoCompat.Builder(this, "home")
+            .setShortLabel("find me in wood")
+            .setIcon(androidx.core.graphics.drawable.IconCompat.createWithResource(this, R.mipmap.ic_launcher))
+            .setIntent(
+                android.content.Intent(android.content.Intent.ACTION_MAIN)
+                    .addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+                    .setClass(this, MainActivity::class.java),
+            )
+            .build()
+        runCatching { androidx.core.content.pm.ShortcutManagerCompat.requestPinShortcut(this, shortcut, null) }
     }
 
     private fun requestRadioPermissions() = permissionLauncher.launch(permissions.toTypedArray())

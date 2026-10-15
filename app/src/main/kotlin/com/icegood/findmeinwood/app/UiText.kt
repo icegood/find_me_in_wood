@@ -74,3 +74,6 @@ internal object UiText {
     }
 }
 
+/** FR-12.3: whether [launcherPackage] needs to be asked to put the app on the home screen. */
+internal fun homeScreenNeedsOffer(launcherPackage: String): Boolean =
+    launcherPackage.isNotEmpty() && listOf("huawei", "honor").none { launcherPackage.contains(it, ignoreCase = true) }

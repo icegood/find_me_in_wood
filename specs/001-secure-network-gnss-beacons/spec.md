@@ -193,6 +193,10 @@ frame is encrypted and authenticated with the network's key.
   Settings overrides it. The name travels in link control and the member card.
 - FR-12.2 Settings: theme, beacon interval, this phone's number (SMS), offline
   maps, LoRa node, Wi-Fi Direct role.
+- FR-12.3 App icon: an adaptive icon (you and a friend joined by a path through the
+  trees) with a one-colour layer for themed icons. A hand-installed APK lands only in the
+  app drawer, so the first launch offers Android's "Add to Home screen" once (not on
+  Huawei/Honor launchers, which put every app on the home screen anyway).
 
 ## 4. Non-functional requirements
 

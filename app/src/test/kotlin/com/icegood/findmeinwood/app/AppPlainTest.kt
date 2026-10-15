@@ -425,6 +425,11 @@ class UiTextTest {
         assertEquals("findable by new members: 10 min left", UiText.findable(600_000, 0))
         assertEquals("findable by new members: 1 min left", UiText.findable(1_000, 0))
         assertTrue(UiText.findable(0, 5).startsWith("not findable"))
+        // FR-12.3: launchers that already put every app on the home screen are not asked.
+        assertTrue(homeScreenNeedsOffer("com.google.android.apps.nexuslauncher"))
+        assertTrue(!homeScreenNeedsOffer("com.huawei.android.launcher"))
+        assertTrue(!homeScreenNeedsOffer("com.hihonor.android.launcher"))
+        assertTrue(!homeScreenNeedsOffer(""))
         // FR-8.8: radios that stop discovery are named, for the master and for the joiner.
         assertNull(UiText.discoveryBlocked(bluetoothOn = true, locationOn = true, finding = true))
         assertEquals("Nobody can find this network: Bluetooth is off.", UiText.discoveryBlocked(false, true, finding = false))
