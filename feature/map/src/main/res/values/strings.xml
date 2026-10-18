@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d m</string>
     <string name="them">them</string>
     <string name="link_exchanging">link: exchanging offers… (heard %1$s)</string>
-    <string name="confirm_link">Confirm link: %1$s</string>
-    <string name="link_waiting">link: %1$s — waiting for %2$s to confirm</string>
+    <string name="link_on">%1$s — connected</string>
+    <string name="link_waiting_for">%1$s — allowed, waiting for %2$s</string>
+    <string name="link_peer_wants">%1$s — %2$s allowed it</string>
+    <string name="link_off">%1$s — off</string>
+    <string name="link_decide">%1$s — allow?</string>
+    <string name="link_allow">Allow</string>
+    <string name="link_decline">No</string>
     <string name="link_chip">link: %1$s ▾</string>
     <string name="link_quiet">%1$s quiet — use %2$s?</string>
     <string name="not_offered_by">not offered by %1$s</string>

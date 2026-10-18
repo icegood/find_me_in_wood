@@ -841,12 +841,12 @@ fun PeerList(
     emptyText: String? = null,
     onRename: ((MemberId, String?) -> Unit)? = null,
     onSelectLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)? = null,
-    onConfirmLink: ((MemberId) -> Unit)? = null,
+    onAllowLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId, Boolean) -> Unit)? = null,
     linkStatuses: List<com.icegood.findmeinwood.core.model.LinkStatus> = emptyList(),
     onLinkFix: ((com.icegood.findmeinwood.core.model.LinkFix) -> Unit)? = null,
 ) {
     val me = rememberDeviceFix(LocalContext.current)?.location
-    PeerList(peers, me, modifier, findTarget, onFind, emptyText, onRename, onSelectLink, onConfirmLink, linkStatuses, onLinkFix)
+    PeerList(peers, me, modifier, findTarget, onFind, emptyText, onRename, onSelectLink, onAllowLink, linkStatuses, onLinkFix)
 }
 
 /** FR-6.4: mapless alternative — distance and bearing to each peer. */
@@ -863,8 +863,8 @@ fun PeerList(
     onRename: ((MemberId, String?) -> Unit)? = null,
     /** Switch the link to a transport of the agreed set (LNP/3, no further handshake). */
     onSelectLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)? = null,
-    /** This user confirms the transports offered by both (LNP/3 handshake step). */
-    onConfirmLink: ((MemberId) -> Unit)? = null,
+    /** This user allows or turns down one transport both offer (LNP/3 handshake step). */
+    onAllowLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId, Boolean) -> Unit)? = null,
     /** Every supported link on this phone; the unusable ones are shown greyed with why. */
     linkStatuses: List<com.icegood.findmeinwood.core.model.LinkStatus> = emptyList(),
     onLinkFix: ((com.icegood.findmeinwood.core.model.LinkFix) -> Unit)? = null,
@@ -910,7 +910,7 @@ fun PeerList(
                     TextButton(onClick = { onFind(peer.memberId) }) { Text(stringResource(R.string.find)) }
                 }
             }
-            LinkRow(peer, onSelectLink, onConfirmLink, linkStatuses)
+            LinkRow(peer, onSelectLink, onAllowLink, linkStatuses)
             UnavailableLinks(peer, linkStatuses, onLinkFix)
         }
     }
@@ -970,68 +970,117 @@ internal fun uncertainty(ctx: Context, peerAccM: Int, myAccM: Int): String {
 }
 
 /**
- * The link to one member: the selected transport, a picker over the transports agreed in
- * the handshake (switching is instant, no new handshake), and — when the selected link has
- * gone quiet — a one-tap suggestion. Nothing switches unless the user taps.
+ * The link to one member: every transport both offer, each allowed or turned down by this
+ * user on its own (a transport connects them only when both users allowed it), then the
+ * selected transport with a picker over the agreed ones (switching is instant, no new
+ * handshake) and — when the selected link has gone quiet — a one-tap suggestion. Nothing
+ * connects or switches unless the user taps.
  */
 @Composable
 private fun LinkRow(
     peer: PeerState,
     onSelect: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)?,
-    onConfirm: ((MemberId) -> Unit)?,
+    onAllow: ((MemberId, com.icegood.findmeinwood.core.model.TransportId, Boolean) -> Unit)?,
     statuses: List<com.icegood.findmeinwood.core.model.LinkStatus>,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth().padding(start = 12.dp),
-    ) {
-        val link = peer.link
-        val ctx = LocalContext.current
-        val them = peer.nickname ?: stringResource(R.string.them)
-        if (link == null) {
-            val common = peer.linkCommon.joinToString { viaLabel(ctx, it) }
-            when {
-                peer.linkCommon.isEmpty() -> Text(
-                    stringResource(R.string.link_exchanging, viaLabel(ctx, peer.transport)),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray,
-                )
-                !peer.linkConfirmedByMe -> Button(onClick = { onConfirm?.invoke(peer.memberId) }, enabled = onConfirm != null) {
-                    Text(stringResource(R.string.confirm_link, common), style = MaterialTheme.typography.labelSmall)
-                }
-                else -> Text(
-                    stringResource(R.string.link_waiting, common, them),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray,
-                )
-            }
-            return@Row
+    val ctx = LocalContext.current
+    val them = peer.nickname ?: stringResource(R.string.them)
+    Column(Modifier.fillMaxWidth().padding(start = 12.dp)) {
+        if (peer.linkCommon.isEmpty()) {
+            Text(
+                stringResource(R.string.link_exchanging, viaLabel(ctx, peer.transport)),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray,
+            )
         }
-        var open by remember { mutableStateOf(false) }
-        Box {
-            OutlinedButton(onClick = { open = true }, enabled = onSelect != null) {
-                Text(stringResource(R.string.link_chip, viaLabel(ctx, link)), style = MaterialTheme.typography.labelSmall)
-            }
-            androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                peer.linkOptions.forEach { t ->
-                    androidx.compose.material3.DropdownMenuItem(
-                        text = { Text((if (t == link) "✓ " else "") + viaLabel(ctx, t)) },
-                        onClick = { open = false; onSelect?.invoke(peer.memberId, t) },
-                    )
+        peer.linkCommon.forEach { t -> TransportDecision(peer, t, them, onAllow) }
+        val link = peer.link ?: return@Column
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            var open by remember { mutableStateOf(false) }
+            Box {
+                OutlinedButton(onClick = { open = true }, enabled = onSelect != null) {
+                    Text(stringResource(R.string.link_chip, viaLabel(ctx, link)), style = MaterialTheme.typography.labelSmall)
                 }
-                unavailableLinks(ctx, peer, statuses).forEach { (label, why) ->
-                    androidx.compose.material3.DropdownMenuItem(
-                        text = { Text("$label — $why", color = Color.Gray) },
-                        onClick = {},
-                        enabled = false,
-                    )
+                androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                    peer.linkOptions.forEach { t ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text((if (t == link) "✓ " else "") + viaLabel(ctx, t)) },
+                            onClick = { open = false; onSelect?.invoke(peer.memberId, t) },
+                        )
+                    }
+                    unavailableLinks(ctx, peer, statuses).forEach { (label, why) ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text("$label — $why", color = Color.Gray) },
+                            onClick = {},
+                            enabled = false,
+                        )
+                    }
+                }
+            }
+            peer.linkSuggestion?.let { t ->
+                TextButton(onClick = { onSelect?.invoke(peer.memberId, t) }) {
+                    Text(stringResource(R.string.link_quiet, viaLabel(ctx, link), viaLabel(ctx, t)), style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
-        peer.linkSuggestion?.let { t ->
-            TextButton(onClick = { onSelect?.invoke(peer.memberId, t) }) {
-                Text(stringResource(R.string.link_quiet, viaLabel(ctx, link), viaLabel(ctx, t)), style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+/** What one transport both offer means for the pair, as shown next to its control. */
+internal enum class LinkDecision { CONNECTED, WAITING, OFF, PEER_WANTS, UNDECIDED }
+
+internal fun linkDecision(peer: PeerState, t: com.icegood.findmeinwood.core.model.TransportId): LinkDecision {
+    val mine = t in peer.linkAllowedByMe
+    val theirs = t in peer.linkAllowedByPeer
+    return when {
+        mine && theirs -> LinkDecision.CONNECTED
+        mine -> LinkDecision.WAITING
+        theirs -> LinkDecision.PEER_WANTS
+        t in peer.linkDeniedByMe -> LinkDecision.OFF
+        else -> LinkDecision.UNDECIDED
+    }
+}
+
+/**
+ * One transport both offer: a switch once this user decided, or Allow / No while the
+ * decision is still open — nothing connects on it before this user allows it.
+ */
+@Composable
+private fun TransportDecision(
+    peer: PeerState,
+    t: com.icegood.findmeinwood.core.model.TransportId,
+    them: String,
+    onAllow: ((MemberId, com.icegood.findmeinwood.core.model.TransportId, Boolean) -> Unit)?,
+) {
+    val ctx = LocalContext.current
+    val label = viaLabel(ctx, t)
+    val decision = linkDecision(peer, t)
+    val decided = t in peer.linkAllowedByMe || t in peer.linkDeniedByMe
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(
+            when (decision) {
+                LinkDecision.CONNECTED -> stringResource(R.string.link_on, label)
+                LinkDecision.WAITING -> stringResource(R.string.link_waiting_for, label, them)
+                LinkDecision.PEER_WANTS -> stringResource(R.string.link_peer_wants, label, them)
+                LinkDecision.OFF -> stringResource(R.string.link_off, label)
+                LinkDecision.UNDECIDED -> stringResource(R.string.link_decide, label)
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = if (decision == LinkDecision.CONNECTED) Color.Unspecified else Color.Gray,
+            modifier = Modifier.weight(1f),
+        )
+        if (decided) {
+            androidx.compose.material3.Switch(
+                checked = t in peer.linkAllowedByMe,
+                onCheckedChange = { on -> onAllow?.invoke(peer.memberId, t, on) },
+                enabled = onAllow != null,
+            )
+        } else {
+            TextButton(onClick = { onAllow?.invoke(peer.memberId, t, false) }, enabled = onAllow != null) {
+                Text(stringResource(R.string.link_decline), style = MaterialTheme.typography.labelSmall)
+            }
+            Button(onClick = { onAllow?.invoke(peer.memberId, t, true) }, enabled = onAllow != null) {
+                Text(stringResource(R.string.link_allow), style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -1046,7 +1095,8 @@ internal fun unavailableLinks(
     peer: PeerState,
     statuses: List<com.icegood.findmeinwood.core.model.LinkStatus>,
 ): List<Pair<String, String>> {
-    val usable = if (peer.link != null) peer.linkOptions else peer.linkCommon
+    // Transports both offer have a row of their own (allowed or not), so only the rest show.
+    val usable = peer.linkCommon + peer.linkOptions
     val offersKnown = peer.link != null || peer.linkCommon.isNotEmpty()
     val links = statuses.filter { it.transport != null }.mapNotNull { s ->
         when {

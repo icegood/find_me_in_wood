@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d μ.</string>
     <string name="them">η άλλη πλευρά</string>
     <string name="link_exchanging">σύνδεση: ανταλλαγή προσφορών… (ακούστηκε μέσω %1$s)</string>
-    <string name="confirm_link">Επιβεβαίωση σύνδεσης: %1$s</string>
-    <string name="link_waiting">σύνδεση: %1$s — αναμονή επιβεβαίωσης: %2$s</string>
+    <string name="link_on">%1$s — συνδεδεμένο</string>
+    <string name="link_waiting_for">%1$s — επιτρέπεται, αναμονή για %2$s</string>
+    <string name="link_peer_wants">%1$s — το επέτρεψε ο/η %2$s</string>
+    <string name="link_off">%1$s — ανενεργό</string>
+    <string name="link_decide">%1$s — να επιτραπεί;</string>
+    <string name="link_allow">Αποδοχή</string>
+    <string name="link_decline">Όχι</string>
     <string name="link_chip">σύνδεση: %1$s ▾</string>
     <string name="link_quiet">Το %1$s σιωπά — χρήση %2$s;</string>
     <string name="not_offered_by">%1$s: δεν το προσφέρει</string>

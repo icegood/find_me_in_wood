@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d मी.</string>
     <string name="them">दूसरा पक्ष</string>
     <string name="link_exchanging">लिंक: ऑफ़र का लेन-देन… (%1$s से सुना)</string>
-    <string name="confirm_link">लिंक की पुष्टि करें: %1$s</string>
-    <string name="link_waiting">लिंक: %1$s — पुष्टि का इंतज़ार: %2$s</string>
+    <string name="link_on">%1$s — जुड़ा हुआ</string>
+    <string name="link_waiting_for">%1$s — अनुमति दी, %2$s की प्रतीक्षा</string>
+    <string name="link_peer_wants">%1$s — %2$s ने अनुमति दी</string>
+    <string name="link_off">%1$s — बंद</string>
+    <string name="link_decide">%1$s — अनुमति दें?</string>
+    <string name="link_allow">अनुमति दें</string>
+    <string name="link_decline">नहीं</string>
     <string name="link_chip">लिंक: %1$s ▾</string>
     <string name="link_quiet">%1$s चुप है — %2$s इस्तेमाल करें?</string>
     <string name="not_offered_by">%1$s यह नहीं देते</string>

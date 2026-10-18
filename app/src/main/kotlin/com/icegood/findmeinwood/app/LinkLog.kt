@@ -217,7 +217,9 @@ internal class LinkLogSampler(
                             put("via", s.transport)
                             val link = edges.values.firstOrNull { it.peer.short() == s.id }
                             put("link", link?.link?.name)
-                            put("agreed", link?.agreed)
+                            put("agreed", link?.agreed?.joinToString())
+                            put("allowedByMe", link?.allowedByMe?.joinToString())
+                            put("allowedByPeer", link?.allowedByPeer?.joinToString())
                             put("suggestion", link?.suggestion?.name)
                             put("common", link?.common?.joinToString())
                         },

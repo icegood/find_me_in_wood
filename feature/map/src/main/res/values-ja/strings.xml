@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d m</string>
     <string name="them">相手</string>
     <string name="link_exchanging">リンク: 候補を交換中…（%1$s で受信）</string>
-    <string name="confirm_link">リンクを確認: %1$s</string>
-    <string name="link_waiting">リンク: %1$s — 確認待ち: %2$s</string>
+    <string name="link_on">%1$s — 接続済み</string>
+    <string name="link_waiting_for">%1$s — 許可済み、%2$s を待機中</string>
+    <string name="link_peer_wants">%1$s — %2$s が許可しました</string>
+    <string name="link_off">%1$s — オフ</string>
+    <string name="link_decide">%1$s — 許可しますか？</string>
+    <string name="link_allow">許可</string>
+    <string name="link_decline">いいえ</string>
     <string name="link_chip">リンク: %1$s ▾</string>
     <string name="link_quiet">%1$s が応答なし — %2$s を使いますか？</string>
     <string name="not_offered_by">%1$s はこれを提供していません</string>

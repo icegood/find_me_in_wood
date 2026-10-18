@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d м</string>
     <string name="them">екінші тарап</string>
     <string name="link_exchanging">байланыс: ұсыныстар алмасылуда… (%1$s арқылы естілді)</string>
-    <string name="confirm_link">Байланысты растау: %1$s</string>
-    <string name="link_waiting">байланыс: %1$s — растау күтілуде: %2$s</string>
+    <string name="link_on">%1$s — қосылған</string>
+    <string name="link_waiting_for">%1$s — рұқсат етілді, %2$s күтілуде</string>
+    <string name="link_peer_wants">%1$s — %2$s рұқсат берді</string>
+    <string name="link_off">%1$s — өшірулі</string>
+    <string name="link_decide">%1$s — рұқсат ету?</string>
+    <string name="link_allow">Рұқсат ету</string>
+    <string name="link_decline">Жоқ</string>
     <string name="link_chip">байланыс: %1$s ▾</string>
     <string name="link_quiet">%1$s үнсіз — %2$s пайдаланылсын ба?</string>
     <string name="not_offered_by">%1$s мұны ұсынбайды</string>

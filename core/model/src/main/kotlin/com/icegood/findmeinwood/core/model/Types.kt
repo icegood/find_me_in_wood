@@ -88,12 +88,20 @@ data class LinkStatus(
     val addr: String? = null,
 )
 
-/** LNP/3 handshake: acknowledges the set of transports agreed with one peer, by hash. */
+/**
+ * LNP/3 handshake: the transports this user allowed for one peer, bound to both addresses
+ * by hash, plus an echo of the peer's own last ack so both know when the step is done.
+ */
 @kotlinx.serialization.Serializable
 data class LinkAck(
     /** First 4 bytes of the peer's member id. */
     val p: ByteArray,
+    /** Hash of the allowed transports [t] with both addresses each. */
     val h: Int,
+    /** Allowed transports; null = every transport both offer. */
+    val t: List<TransportId>? = null,
+    /** The [h] of the peer's last ack received here; null = none yet. */
+    val e: Int? = null,
 )
 
 /** LNP/3: the transport selected for the link with one peer (within the agreed set). */

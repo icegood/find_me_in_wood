@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d m</string>
     <string name="them">druhá strana</string>
     <string name="link_exchanging">spojení: výměna nabídek… (slyšen přes %1$s)</string>
-    <string name="confirm_link">Potvrdit spojení: %1$s</string>
-    <string name="link_waiting">spojení: %1$s — čeká se na potvrzení: %2$s</string>
+    <string name="link_on">%1$s — připojeno</string>
+    <string name="link_waiting_for">%1$s — povoleno, čeká se na %2$s</string>
+    <string name="link_peer_wants">%1$s — %2$s to povolil(a)</string>
+    <string name="link_off">%1$s — vypnuto</string>
+    <string name="link_decide">%1$s — povolit?</string>
+    <string name="link_allow">Povolit</string>
+    <string name="link_decline">Ne</string>
     <string name="link_chip">spojení: %1$s ▾</string>
     <string name="link_quiet">%1$s mlčí — použít %2$s?</string>
     <string name="not_offered_by">%1$s to nenabízí</string>

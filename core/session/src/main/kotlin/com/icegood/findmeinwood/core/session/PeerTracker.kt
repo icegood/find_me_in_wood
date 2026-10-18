@@ -17,16 +17,18 @@ data class PeerState(
     val transport: com.icegood.findmeinwood.core.model.TransportId? = null,
     /** Link transport selected with the peer (LNP/3); null until the handshake is done. */
     val link: com.icegood.findmeinwood.core.model.TransportId? = null,
-    /** Transports agreed in the handshake: the ones the link can be switched to. */
+    /** Transports both users allowed: the ones the link can use and be switched to. */
     val linkOptions: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
     /** Next agreed transport while the selected link is quiet (a hint, never applied). */
     val linkSuggestion: com.icegood.findmeinwood.core.model.TransportId? = null,
-    /** Transports both offer: what the handshake asks the two users to confirm. */
+    /** Transports both offer: what each user decides on, one by one. */
     val linkCommon: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
-    /** This phone's user confirmed [linkCommon]. */
-    val linkConfirmedByMe: Boolean = false,
-    /** The peer's user confirmed it. */
-    val linkConfirmedByPeer: Boolean = false,
+    /** Of [linkCommon], what this phone's user allowed. */
+    val linkAllowedByMe: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
+    /** Of [linkCommon], what this phone's user turned down (the rest is undecided). */
+    val linkDeniedByMe: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
+    /** Of [linkCommon], what the peer's user allowed. */
+    val linkAllowedByPeer: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
 )
 
 /** Pure-Kotlin peer table (FR-6.1/6.3): staleness + purge, injectable clock. */
@@ -56,8 +58,9 @@ class PeerTracker(
             linkOptions = cur?.linkOptions ?: emptyList(),
             linkSuggestion = cur?.linkSuggestion,
             linkCommon = cur?.linkCommon ?: emptyList(),
-            linkConfirmedByMe = cur?.linkConfirmedByMe ?: false,
-            linkConfirmedByPeer = cur?.linkConfirmedByPeer ?: false,
+            linkAllowedByMe = cur?.linkAllowedByMe ?: emptyList(),
+            linkDeniedByMe = cur?.linkDeniedByMe ?: emptyList(),
+            linkAllowedByPeer = cur?.linkAllowedByPeer ?: emptyList(),
         ))
     }
 
@@ -68,13 +71,14 @@ class PeerTracker(
         options: List<com.icegood.findmeinwood.core.model.TransportId>,
         suggestion: com.icegood.findmeinwood.core.model.TransportId?,
         common: List<com.icegood.findmeinwood.core.model.TransportId> = options,
-        confirmedByMe: Boolean = options.isNotEmpty(),
-        confirmedByPeer: Boolean = options.isNotEmpty(),
+        allowedByMe: List<com.icegood.findmeinwood.core.model.TransportId> = options,
+        deniedByMe: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
+        allowedByPeer: List<com.icegood.findmeinwood.core.model.TransportId> = options,
     ) {
         val cur = peers.value[member] ?: return
         val next = cur.copy(
             link = link, linkOptions = options, linkSuggestion = suggestion, linkCommon = common,
-            linkConfirmedByMe = confirmedByMe, linkConfirmedByPeer = confirmedByPeer,
+            linkAllowedByMe = allowedByMe, linkDeniedByMe = deniedByMe, linkAllowedByPeer = allowedByPeer,
         )
         if (next != cur) peers.value = peers.value + (member to next)
     }

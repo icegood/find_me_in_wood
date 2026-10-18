@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d 公尺</string>
     <string name="them">對方</string>
     <string name="link_exchanging">連線：正在交換方式…（經由 %1$s 收到）</string>
-    <string name="confirm_link">確認連線：%1$s</string>
-    <string name="link_waiting">連線：%1$s — 等待確認：%2$s</string>
+    <string name="link_on">%1$s — 已連線</string>
+    <string name="link_waiting_for">%1$s — 已允許，等待 %2$s</string>
+    <string name="link_peer_wants">%1$s — %2$s 已允許</string>
+    <string name="link_off">%1$s — 已關閉</string>
+    <string name="link_decide">%1$s — 允許嗎？</string>
+    <string name="link_allow">允許</string>
+    <string name="link_decline">不</string>
     <string name="link_chip">連線：%1$s ▾</string>
     <string name="link_quiet">%1$s 沒有回應 — 改用 %2$s？</string>
     <string name="not_offered_by">%1$s 未提供這個方式</string>

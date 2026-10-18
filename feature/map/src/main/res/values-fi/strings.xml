@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d m</string>
     <string name="them">toinen osapuoli</string>
     <string name="link_exchanging">yhteys: tarjouksia vaihdetaan… (kuultu: %1$s)</string>
-    <string name="confirm_link">Vahvista yhteys: %1$s</string>
-    <string name="link_waiting">yhteys: %1$s — odotetaan vahvistusta: %2$s</string>
+    <string name="link_on">%1$s — yhdistetty</string>
+    <string name="link_waiting_for">%1$s — sallittu, odotetaan: %2$s</string>
+    <string name="link_peer_wants">%1$s — %2$s salli sen</string>
+    <string name="link_off">%1$s — pois päältä</string>
+    <string name="link_decide">%1$s — sallitaanko?</string>
+    <string name="link_allow">Salli</string>
+    <string name="link_decline">Ei</string>
     <string name="link_chip">yhteys: %1$s ▾</string>
     <string name="link_quiet">%1$s hiljaa — käytetäänkö yhteyttä %2$s?</string>
     <string name="not_offered_by">%1$s ei tarjoa tätä</string>

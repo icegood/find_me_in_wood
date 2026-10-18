@@ -116,7 +116,7 @@ class LinkE2ETest {
         a.session.confirmLinks(b.id)
         round()
         assertNull(b.peer(a)?.link, "A's confirmation alone is not enough")
-        assertEquals(true, b.peer(a)?.linkConfirmedByPeer)
+        assertEquals(listOf(BLUETOOTH, WIFI_DIRECT), b.peer(a)?.linkAllowedByPeer)
         b.session.confirmLinks(a.id)
         round()
         assertEquals(listOf(BLUETOOTH, WIFI_DIRECT), a.peer(b)?.linkOptions)

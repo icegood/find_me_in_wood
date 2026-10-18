@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d м</string>
     <string name="them">другата страна</string>
     <string name="link_exchanging">връзка: обмен на предложения… (чут чрез %1$s)</string>
-    <string name="confirm_link">Потвърди връзката: %1$s</string>
-    <string name="link_waiting">връзка: %1$s — чака се потвърждение: %2$s</string>
+    <string name="link_on">%1$s — свързано</string>
+    <string name="link_waiting_for">%1$s — разрешено, чака се %2$s</string>
+    <string name="link_peer_wants">%1$s — %2$s го разреши</string>
+    <string name="link_off">%1$s — изключено</string>
+    <string name="link_decide">%1$s — разрешаване?</string>
+    <string name="link_allow">Разреши</string>
+    <string name="link_decline">Не</string>
     <string name="link_chip">връзка: %1$s ▾</string>
     <string name="link_quiet">%1$s мълчи — да се използва ли %2$s?</string>
     <string name="not_offered_by">%1$s не предлага това</string>

@@ -142,8 +142,8 @@ class SessionManager(
         // Agreed set, selection and suggestion feed the member list.
         links?.all()?.forEach { v ->
             tracker.setLinkInfo(
-                v.peer, v.link, if (v.agreed) v.common else emptyList(), v.suggestion,
-                common = v.common, confirmedByMe = v.confirmedByMe, confirmedByPeer = v.confirmedByPeer,
+                v.peer, v.link, v.agreed, v.suggestion,
+                common = v.common, allowedByMe = v.allowedByMe, deniedByMe = v.deniedByMe, allowedByPeer = v.allowedByPeer,
             )
         }
         // Answer handshake steps / announce selections at once instead of with the next
@@ -173,9 +173,14 @@ class SessionManager(
         }
     }
 
-    /** This phone's user confirms the transports common with [peer] (LNP/3 handshake). */
+    /** This phone's user allows every transport common with [peer] (LNP/3 handshake). */
     fun confirmLinks(peer: MemberId) {
         links?.let { announce(it.confirm(peer)) }
+    }
+
+    /** This phone's user allows or turns down [t] for the link with [peer] (LNP/3 handshake). */
+    fun allowLink(peer: MemberId, t: TransportId, allow: Boolean) {
+        links?.let { announce(it.allow(peer, t, allow)) }
     }
 
     /** User picked [t] for the link with [peer] (LNP/3: within the agreed set, no handshake). */

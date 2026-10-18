@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d m</string>
     <string name="them">den andre</string>
     <string name="link_exchanging">kobling: utveksler tilbud… (hørt via %1$s)</string>
-    <string name="confirm_link">Bekreft kobling: %1$s</string>
-    <string name="link_waiting">kobling: %1$s — venter på bekreftelse: %2$s</string>
+    <string name="link_on">%1$s — tilkoblet</string>
+    <string name="link_waiting_for">%1$s — tillatt, venter på %2$s</string>
+    <string name="link_peer_wants">%1$s — %2$s har tillatt det</string>
+    <string name="link_off">%1$s — av</string>
+    <string name="link_decide">%1$s — tillat?</string>
+    <string name="link_allow">Tillat</string>
+    <string name="link_decline">Nei</string>
     <string name="link_chip">kobling: %1$s ▾</string>
     <string name="link_quiet">%1$s er stille — bruke %2$s?</string>
     <string name="not_offered_by">%1$s tilbyr ikke dette</string>

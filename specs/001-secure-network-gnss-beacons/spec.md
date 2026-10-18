@@ -64,11 +64,11 @@ frame is encrypted and authenticated with the network's key.
 - FR-3.5 Links are negotiated in-band by LNP/3: one handshake per pair agrees the *set* of
   usable transports; within it the link switches at any time without a new handshake.
   There is no fallback — nothing switches by itself.
-- FR-3.5a Routing follows the agreement: member frames go out only on radios agreed with
-  some peer, and on every agreed radio, so a pair keeps reaching each other while any of
-  its agreed radios does. While a peer heard lately has no agreed set yet (handshake, or a
-  new transport awaiting confirmation) frames go on every radio. Management frames
-  (discovery, joining) are not limited.
+- FR-3.5a Routing follows the decisions: member frames go out only on radios this user
+  allowed for some peer — every allowed radio, so a pair keeps reaching each other while
+  any of its agreed radios does. While a peer heard lately waits for this user's decision
+  (offers unknown, or a common transport not yet decided) frames go on every radio.
+  Management frames (discovery, joining) are not limited.
 - FR-3.5b Wi-Fi Direct roles follow the agreement: of the members in reach (heard within
   3 beacon intervals) agreed on Wi-Fi Direct, the lowest member id hosts the group and the
   others only join; the host never gives up its group. A working group is never torn down
@@ -77,10 +77,12 @@ frame is encrypted and authenticated with the network's key.
   (`link.offers`: BLUETOOTH | WIFI_DIRECT | LORA | SMS + address, e.g. SMS number). An
   offer exists only while usable (radio on, node ready, SMS allowed + own number set).
   Link control rides on beacons when something changed or is pending, else every 5th.
-- FR-3.7 Handshake: the common set (order BLUETOOTH, WIFI_DIRECT, LORA, SMS) is agreed
-  only when the user confirms it on **both** phones ("Confirm link: …"); each phone acks
-  it by hash. A confirmation covers any subset; a new transport or address needs a new
-  one. Nobody is texted without having agreed.
+- FR-3.7 Handshake, per transport: for each transport both offer (order BLUETOOTH,
+  WIFI_DIRECT, LORA, SMS) each user decides on their own phone — Allow / No, then a switch
+  to connect or disconnect it at any time. A transport is agreed only while **both** users
+  allow it. Each phone acks the list it allows, bound to both addresses by hash, and echoes
+  the peer's ack so both know the step is done. A decision holds while the radio is off; a
+  new transport or address needs a new one. Nobody is texted without having agreed.
 - FR-3.7a No waiting: offers go out as soon as a radio link comes up; every handshake step
   and every selection is sent at once in an extra beacon (≤1/s, deferred, never dropped).
 - FR-3.8 Selection: both start on the cheapest agreed transport. Either member may select

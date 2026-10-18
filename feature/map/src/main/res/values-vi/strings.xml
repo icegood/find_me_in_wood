@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d m</string>
     <string name="them">bên kia</string>
     <string name="link_exchanging">kết nối: đang trao đổi đề nghị… (nghe qua %1$s)</string>
-    <string name="confirm_link">Xác nhận kết nối: %1$s</string>
-    <string name="link_waiting">kết nối: %1$s — đang chờ xác nhận: %2$s</string>
+    <string name="link_on">%1$s — đã kết nối</string>
+    <string name="link_waiting_for">%1$s — đã cho phép, đang chờ %2$s</string>
+    <string name="link_peer_wants">%1$s — %2$s đã cho phép</string>
+    <string name="link_off">%1$s — tắt</string>
+    <string name="link_decide">%1$s — cho phép?</string>
+    <string name="link_allow">Cho phép</string>
+    <string name="link_decline">Không</string>
     <string name="link_chip">kết nối: %1$s ▾</string>
     <string name="link_quiet">%1$s im lặng — dùng %2$s?</string>
     <string name="not_offered_by">%1$s không cung cấp</string>

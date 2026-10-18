@@ -12,20 +12,22 @@ import java.util.zip.CRC32
 /**
  * LNP/3, the Link Negotiation Protocol (spec FR-3.5–3.10). Pure Kotlin.
  *
- * - Handshake, once per pair: both list the transports they can use (an SMS offer carries
- *   the number). Each *user* confirms the common set on their own phone ([confirm]); only
- *   then does the phone acknowledge it (hash). The set is agreed when both acknowledged —
- *   i.e. both people confirmed. A confirmation keeps covering any subset of what was
- *   confirmed (a radio switched off); a new transport or address needs a new one.
+ * - Handshake, per transport: both list the transports they can use (an SMS offer carries
+ *   the number). For each transport both offer, each *user* decides on their own phone
+ *   whether it may connect them ([allow]); the phone acknowledges the transports its user
+ *   allowed (list + hash, so both mean the same addresses). A transport is agreed when
+ *   both users allowed it, and stops being agreed as soon as either one disallows it. A
+ *   decision keeps holding while the radio is off; a new transport or address needs a new
+ *   one.
  * - Selection, any time, no further handshake: either side picks a transport within the
  *   agreed set ([select]); it applies at once and is announced in the next beacons, where
  *   the peer applies it too. The higher selection epoch is current; equal: lower id wins.
- * - Default: once agreed, both start on the cheapest common transport — computed the same
+ * - Default: once agreed, both start on the cheapest agreed transport — computed the same
  *   on both sides, so nothing needs to be sent.
  * - No fallback: nothing switches by itself. When the selected link goes quiet the
  *   negotiator only [suggest]s the next agreed transport; switching is the user's choice.
- * - Routing: frames go out only on radios some pair agreed on ([radios]); every agreed
- *   radio carries them, so a pair stays in touch while any of its agreed radios reaches.
+ * - Routing: frames go out only on radios this user allowed for some peer ([radios]), so
+ *   a pair stays in touch while any of its agreed radios reaches.
  * - Wi-Fi Direct roles follow from the agreement ([wifiDirectRole]): the lowest member id
  *   hosts the group — computed the same on every phone, so nothing needs to be sent.
  */
@@ -56,15 +58,17 @@ class LinkNegotiator(
     /** Read-only view of one peer link. */
     data class LinkView(
         val peer: MemberId,
-        /** Transports both offer, in standard order. */
+        /** Transports both offer, in standard order: what each user decides on. */
         val common: List<TransportId>,
-        /** Handshake done: both people confirmed the same set. */
-        val agreed: Boolean,
-        /** This phone's user has confirmed the current common set. */
-        val confirmedByMe: Boolean,
-        /** The peer's user has confirmed it (their acknowledgement matches). */
-        val confirmedByPeer: Boolean,
-        /** Selected link; null until agreed. */
+        /** Transports both users allowed: the ones the link can use. */
+        val agreed: List<TransportId>,
+        /** Common transports this phone's user allowed. */
+        val allowedByMe: List<TransportId>,
+        /** Common transports this phone's user turned down. */
+        val deniedByMe: List<TransportId>,
+        /** Common transports the peer's user allowed (their acknowledgement matches). */
+        val allowedByPeer: List<TransportId>,
+        /** Selected link; null until something is agreed. */
         val link: TransportId?,
         /** Next agreed transport when the selected link is quiet; never applied by itself. */
         val suggestion: TransportId?,
@@ -73,7 +77,11 @@ class LinkNegotiator(
 
     private class Peer {
         var offers: List<LinkOffer>? = null
-        var theirAck: Int? = null
+        /** Their last acknowledgement for us: allowed transports (null = all common) + hash. */
+        var theirAckT: List<TransportId>? = null
+        var theirAckH: Int? = null
+        /** Their echo of our last acknowledgement they received. */
+        var theirEcho: Int? = null
         val heard = HashMap<TransportId, Long>()
         var lastHeardMs = 0L
         /** Explicit selection (from either side); null = the default. */
@@ -82,8 +90,10 @@ class LinkNegotiator(
         var selectedAtMs = 0L
         var announce = 0
         var shown: TransportId? = null
-        /** What this user confirmed for the peer: transport -> the two addresses then. */
-        var confirmed: Set<String> = emptySet()
+        /** What this user decided for the peer: transport + the two addresses then -> allowed. */
+        val decisions = HashMap<String, Boolean>()
+        /** We decided something for this peer (an empty allowed list is an answer too). */
+        var acking = false
     }
 
     private val peers = HashMap<MemberId, Peer>()
@@ -92,6 +102,7 @@ class LinkNegotiator(
     private var dirty = true
     private var beaconCount = 0
     private val ackSent = HashMap<MemberId, Int>()
+    private val echoSent = HashMap<MemberId, Int?>()
     /** The peer is waiting for our answer (handshake step or a selection to announce). */
     private var urgent = false
 
@@ -136,14 +147,20 @@ class LinkNegotiator(
     @Synchronized
     fun outgoing(): LinkCtl? {
         beaconCount++
-        // Acknowledge only what this phone's user confirmed.
-        val acks = peers.mapNotNull { (id, p) -> p.offers?.takeIf { confirmedByMe(id, p) }?.let { id to LinkAck(prefix(id), hash(id, it)) } }
-        val handshaking = acks.any { (id, ack) -> ackSent[id] != ack.h || peers[id]?.theirAck != ack.h }
+        // Acknowledge exactly what this phone's user allowed, echoing the peer's own ack.
+        val acks = peers.mapNotNull { (id, p) ->
+            val offers = p.offers ?: return@mapNotNull null
+            if (!p.acking) return@mapNotNull null
+            val allowed = allowedByMe(id, p)
+            id to LinkAck(prefix(id), ackHash(id, offers, allowed), allowed, p.theirAckH)
+        }
+        // Until the peer echoes our ack, and until we echoed theirs.
+        val handshaking = acks.any { (id, ack) -> ackSent[id] != ack.h || peers[id]?.theirEcho != ack.h || echoSent[id] != ack.e }
         val sels = peers.filter { (_, p) -> p.announce > 0 && p.selected != null }
         if (!dirty && !handshaking && sels.isEmpty() && beaconCount % OFFERS_EVERY != 0) return null
         dirty = false
         urgent = false
-        acks.forEach { (id, ack) -> ackSent[id] = ack.h }
+        acks.forEach { (id, ack) -> ackSent[id] = ack.h; echoSent[id] = ack.e }
         sels.values.forEach { it.announce-- }
         return LinkCtl(
             offers = myOffers,
@@ -169,13 +186,16 @@ class LinkNegotiator(
         }
         if (ctl != null && ctl.v == 3) {
             val offers = ctl.offers.filter { it.t in RUNGS }.distinctBy { it.t }
-            val theirAck = ctl.acks.firstOrNull { it.p.contentEquals(prefix(self)) }?.h
-            // New offers need our ack; a missing/wrong ack means they lack our offers or ack.
-            val h = hash(peer, offers)
-            val ourAckDue = confirmedFor(p, peer, offers) && ackSent[peer] != h
-            if (offers != p.offers || ourAckDue || confirmedFor(p, peer, offers) && theirAck != h) urgent = true
+            val ack = ctl.acks.firstOrNull { it.p.contentEquals(prefix(self)) }
+            // Answer at once: new offers, a changed ack (to echo), or ours not yet echoed.
+            val mine = if (p.acking) ackHash(peer, offers, allowedByMe(peer, p, offers)) else null
+            if (offers != p.offers || ack?.h != p.theirAckH || ack?.t != p.theirAckT ||
+                mine != null && (ackSent[peer] != mine || ack?.e != mine)
+            ) urgent = true
             p.offers = offers
-            p.theirAck = theirAck
+            p.theirAckT = ack?.t
+            p.theirAckH = ack?.h
+            p.theirEcho = ack?.e
             ctl.sel.firstOrNull { it.p.contentEquals(prefix(self)) }?.let { s ->
                 val newer = s.e > p.epoch || s.e == p.epoch && s.t != p.selected && hex(peer) < hex(self)
                 if (newer && s.t in agreedSet(peer, p)) {
@@ -189,19 +209,26 @@ class LinkNegotiator(
     }
 
     /**
-     * This phone's user confirms the transports currently common with [peer] (handshake
-     * step). The acknowledgement goes out at once; the set is agreed when the peer's user
-     * has confirmed too.
+     * This phone's user allows ([allow] true) or turns down [t] for the link with [peer].
+     * The acknowledgement goes out at once; [t] is agreed once the peer's user allowed it
+     * too, and stops being agreed at once when either turns it down.
      */
     @Synchronized
-    fun confirm(peer: MemberId): List<Switch> {
+    fun allow(peer: MemberId, t: TransportId, allow: Boolean): List<Switch> {
         val p = peers[peer] ?: return emptyList()
         val offers = p.offers ?: return emptyList()
-        p.confirmed = p.confirmed + entries(peer, offers)
+        val e = entry(t, offers) ?: return emptyList()
+        p.decisions[e] = allow
+        p.acking = true
         dirty = true
         urgent = true
         return listOfNotNull(changed(peer, p))
     }
+
+    /** This phone's user allows every transport currently common with [peer]. */
+    @Synchronized
+    fun confirm(peer: MemberId): List<Switch> =
+        common(peer).flatMap { allow(peer, it, true) }.lastOrNull()?.let { listOf(it) } ?: emptyList()
 
     /** Selects [t] for the link with [peer], at once; false when [t] is not in the agreed set. */
     @Synchronized
@@ -221,15 +248,18 @@ class LinkNegotiator(
     fun tick(): List<Switch> = peers.mapNotNull { (id, p) -> changed(id, p) }
 
     /**
-     * Radios frames go out on: those agreed with any peer, or every radio (null) while a
-     * peer heard lately has no agreed set yet (its handshake must get through) or nothing
-     * is agreed at all. Radios outside [RUNGS] are not negotiated and never limited.
+     * Radios frames go out on: those this user allowed for any peer, or every radio (null)
+     * while nobody was met yet or a peer heard lately waits for this user's decision (its
+     * offers and the handshake must get through). Radios outside [RUNGS] are not
+     * negotiated and never limited.
      */
     @Synchronized
     fun radios(): Set<TransportId>? {
+        if (peers.isEmpty()) return null
         val now = nowMs()
-        if (peers.any { (id, p) -> agreedSet(id, p).isEmpty() && heardLately(p, now) }) return null
-        return peers.flatMap { (id, p) -> agreedSet(id, p) }.toSet().ifEmpty { null }
+        val pending = peers.any { (id, p) -> heardLately(p, now) && (p.offers == null || undecided(id, p).isNotEmpty()) }
+        if (pending) return null
+        return peers.flatMap { (id, p) -> allowedByMe(id, p) }.toSet()
     }
 
     /**
@@ -264,20 +294,25 @@ class LinkNegotiator(
 
     @Synchronized
     fun all(): List<LinkView> = peers.map { (id, p) ->
+        val common = p.offers?.let { commonOf(it) } ?: emptyList()
+        val mine = allowedByMe(id, p)
         LinkView(
-            id, p.offers?.let { commonOf(it) } ?: emptyList(), agreedSet(id, p).isNotEmpty(),
-            confirmedByMe(id, p), p.offers?.let { p.theirAck == hash(id, it) } ?: false,
-            linkOf(id, p), suggestionOf(id, p), p.lastHeardMs,
+            id, common, agreedSet(id, p), mine,
+            common.filter { t -> p.offers?.let { entry(t, it) }?.let { p.decisions[it] } == false },
+            allowedByPeer(id, p), linkOf(id, p), suggestionOf(id, p), p.lastHeardMs,
         )
     }
 
-    /** Canonical hash of the pair's common set incl. addresses; both sides compute the same. */
+    /** Canonical hash of the pair's whole common set incl. addresses (an ack allowing all). */
     @Synchronized
-    fun hash(peer: MemberId, theirOffers: List<LinkOffer>): Int {
+    fun hash(peer: MemberId, theirOffers: List<LinkOffer>): Int = ackHash(peer, theirOffers, commonOf(theirOffers))
+
+    /** Canonical hash of [ts] with both addresses each; both sides compute the same. */
+    private fun ackHash(peer: MemberId, theirOffers: List<LinkOffer>, ts: List<TransportId>): Int {
         val meFirst = hex(self) < hex(peer)
         val (lo, hi) = if (meFirst) self to peer else peer to self
         val sb = StringBuilder("LNP3|").append(hex(lo)).append('|').append(hex(hi))
-        for (t in commonOf(theirOffers)) {
+        for (t in RUNGS.filter { it in ts }) {
             val mine = myOffers.first { it.t == t }.addr.orEmpty()
             val theirs = theirOffers.first { it.t == t }.addr.orEmpty()
             val (a, b) = if (meFirst) mine to theirs else theirs to mine
@@ -292,23 +327,39 @@ class LinkNegotiator(
         return RUNGS.filter { it in mine && it in their }
     }
 
+    /** Transports both users allowed, in standard order. */
     private fun agreedSet(id: MemberId, p: Peer): List<TransportId> {
-        val offers = p.offers ?: return emptyList()
-        val both = confirmedFor(p, id, offers) && p.theirAck == hash(id, offers)
-        return if (both) commonOf(offers) else emptyList()
+        val theirs = allowedByPeer(id, p)
+        return allowedByMe(id, p).filter { it in theirs }
     }
 
-    /** One confirmable entry per common transport, including both addresses. */
-    private fun entries(id: MemberId, theirs: List<LinkOffer>): Set<String> = commonOf(theirs).map { t ->
-        "${t.name}:${myOffers.first { it.t == t }.addr.orEmpty()}:${theirs.first { it.t == t }.addr.orEmpty()}"
-    }.toSet()
-
-    private fun confirmedFor(p: Peer, id: MemberId, theirs: List<LinkOffer>): Boolean {
-        val e = entries(id, theirs)
-        return e.isNotEmpty() && p.confirmed.containsAll(e)
+    /** The decision key of a common transport: it and both addresses (null = not common). */
+    private fun entry(t: TransportId, theirs: List<LinkOffer>): String? {
+        val mine = myOffers.firstOrNull { it.t == t } ?: return null
+        val their = theirs.firstOrNull { it.t == t } ?: return null
+        return "${t.name}:${mine.addr.orEmpty()}:${their.addr.orEmpty()}"
     }
 
-    private fun confirmedByMe(id: MemberId, p: Peer): Boolean = p.offers?.let { confirmedFor(p, id, it) } ?: false
+    private fun allowedByMe(id: MemberId, p: Peer, offers: List<LinkOffer>? = p.offers): List<TransportId> {
+        val o = offers ?: return emptyList()
+        return commonOf(o).filter { t -> p.decisions[entry(t, o)] == true }
+    }
+
+    /** Common transports this user has not decided on yet. */
+    private fun undecided(id: MemberId, p: Peer): List<TransportId> {
+        val o = p.offers ?: return emptyList()
+        return commonOf(o).filter { t -> entry(t, o) !in p.decisions }
+    }
+
+    /** What the peer's user allowed, when their ack matches what this phone sees. */
+    private fun allowedByPeer(id: MemberId, p: Peer): List<TransportId> {
+        val o = p.offers ?: return emptyList()
+        val h = p.theirAckH ?: return emptyList()
+        val common = commonOf(o)
+        val ts = p.theirAckT ?: common
+        if (!common.containsAll(ts) || ackHash(id, o, ts) != h) return emptyList()
+        return common.filter { it in ts }
+    }
 
     /** Explicit selection while it is still in the agreed set, else the cheapest agreed one. */
     private fun linkOf(id: MemberId, p: Peer): TransportId? {

@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d m</string>
     <string name="them">druga strona</string>
     <string name="link_exchanging">połączenie: wymiana ofert… (słychać przez %1$s)</string>
-    <string name="confirm_link">Potwierdź połączenie: %1$s</string>
-    <string name="link_waiting">połączenie: %1$s — czekam na potwierdzenie: %2$s</string>
+    <string name="link_on">%1$s — połączono</string>
+    <string name="link_waiting_for">%1$s — zezwolono, czekamy na %2$s</string>
+    <string name="link_peer_wants">%1$s — %2$s zezwala</string>
+    <string name="link_off">%1$s — wyłączone</string>
+    <string name="link_decide">%1$s — zezwolić?</string>
+    <string name="link_allow">Zezwól</string>
+    <string name="link_decline">Nie</string>
     <string name="link_chip">połączenie: %1$s ▾</string>
     <string name="link_quiet">%1$s milczy — użyć %2$s?</string>
     <string name="not_offered_by">%1$s tego nie oferuje</string>

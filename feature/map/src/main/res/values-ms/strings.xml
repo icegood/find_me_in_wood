@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d m</string>
     <string name="them">pihak lain</string>
     <string name="link_exchanging">pautan: bertukar tawaran… (didengar melalui %1$s)</string>
-    <string name="confirm_link">Sahkan pautan: %1$s</string>
-    <string name="link_waiting">pautan: %1$s — menunggu pengesahan: %2$s</string>
+    <string name="link_on">%1$s — bersambung</string>
+    <string name="link_waiting_for">%1$s — dibenarkan, menunggu %2$s</string>
+    <string name="link_peer_wants">%1$s — %2$s membenarkannya</string>
+    <string name="link_off">%1$s — mati</string>
+    <string name="link_decide">%1$s — benarkan?</string>
+    <string name="link_allow">Benarkan</string>
+    <string name="link_decline">Tidak</string>
     <string name="link_chip">pautan: %1$s ▾</string>
     <string name="link_quiet">%1$s senyap — guna %2$s?</string>
     <string name="not_offered_by">%1$s tidak menawarkan ini</string>

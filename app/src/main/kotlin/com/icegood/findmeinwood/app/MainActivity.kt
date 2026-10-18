@@ -301,7 +301,7 @@ class MainActivity : ComponentActivity() {
                         namedPeers,
                         onRename = { id, name -> MemberNames.rename(this@MainActivity, id, name) },
                         onSelectLink = { id, t -> SessionService.activeManager?.selectLink(id, t) },
-                        onConfirmLink = { id -> SessionService.activeManager?.confirmLinks(id) },
+                        onAllowLink = { id, t, on -> SessionService.activeManager?.allowLink(id, t, on) },
                         linkStatuses = SessionBus.linkStatuses.collectAsState().value,
                         onLinkFix = { fix ->
                             when (fix) {

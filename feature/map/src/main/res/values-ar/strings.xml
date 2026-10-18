@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d م</string>
     <string name="them">الطرف الآخر</string>
     <string name="link_exchanging">الوصلة: تبادل العروض… (مسموع عبر %1$s)</string>
-    <string name="confirm_link">تأكيد الوصلة: %1$s</string>
-    <string name="link_waiting">الوصلة: %1$s — في انتظار التأكيد: %2$s</string>
+    <string name="link_on">%1$s — متصل</string>
+    <string name="link_waiting_for">%1$s — مسموح، بانتظار %2$s</string>
+    <string name="link_peer_wants">%1$s — سمح به %2$s</string>
+    <string name="link_off">%1$s — متوقف</string>
+    <string name="link_decide">%1$s — السماح؟</string>
+    <string name="link_allow">سماح</string>
+    <string name="link_decline">لا</string>
     <string name="link_chip">الوصلة: %1$s ▾</string>
     <string name="link_quiet">%1$s صامت — استخدام %2$s؟</string>
     <string name="not_offered_by">%1$s لا يعرض هذا</string>

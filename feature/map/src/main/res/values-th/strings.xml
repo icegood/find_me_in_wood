@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d ม.</string>
     <string name="them">อีกฝ่าย</string>
     <string name="link_exchanging">การเชื่อมต่อ: กำลังแลกข้อเสนอ… (ได้ยินผ่าน %1$s)</string>
-    <string name="confirm_link">ยืนยันการเชื่อมต่อ: %1$s</string>
-    <string name="link_waiting">การเชื่อมต่อ: %1$s — กำลังรอการยืนยัน: %2$s</string>
+    <string name="link_on">%1$s — เชื่อมต่อแล้ว</string>
+    <string name="link_waiting_for">%1$s — อนุญาตแล้ว รอ %2$s</string>
+    <string name="link_peer_wants">%1$s — %2$s อนุญาตแล้ว</string>
+    <string name="link_off">%1$s — ปิด</string>
+    <string name="link_decide">%1$s — อนุญาตไหม</string>
+    <string name="link_allow">อนุญาต</string>
+    <string name="link_decline">ไม่</string>
     <string name="link_chip">การเชื่อมต่อ: %1$s ▾</string>
     <string name="link_quiet">%1$s เงียบ — ใช้ %2$s ไหม</string>
     <string name="not_offered_by">%1$s ไม่ได้เสนอสิ่งนี้</string>

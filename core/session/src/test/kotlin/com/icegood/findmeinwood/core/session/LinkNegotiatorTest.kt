@@ -53,9 +53,9 @@ class LinkNegotiatorTest {
         repeat(3) { exchange() }
         assertFalse(a.agreed(idB), "only A's user confirmed")
         assertFalse(b.agreed(idA))
-        assertTrue(a.all().single().confirmedByMe)
-        assertTrue(b.all().single().confirmedByPeer, "B sees that A confirmed")
-        assertFalse(b.all().single().confirmedByMe)
+        assertEquals(listOf(BLUETOOTH, WIFI_DIRECT), a.all().single().allowedByMe)
+        assertEquals(listOf(BLUETOOTH, WIFI_DIRECT), b.all().single().allowedByPeer, "B sees that A confirmed")
+        assertTrue(b.all().single().allowedByMe.isEmpty())
         b.confirm(idA)
         repeat(2) { exchange() }
         assertTrue(a.agreed(idB) && b.agreed(idA))
@@ -71,7 +71,8 @@ class LinkNegotiatorTest {
         assertEquals(listOf(BLUETOOTH), a.common(idB))
         b.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(SMS, "+380099"))) // new number
         repeat(2) { exchange() }
-        assertFalse(a.agreed(idB), "the new SMS number was never confirmed")
+        assertEquals(listOf(BLUETOOTH), a.all().single().agreed, "the new SMS number was never confirmed; Bluetooth stays")
+        assertEquals(listOf(SMS), a.all().single().let { v -> v.common - v.allowedByMe.toSet() - v.deniedByMe.toSet() })
         a.confirm(idB); b.confirm(idA)
         repeat(2) { exchange() }
         assertTrue(a.agreed(idB))
@@ -205,5 +206,56 @@ class LinkNegotiatorTest {
         b.setOffers(listOf(LinkOffer(BLUETOOTH))) // B switched Wi-Fi off
         repeat(2) { exchange() }
         assertNull(a.wifiDirectRole(), "Wi-Fi Direct no longer agreed")
+    }
+
+    @Test
+    fun `each transport is allowed on its own and connects only when both users allowed it`() {
+        a.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT)))
+        b.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT)))
+        exchange()
+        a.allow(idB, WIFI_DIRECT, true)
+        b.allow(idA, BLUETOOTH, true)
+        repeat(2) { exchange() }
+        assertTrue(a.all().single().agreed.isEmpty(), "nothing both allowed")
+        assertEquals(listOf(BLUETOOTH), a.all().single().allowedByPeer)
+        b.allow(idA, WIFI_DIRECT, true)
+        repeat(2) { exchange() }
+        assertEquals(listOf(WIFI_DIRECT), a.all().single().agreed)
+        assertEquals(WIFI_DIRECT, a.link(idB))
+        assertEquals(WIFI_DIRECT, b.link(idA))
+        a.allow(idB, BLUETOOTH, false) // A turns Bluetooth down explicitly
+        repeat(2) { exchange() }
+        assertEquals(listOf(BLUETOOTH), a.all().single().deniedByMe)
+        assertEquals(setOf(WIFI_DIRECT), a.radios(), "A transmits only on what its user allowed")
+        b.allow(idA, WIFI_DIRECT, false) // B disconnects Wi-Fi Direct
+        exchange()
+        assertTrue(a.all().single().agreed.isEmpty() && b.all().single().agreed.isEmpty())
+        assertNull(a.link(idB))
+        assertEquals(setOf(BLUETOOTH), b.radios())
+    }
+
+    @Test
+    fun `an ack goes out until the peer echoes it, then link control rests`() {
+        a.setOffers(listOf(LinkOffer(BLUETOOTH)))
+        b.setOffers(listOf(LinkOffer(BLUETOOTH)))
+        exchange()
+        a.allow(idB, BLUETOOTH, true)
+        assertTrue(a.replyNow(), "a decision is announced at once")
+        b.allow(idA, BLUETOOTH, true)
+        repeat(3) { exchange() }
+        assertTrue(a.agreed(idB) && b.agreed(idA))
+        assertFalse(a.replyNow() || b.replyNow(), "both acks echoed: nothing pending")
+        assertEquals(1, (1..LinkNegotiator.OFFERS_EVERY).count { a.outgoing() != null })
+    }
+
+    @Test
+    fun `an ack from an older version without a list allows every common transport`() {
+        a.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT)))
+        val theirs = listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT))
+        a.onFrame(idB, BLUETOOTH, true, LinkCtl(offers = theirs))
+        a.confirm(idB)
+        val legacy = com.icegood.findmeinwood.core.model.LinkAck(LinkNegotiator.prefix(idA), a.hash(idB, theirs))
+        a.onFrame(idB, BLUETOOTH, true, LinkCtl(offers = theirs, acks = listOf(legacy)))
+        assertEquals(listOf(BLUETOOTH, WIFI_DIRECT), a.all().single().agreed)
     }
 }

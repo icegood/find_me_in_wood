@@ -73,8 +73,13 @@
     <string name="plus_minus_m">±%1$d m</string>
     <string name="them">друга страна</string>
     <string name="link_exchanging">веза: размена понуда… (чује се преко %1$s)</string>
-    <string name="confirm_link">Потврди везу: %1$s</string>
-    <string name="link_waiting">веза: %1$s — чека се потврда: %2$s</string>
+    <string name="link_on">%1$s — повезано</string>
+    <string name="link_waiting_for">%1$s — дозвољено, чека се %2$s</string>
+    <string name="link_peer_wants">%1$s — %2$s је дозволио/ла</string>
+    <string name="link_off">%1$s — искључено</string>
+    <string name="link_decide">%1$s — дозволити?</string>
+    <string name="link_allow">Дозволи</string>
+    <string name="link_decline">Не</string>
     <string name="link_chip">веза: %1$s ▾</string>
     <string name="link_quiet">%1$s ћути — користити %2$s?</string>
     <string name="not_offered_by">%1$s то не нуди</string>
