@@ -178,6 +178,19 @@ class ProfileStoreDirTest {
     }
 
     @Test
+    fun `network key epochs and the newest rekey persist with the profile`() {
+        val d = dir()
+        ProfileStore.add(d, stored())
+        val salt = ByteArray(32) { 7 }
+        ProfileStore.setEpochs(d, "aabbccddeeff0011", mapOf(2 to salt), byteArrayOf(1, 2, 3))
+        val p = ProfileStore.load(d).single()
+        assertTrue(ProfileStore.salts(p)[2]!!.contentEquals(salt))
+        assertTrue(ProfileStore.rekey(p)!!.contentEquals(byteArrayOf(1, 2, 3)))
+        ProfileStore.setEpochs(d, "aabbccddeeff0011", emptyMap(), null)
+        assertEquals(null, ProfileStore.rekey(ProfileStore.load(d).single()))
+    }
+
+    @Test
     fun `context delegates hit the same store`() {
         val d = dir()
         val ctx = ctxWithDir(d)
@@ -270,6 +283,16 @@ class IdentityHolderTest {
         assertTrue(first.public.encoded.contentEquals(again.public.encoded))
         assertTrue(first.private.encoded.contentEquals(again.private.encoded))
         assertEquals(32, com.icegood.findmeinwood.core.crypto.Identity.memberIdOf(again).size)
+    }
+
+    @Test
+    fun `box key pair survives a restart and is an agreement key`() {
+        val file = Files.createTempDirectory("id").toFile().resolve("device_box.key")
+        val gen = { com.icegood.findmeinwood.core.crypto.EpochKeys.boxKeyPair() }
+        val first = IdentityHolder.loadOrCreate(file, gen) { true }
+        val again = IdentityHolder.loadOrCreate(file, gen) { true }
+        assertTrue(first.public.encoded.contentEquals(again.public.encoded))
+        assertEquals("EC", again.private.algorithm)
     }
 
     @Test

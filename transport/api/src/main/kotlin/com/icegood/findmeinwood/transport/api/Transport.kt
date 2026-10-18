@@ -70,4 +70,11 @@ interface Transport {
      * is agreed: the radio then picks one itself. Radios without groups ignore it.
      */
     fun setGroupRole(role: GroupRole?) {}
+
+    /**
+     * The network key moved to a new epoch (a member was removed): radios use [current]
+     * from now on ([SessionConfig.groupSecret] was the one at start). [older] secrets only
+     * recognise members that missed the rekey, so they can be handed the new key.
+     */
+    fun setGroupSecrets(current: ByteArray, older: List<ByteArray>) {}
 }

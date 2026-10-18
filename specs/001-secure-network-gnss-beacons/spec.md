@@ -12,7 +12,8 @@ frame is encrypted and authenticated with the network's key.
 
 ## 2. Concepts
 
-- **Network** — a name (local label) + a password. All keys derive from the password.
+- **Network** — a name (local label) + a password. All keys derive from the password;
+  removing a member re-salts the traffic key (FR-8.9).
 - **Member** — a phone in a network. Its **member id** is the SHA-256 of its device
   identity public key, the same key that signs its beacons, in every network.
 - **Master** — the phone that created the network. Only the master lets people in and
@@ -173,6 +174,16 @@ frame is encrypted and authenticated with the network's key.
 - FR-8.7 Wi-Fi Direct joins the network's own group by credentials derived from the network
   key (no system dialogs, no strangers): try to join for 20–40 s, then host; an idle host
   gives way after 60–120 s.
+- FR-8.9 Removing a member re-salts the network key: the master draws a new random salt
+  (epoch n+1; traffic key = HKDF(epoch-0 key, salt)) and seals it to every remaining
+  member's box key (EC P-256, published on its signed card) in a master-signed rekey that
+  carries the member list. The removed member keeps only the older keys, so it reads no
+  frame, finds no Bluetooth members code and cannot join the Wi-Fi Direct group, all of
+  which follow the traffic key. A member that missed the rekey is recognised by its older
+  key (Bluetooth also accepts older members codes) and handed the rekey at once; one whose
+  box key the master did not have sends its card and is sealed in by a new revision.
+  Frames under an older key count for nothing else. The epoch salts and the newest rekey
+  are kept with the network.
 - FR-8.8 Discovery needs Bluetooth and Location on, on both phones (Android hides nearby
   phones from scans while Location is off). Whatever is off is named in red with "Turn on"
   buttons: on the master's running network card, in place of "findable…" ("Nobody can find
@@ -230,5 +241,6 @@ frame is encrypted and authenticated with the network's key.
 
 ## 5. Out of scope (v1)
 
-iOS; master transfer; locking out a removed member (key rotation); foreign meshes;
+iOS; master transfer; locking a removed member out of a password network for good (it
+can come back with the password under a new identity, like anyone who has it); foreign meshes;
 auto-restart after reboot.

@@ -31,15 +31,16 @@ object MemberBookStore {
     private fun file(dir: File, net: NetworkId) =
         dir.resolve("book-${net.bytes.joinToString("") { "%02x".format(it) }}.bin")
 
-    internal fun load(dir: File, net: NetworkId, me: KeyPair, masterId: MemberId?): MemberBook =
-        MemberBook(net, me, masterId).apply {
+    internal fun load(dir: File, net: NetworkId, me: KeyPair, masterId: MemberId?, myBox: ByteArray? = null): MemberBook =
+        MemberBook(net, me, masterId, myBox).apply {
             SealedFiles.read(file(dir, net))?.let { RosterCodec.decode(it) }?.let { merge(it) }
         }
 
     internal fun save(dir: File, net: NetworkId, book: MemberBook) =
         runCatching { SealedFiles.write(file(dir, net), RosterCodec.encode(book.toSync())) }
 
-    fun load(ctx: Context, net: NetworkId, me: KeyPair, masterId: MemberId?) = load(ctx.filesDir, net, me, masterId)
+    fun load(ctx: Context, net: NetworkId, me: KeyPair, masterId: MemberId?, myBox: ByteArray? = null) =
+        load(ctx.filesDir, net, me, masterId, myBox)
     fun save(ctx: Context, net: NetworkId, book: MemberBook) = save(ctx.filesDir, net, book)
 
     fun delete(ctx: Context, net: NetworkId) = file(ctx.filesDir, net).delete()

@@ -28,6 +28,8 @@ class MemberBook(
     private val me: KeyPair,
     /** The master's member id; null until learned (joined by password: first valid list). */
     masterId: MemberId?,
+    /** This phone's box public key, published on its card: new network keys are sealed to it. */
+    private val myBox: ByteArray? = null,
 ) {
     val myId = MemberId(Identity.memberIdOf(me))
 
@@ -52,6 +54,14 @@ class MemberBook(
 
     @Synchronized
     fun card(id: MemberId): MemberCard? = cards[id]
+
+    /** A member's box key from its signed card (null: not known yet, or an older app). */
+    @Synchronized
+    fun boxOf(id: MemberId): ByteArray? = cards[id]?.box
+
+    /** The master's signing key, from a member list it signed (null until one is known). */
+    @Synchronized
+    fun masterPub(): ByteArray? = roster?.masterPub
 
     /** Members on the list (not removed). */
     @Synchronized
@@ -83,8 +93,8 @@ class MemberBook(
     @Synchronized
     fun updateMyCard(name: String?, offers: List<LinkOffer>, now: Long): Boolean {
         val cur = cards[myId]
-        if (cur != null && cur.name == name && cur.offers == offers) return false
-        cards[myId] = sign(MemberCard(myId.bytes, me.public.encoded, name, offers, now))
+        if (cur != null && cur.name == name && cur.offers == offers && cur.box.contentEquals(myBox)) return false
+        cards[myId] = sign(MemberCard(myId.bytes, me.public.encoded, name, offers, now, box = myBox))
         return true
     }
 

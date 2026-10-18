@@ -25,6 +25,13 @@ data class StoredProfile(
      * master's member id (hex) when let in by it, empty until learned (joined by password).
      */
     val masterIdHex: String = "",
+    /**
+     * Salt of every network-key epoch after the first (a member was removed), by epoch;
+     * [trafficKeyHex] stays the epoch-0 key every member derives from the password.
+     */
+    val epochSaltsHex: Map<Int, String> = emptyMap(),
+    /** The newest rekey (master-signed), to hand to members still on an older key. */
+    val rekeyHex: String = "",
 )
 
 const val MASTER_ME = "me"
@@ -84,6 +91,22 @@ object ProfileStore {
         save(dir, load(dir).map { if (it.networkIdHex == networkIdHex) it.copy(masterIdHex = masterIdHex) else it })
 
     fun setMaster(ctx: Context, networkIdHex: String, masterIdHex: String) = setMaster(dir(ctx), networkIdHex, masterIdHex)
+
+    /** Records the network key's epochs and the newest rekey. */
+    internal fun setEpochs(dir: File, networkIdHex: String, salts: Map<Int, ByteArray>, rekey: ByteArray?) =
+        save(dir, load(dir).map {
+            if (it.networkIdHex != networkIdHex) it
+            else it.copy(epochSaltsHex = salts.mapValues { (_, s) -> s.hex() }, rekeyHex = rekey?.hex().orEmpty())
+        })
+
+    fun setEpochs(ctx: Context, networkIdHex: String, salts: Map<Int, ByteArray>, rekey: ByteArray?) =
+        setEpochs(dir(ctx), networkIdHex, salts, rekey)
+
+    /** The stored epoch salts of a network. */
+    fun salts(p: StoredProfile): Map<Int, ByteArray> = p.epochSaltsHex.mapValues { (_, h) -> h.hex() }
+
+    /** The stored newest rekey of a network (encoded), or null. */
+    fun rekey(p: StoredProfile): ByteArray? = p.rekeyHex.takeIf { it.isNotEmpty() }?.hex()
 
     /** [me]: this phone's member id (its device identity); [master]: null while unknown. */
     fun toProfile(p: StoredProfile, me: MemberId, master: MemberId?): NetworkProfile = NetworkProfile(

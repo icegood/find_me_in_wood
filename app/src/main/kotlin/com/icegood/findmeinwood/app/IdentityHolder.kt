@@ -3,6 +3,7 @@ package com.icegood.findmeinwood.app
 import com.icegood.findmeinwood.core.storage.SecureStorage
 import com.icegood.findmeinwood.core.storage.SealedFiles
 import android.content.Context
+import com.icegood.findmeinwood.core.crypto.EpochKeys
 import com.icegood.findmeinwood.core.crypto.Identity
 import java.io.File
 import java.security.KeyFactory
@@ -22,18 +23,35 @@ import java.util.Base64
 object IdentityHolder {
     private const val FILE = "device_identity.key"
 
+    private const val BOX_FILE = "device_box.key"
+
     @Volatile private var cached: KeyPair? = null
+    @Volatile private var cachedBox: KeyPair? = null
 
     fun keyPair(ctx: Context): KeyPair =
         cached ?: synchronized(this) {
             cached ?: loadOrCreate(File(ctx.filesDir, FILE)).also { cached = it }
         }
 
+    /**
+     * Key-agreement pair (EC P-256) published on this phone's member cards: a new network
+     * key after a removal is sealed to it. Kept like the identity, so a sealed key still
+     * opens after a restart.
+     */
+    fun boxPair(ctx: Context): KeyPair =
+        cachedBox ?: synchronized(this) {
+            cachedBox ?: loadOrCreate(File(ctx.filesDir, BOX_FILE), EpochKeys::boxKeyPair) { true }.also { cachedBox = it }
+        }
+
     /** Reads the key pair from [file], or generates and stores a new one if it is missing or unreadable. */
-    internal fun loadOrCreate(file: File): KeyPair {
+    internal fun loadOrCreate(
+        file: File,
+        generate: () -> KeyPair = Identity::generate,
         // A stored key this platform cannot sign with is useless: peers drop unsigned frames.
-        runCatching { read(file) }.getOrNull()?.takeIf { Identity.canSign(it) }?.let { return it }
-        val pair = Identity.generate()
+        usable: (KeyPair) -> Boolean = Identity::canSign,
+    ): KeyPair {
+        runCatching { read(file) }.getOrNull()?.takeIf(usable)?.let { return it }
+        val pair = generate()
         runCatching { write(file, pair) }
         return pair
     }

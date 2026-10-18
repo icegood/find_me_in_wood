@@ -15,6 +15,7 @@ class DiscoveryApiTest {
         t.connect("AA:BB")
         GroupRole.entries.forEach { t.setGroupRole(it) }
         t.setGroupRole(null)
+        t.setGroupSecrets(byteArrayOf(1), listOf(byteArrayOf(2)))
         val ev = TransportEvent.NetworkAdvertSeen("AA:BB", byteArrayOf(1, 2), TransportId.BLUETOOTH)
         assertEquals("AA:BB", ev.radioPeerId)
         assertEquals(TransportId.BLUETOOTH, ev.transport)

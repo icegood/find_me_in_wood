@@ -27,6 +27,8 @@ import com.icegood.findmeinwood.core.session.LinkNegotiator
 import com.icegood.findmeinwood.core.model.LinkOffer
 import com.icegood.findmeinwood.core.session.JoinOutcome
 import com.icegood.findmeinwood.core.session.SessionManager
+import com.icegood.findmeinwood.core.session.KeyRing
+import com.icegood.findmeinwood.core.model.RekeyCodec
 import com.icegood.findmeinwood.transport.api.Transport
 import com.icegood.findmeinwood.transport.bluetooth.BluetoothTransport
 import com.icegood.findmeinwood.transport.lora.BleNodeLink
@@ -147,7 +149,9 @@ class SessionService : Service() {
         )
         val identityPair = IdentityHolder.keyPair(this)
         val netHex = profile.networkId.bytes.joinToString("") { "%02x".format(it) }
-        val book = if (listen) null else MemberBookStore.load(this, profile.networkId, identityPair, masterId).also { b ->
+        val boxPair = IdentityHolder.boxPair(this)
+        val stored = ProfileStore.load(this).firstOrNull { it.networkIdHex == netHex }
+        val book = if (listen) null else MemberBookStore.load(this, profile.networkId, identityPair, masterId, boxPair.public.encoded).also { b ->
             b.onMasterLearned = { id -> ProfileStore.setMaster(this, netHex, id.bytes.joinToString("") { "%02x".format(it) }) }
         }
         activeBook = book
@@ -166,7 +170,22 @@ class SessionService : Service() {
             beaconsEnabled = !listen,
             book = book,
             requireSignatures = true,
+            // The network key per epoch (re-salted when the master removes a member).
+            keys = KeyRing(profile.trafficKey, stored?.let { ProfileStore.salts(it) }.orEmpty()),
+            box = boxPair,
+            latestRekey = stored?.let { ProfileStore.rekey(it) }?.let { RekeyCodec.decode(it) },
         ).also { it.sharingPaused = !listen && Prefs.sharingPaused(this, netHex) }
+        if (!listen) manager.onEpoch = {
+            ProfileStore.setEpochs(
+                this, netHex, manager.keys.salts(),
+                manager.latestRekey?.let { RekeyCodec.encode(it) },
+            )
+            linkLog?.write("network_key") {
+                put("epoch", manager.keys.epoch)
+                put("rev", manager.latestRekey?.rev)
+                put("sealedTo", manager.latestRekey?.wraps?.size)
+            }
+        }
         book?.let { b ->
             manager.onBookChanged = {
                 MemberBookStore.save(this, profile.networkId, b)
@@ -391,7 +410,7 @@ class SessionService : Service() {
         val now = System.currentTimeMillis()
         val fix = lastFix ?: lastKnownFix()
         return SmsCodec.encode(
-            profile.trafficKey, profile.networkId, profile.myMemberId, manager.nextSeq(),
+            manager.keys.current(), profile.networkId, profile.myMemberId, manager.nextSeq(),
             timeS = (fix?.epochMs ?: now) / 1000,
             latE7 = fix?.let { (it.lat * 1e7).toInt() } ?: 0,
             lonE7 = fix?.let { (it.lon * 1e7).toInt() } ?: 0,
@@ -555,7 +574,11 @@ class SessionService : Service() {
             if (!b.remove(id)) return false
             m.forgetRemoved()
             m.onBookChanged?.invoke()
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { m.syncBook(force = true) }
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                m.syncBook(force = true)
+                // It still holds the network key: re-salt it for everyone else.
+                m.rekey()
+            }
             return true
         }
 

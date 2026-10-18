@@ -190,6 +190,25 @@ class WifiDirectTransport(
         )
     }
 
+    /**
+     * A new network key: the group moves to its credentials. A group under the old ones is
+     * left (the removed member knows them), and the members' new group is formed at once.
+     */
+    override fun setGroupSecrets(current: ByteArray, older: List<ByteArray>) {
+        val next = GroupCredentials.from(current)
+        if (next == creds) return
+        creds = next
+        if (!running) return
+        if (groupFormed || ready) {
+            wiring.removeGroup(channel)
+            dropGroup()
+        }
+        joinPending = false
+        createPending = false
+        if (role == null) hostAfterMs = System.currentTimeMillis() + joinWindowMs()
+        formGroup()
+    }
+
     /** Wi-Fi (and with it P2P) was switched on or off, in the app or outside it. */
     internal fun onP2pState(on: Boolean) {
         if (on == p2pOn) return

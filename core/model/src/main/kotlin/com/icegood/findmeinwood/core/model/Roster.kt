@@ -32,6 +32,8 @@ data class MemberCard(
     val offers: List<LinkOffer> = emptyList(),
     val at: Long,
     val sig: ByteArray = ByteArray(0),
+    /** The member's key-agreement (EC P-256) public key: new network keys are sealed to it. */
+    val box: ByteArray? = null,
 )
 
 /** Member list plus every member card a phone knows: what phones exchange to agree. */

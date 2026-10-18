@@ -14,6 +14,10 @@ import com.icegood.findmeinwood.core.model.GnssFix
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.NetworkProfile
 import com.icegood.findmeinwood.core.model.PayloadCodec
+import com.icegood.findmeinwood.core.model.Rekey
+import com.icegood.findmeinwood.core.model.RekeyCodec
+import com.icegood.findmeinwood.core.model.SaltWrap
+import com.icegood.findmeinwood.core.crypto.EpochKeys
 import com.icegood.findmeinwood.core.model.TransportId
 import com.icegood.findmeinwood.transport.api.GroupRole
 import com.icegood.findmeinwood.transport.api.SessionConfig
@@ -57,6 +61,14 @@ class SessionManager(
     val book: MemberBook? = null,
     /** Refuse unsigned beacons (the app always signs; some tests run without keys). */
     private val requireSignatures: Boolean = false,
+    /** The network's keys per epoch: frames go out under the newest (re-salted on removals). */
+    val keys: KeyRing = KeyRing(profile.trafficKey),
+    /** This phone's box key pair: new network keys are sealed to its public half. */
+    private val box: java.security.KeyPair? = null,
+    /** The newest rekey known, handed to members still on an older key. */
+    latestRekey: Rekey? = null,
+    /** Minimum gap between rekeys handed to one member on an older key. */
+    private val catchUpGapMs: Long = CATCH_UP_GAP_MS,
 ) {
     companion object {
         const val INITIAL_TTL: UByte = 3u
@@ -65,6 +77,8 @@ class SessionManager(
         const val REPLY_GAP_MS = 1_000L
         /** Minimum gap between member-list syncs sent by this phone. */
         const val SYNC_GAP_MS = 20_000L
+        /** Minimum gap between rekeys handed to one member still on an older key. */
+        const val CATCH_UP_GAP_MS = 5_000L
         val SYNC_RADIOS = setOf(TransportId.BLUETOOTH, TransportId.WIFI_DIRECT)
     }
 
@@ -140,6 +154,16 @@ class SessionManager(
     }
 
     fun edges(): List<LinkNegotiator.LinkView> = links?.all() ?: emptyList()
+
+    /** The newest rekey known (current epoch); persisted by the app via [onEpoch]. */
+    @Volatile var latestRekey: Rekey? = latestRekey
+        private set
+
+    /** The network key moved to a new epoch, or a newer rekey arrived (to persist both). */
+    var onEpoch: (() -> Unit)? = null
+
+    /** Monotonic: when each member on an older key was last handed the rekey. */
+    private val catchUpAt = HashMap<MemberId, Long>()
 
     /** Monotonic (not [clock]): spacing of extra beacons is about real radio load. */
     @Volatile private var lastReplyAtMs = 0L
@@ -286,9 +310,7 @@ class SessionManager(
                 SessionConfig(
                     profile.networkId, transports.map { it.id }.toSet(),
                     // Listening holds a throwaway key: nothing to share with anyone.
-                    groupSecret = if (!beaconsEnabled) null else com.icegood.findmeinwood.core.crypto.Hkdf.derive(
-                        profile.trafficKey, ByteArray(32), "fmiw-wifi-direct-group".toByteArray(), 32,
-                    ),
+                    groupSecret = if (!beaconsEnabled) null else groupSecretOf(keys.current()),
                     listening = !beaconsEnabled,
                 ),
             )
@@ -310,6 +332,7 @@ class SessionManager(
                 }
             }
         }
+        if (beaconsEnabled) pushGroupSecrets()
         if (beaconsEnabled) jobs += scope.launch {
             BeaconScheduler(keepAliveMs, clock)
                 .commands(fixes)
@@ -325,6 +348,16 @@ class SessionManager(
                 housekeeping()
             }
         }
+    }
+
+    /** The radios' members-only secret (Bluetooth members code, Wi-Fi Direct group) of a key. */
+    private fun groupSecretOf(key: ByteArray) =
+        com.icegood.findmeinwood.core.crypto.Hkdf.derive(key, ByteArray(32), "fmiw-wifi-direct-group".toByteArray(), 32)
+
+    /** Radios use the newest key; older ones only to find members that missed a rekey. */
+    private fun pushGroupSecrets() {
+        val all = keys.newestFirst().map { groupSecretOf(it.second) }
+        transports.forEach { it.setGroupSecrets(all.first(), all.drop(1)) }
     }
 
     /** Once per beacon interval: stale/purged peers, quiet-link suggestions. */
@@ -366,7 +399,7 @@ class SessionManager(
         } else {
             payload
         }
-        val ct = aead.seal(profile.trafficKey, PayloadCodec.encode(body), FrameCodec.aad(profile.networkId, profile.myMemberId, s, sentAt))
+        val ct = aead.seal(keys.current(), PayloadCodec.encode(body), FrameCodec.aad(profile.networkId, profile.myMemberId, s, sentAt))
         val wire = FrameCodec.encode(
             EncryptedFrame(profile.networkId, profile.myMemberId, s, INITIAL_TTL, sentAt, ct),
         )
@@ -387,13 +420,15 @@ class SessionManager(
 
     /**
      * Seals and sends [payloadBytes] on every agreed radio, or only on those of [only]. [beacon] marks a
-     * position beacon (reported to [onFrameSent]).
+     * position beacon (reported to [onFrameSent]); [key]: an older one, for a member that missed a rekey.
      */
-    suspend fun sendRaw(payloadBytes: ByteArray, beacon: Boolean = false, only: Set<TransportId>? = null): Unit = sendLock.withLock {
+    suspend fun sendRaw(
+        payloadBytes: ByteArray, beacon: Boolean = false, only: Set<TransportId>? = null, key: ByteArray? = null,
+    ): Unit = sendLock.withLock {
         val s = (seq.getAndIncrement()).toUInt()
         val sentAt = clock()
         val aad = FrameCodec.aad(profile.networkId, profile.myMemberId, s, sentAt)
-        val ct = aead.seal(profile.trafficKey, payloadBytes, aad)
+        val ct = aead.seal(key ?: keys.current(), payloadBytes, aad)
         val frame = EncryptedFrame(
             profile.networkId, profile.myMemberId, s, INITIAL_TTL, sentAt, ct,
         )
@@ -425,9 +460,11 @@ class SessionManager(
             return
         }
         if (f.senderId.bytes.contentEquals(profile.myMemberId.bytes)) return
-        val plain = try {
-            aead.open(profile.trafficKey, f.ciphertext, FrameCodec.aad(f.networkId, f.senderId, f.seq, f.sentAtMs))
-        } catch (_: Exception) {
+        // Newest key first; an older one means the sender missed a rekey.
+        val aad = FrameCodec.aad(f.networkId, f.senderId, f.seq, f.sentAtMs)
+        val (epoch, plain) = keys.newestFirst().firstNotNullOfOrNull { (e, k) ->
+            runCatching { e to aead.open(k, f.ciphertext, aad) }.getOrNull()
+        } ?: run {
             bump { it.copy(authFailed = it.authFailed + 1) }
             return // auth fail: drop silently (FR-8.6 / T5.5)
         }
@@ -443,6 +480,16 @@ class SessionManager(
         // A member the master dropped is out: nothing it sends counts, nothing is relayed.
         if (book?.isRemoved(f.senderId) == true) {
             bump { it.copy(dropped = it.dropped + 1) }
+            return
+        }
+        RekeyCodec.decode(plain)?.let { r ->
+            bump { it.copy(received = it.received + 1) }
+            onRekey(r)
+            return
+        }
+        if (epoch < keys.epoch) {
+            bump { it.copy(dropped = it.dropped + 1) }
+            behind(f, plain, epoch)
             return
         }
         // Member list / cards from another member: merge (any member passes them on).
@@ -487,6 +534,125 @@ class SessionManager(
         bump { it.copy(received = it.received + 1) }
         onFrameReceived?.invoke(plain, f.senderId)
         relay(f, ev.source)
+    }
+
+    /**
+     * Master only: re-salts the network key for every member still listed (after a removal).
+     * The new salt is sealed to each member's box key, so the removed member, which still
+     * holds every older key, cannot follow; the rekey goes out under the previous key.
+     */
+    suspend fun rekey(): Boolean {
+        val b = book ?: return false
+        val me = signer ?: return false
+        if (!b.isMaster) return false
+        val epoch = keys.epoch + 1
+        val salt = EpochKeys.newSalt()
+        val r = sealRekey(b, me, epoch, salt, rev = 1) ?: return false
+        val previous = keys.current()
+        keys.advance(epoch, salt)
+        latestRekey = r
+        epochChanged()
+        sendRaw(RekeyCodec.encode(r), only = SYNC_RADIOS, key = previous)
+        return true
+    }
+
+    private fun sealRekey(b: MemberBook, me: java.security.KeyPair, epoch: Int, salt: ByteArray, rev: Int): Rekey? {
+        val eph = EpochKeys.boxKeyPair()
+        val wraps = b.members().filter { it != b.myId }.mapNotNull { id ->
+            b.boxOf(id)?.let { box -> SaltWrap(id.bytes, EpochKeys.seal(salt, eph, box, rekeyAad(epoch, id))) }
+        }
+        val r = Rekey(profile.networkId.bytes, epoch, rev, eph.public.encoded, wraps, roster = b.roster)
+        return Identity.sign(me, RekeyCodec.signedBytes(r))?.let { r.copy(sig = it) }
+    }
+
+    private fun rekeyAad(epoch: Int, id: MemberId) =
+        profile.networkId.bytes + ByteArray(4) { (epoch ushr (24 - 8 * it)).toByte() } + id.bytes
+
+    /**
+     * Master only: a listed member whose box key arrived after the rekey gets the same salt
+     * in a new revision. True when one was issued.
+     */
+    private fun reissueIfMissing(): Boolean {
+        val b = book ?: return false
+        val me = signer ?: return false
+        val r = latestRekey ?: return false
+        if (!b.isMaster || r.epoch != keys.epoch) return false
+        val sealed = r.wraps.map { MemberId(it.id) }.toSet()
+        if (b.members().none { it != b.myId && it !in sealed && b.boxOf(it) != null }) return false
+        val salt = keys.salt(r.epoch) ?: return false
+        latestRekey = sealRekey(b, me, r.epoch, salt, r.rev + 1) ?: return false
+        onEpoch?.invoke()
+        return true
+    }
+
+    /** A rekey from the master (signature checked against the member list's master key). */
+    private suspend fun onRekey(r: Rekey) {
+        val b = book ?: return
+        if (!r.net.contentEquals(profile.networkId.bytes)) return
+        // Its member list names the master (to a phone joined by password) and the removal.
+        r.roster?.let { if (b.merge(com.icegood.findmeinwood.core.model.RosterSync(it))) { forgetRemoved(); onBookChanged?.invoke() } }
+        val masterPub = b.masterPub() ?: return
+        if (!Identity.verify(masterPub, RekeyCodec.signedBytes(r), r.sig)) return
+        val cur = latestRekey
+        if (r.epoch < keys.epoch) return
+        if (r.epoch == keys.epoch) {
+            // Same key, sealed to more members: keep the newer revision to hand on.
+            if (cur == null || cur.epoch < r.epoch || r.rev > cur.rev) { latestRekey = r; onEpoch?.invoke() }
+            return
+        }
+        val mine = r.wraps.firstOrNull { it.id.contentEquals(profile.myMemberId.bytes) }
+        val salt = box?.let { pair -> mine?.let { EpochKeys.open(it.ct, pair, r.eph, rekeyAad(r.epoch, profile.myMemberId)) } }
+        if (salt == null) {
+            // Not sealed to us: the master lacks our box key. Our card carries it.
+            com.icegood.findmeinwood.transport.api.DebugLog.d { "rekey ${r.epoch}.${r.rev}: not sealed to this phone, sending our card" }
+            syncBook(force = true)
+            return
+        }
+        if (!keys.advance(r.epoch, salt)) return
+        latestRekey = r
+        epochChanged()
+    }
+
+    /** A frame under an older key: its sender missed a rekey. Only what gets it the new key counts. */
+    private suspend fun behind(f: EncryptedFrame, plain: ByteArray, epoch: Int) {
+        val b = book ?: return
+        if (b.isMaster) {
+            // The master seals the key to members it knows the box key of: take their card
+            // (signed by them), and list one let in or joined by password, as on the current key.
+            val sync = com.icegood.findmeinwood.core.model.RosterCodec.decode(plain)
+            if (sync != null) {
+                if (b.merge(sync)) onBookChanged?.invoke()
+            } else if (PayloadCodec.tryDecodeChat(plain) == null) {
+                runCatching { PayloadCodec.decode(plain) }.getOrNull()?.let { p ->
+                    if (p.pub != null && verifyOrigin(f, p) && b.add(f.senderId, p.pub!!)) onBookChanged?.invoke()
+                }
+            }
+            if (reissueIfMissing()) synchronized(catchUpAt) { catchUpAt.remove(f.senderId) }
+        }
+        catchUp(f.senderId, epoch)
+    }
+
+    /** Hands the newest rekey to [member], sealed under the older key it still uses. */
+    private suspend fun catchUp(member: MemberId, epoch: Int) {
+        val r = latestRekey ?: return
+        if (r.epoch != keys.epoch) return
+        val key = keys.key(epoch) ?: return
+        val now = System.nanoTime() / 1_000_000
+        synchronized(catchUpAt) {
+            if (now - (catchUpAt[member] ?: Long.MIN_VALUE / 2) < catchUpGapMs) return
+            catchUpAt[member] = now
+        }
+        com.icegood.findmeinwood.transport.api.DebugLog.d { "rekey ${r.epoch}.${r.rev} handed to a member on epoch $epoch" }
+        sendRaw(RekeyCodec.encode(r), only = SYNC_RADIOS, key = key)
+    }
+
+    /** The key moved on: persist, switch the radios' secret, and say hello under it at once. */
+    private fun epochChanged() {
+        com.icegood.findmeinwood.transport.api.DebugLog.d { "network key: epoch ${keys.epoch}" }
+        onEpoch?.invoke()
+        if (beaconsEnabled) pushGroupSecrets()
+        links?.announceNow()
+        replyNow(force = true)
     }
 
     private suspend fun relay(f: EncryptedFrame, source: TransportId, only: Set<TransportId>? = null) {

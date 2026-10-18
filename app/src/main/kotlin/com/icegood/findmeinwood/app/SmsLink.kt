@@ -87,9 +87,8 @@ class SmsLinkReceiver : BroadcastReceiver() {
         val me = com.icegood.findmeinwood.core.model.MemberId(
             com.icegood.findmeinwood.core.crypto.Identity.memberIdOf(IdentityHolder.keyPair(ctx)),
         )
-        val profile = ProfileStore.load(ctx).map { ProfileStore.toProfile(it, me, master = null) }
-            .firstOrNull { it.networkId == network } ?: return
-        val r = SmsCodec.decode(frame, profile.trafficKey) ?: return
+        // The network key of any epoch: a member that missed a rekey still texts under its old one.
+        val r = manager.keys.newestFirst().firstNotNullOfOrNull { (_, k) -> SmsCodec.decode(frame, k) } ?: return
         if (r.isFrom(me)) return // our own report (e.g. texted to ourselves)
         val known = r.latE7 != 0 || r.lonE7 != 0
         manager.acceptSmsReport(

@@ -101,6 +101,8 @@ class BluetoothTransport internal constructor(
 
     /** Members-only secret (null: connect to anyone with our service — tests, old setups). */
     @Volatile private var secret: ByteArray? = null
+    /** Secrets of older network keys: members that missed a rekey still advertise those. */
+    @Volatile private var olderSecrets: List<ByteArray> = emptyList()
     @Volatile private var listening = false
     /** Network info advertised to new people; null while not findable. */
     @Volatile private var findable: ByteArray? = null
@@ -128,6 +130,17 @@ class BluetoothTransport internal constructor(
             armSupervisor()
         }
         return events
+    }
+
+    override fun setGroupSecrets(current: ByteArray, older: List<ByteArray>) {
+        synchronized(this) {
+            if (current.contentEquals(secret) && older.size == olderSecrets.size) return
+            secret = current
+            olderSecrets = older
+            tagWindow = Long.MIN_VALUE // recompute the codes
+        }
+        // Advertise the new members code at once.
+        if (radiosUp) refreshAdvert(clock(), force = true)
     }
 
     override fun setFindable(info: ByteArray?) {
@@ -309,7 +322,7 @@ class BluetoothTransport internal constructor(
         val s = secret ?: return false
         val w = BleAdvert.window(now)
         if (w != tagWindow) {
-            memberTags = (w - 1..w + 1).map { BleAdvert.memberTag(s, it) }
+            memberTags = (listOf(s) + olderSecrets).flatMap { k -> (w - 1..w + 1).map { BleAdvert.memberTag(k, it) } }
             tagWindow = w
         }
         return tag != null && memberTags.any { it.contentEquals(tag) }
