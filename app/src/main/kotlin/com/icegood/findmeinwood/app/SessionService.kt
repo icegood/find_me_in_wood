@@ -318,7 +318,16 @@ class SessionService : Service() {
     private fun runLinks(manager: SessionManager, links: LinkNegotiator) {
         smsSentAt.clear()
         scope.launch {
+            val power = HashMap<String, Boolean>()
             while (true) {
+                // The phone's radio switches, flipped in the app or outside it: logged on
+                // change, so a link that ends because a radio was switched off says so.
+                mapOf("BLUETOOTH" to bluetoothOn(), "WIFI" to wifiOn()).forEach { (radio, on) ->
+                    if (power.put(radio, on) != on) linkLog?.write("radio_power") {
+                        put("radio", radio)
+                        put("on", on)
+                    }
+                }
                 val statuses = linkStatuses(manager)
                 SessionBus.publishLinkStatuses(statuses)
                 links.setOffers(LinkAvailability.offers(statuses))
@@ -350,17 +359,11 @@ class SessionService : Service() {
 
     /** Every supported link on this phone, usable or with the reason it is not. */
     private fun linkStatuses(manager: SessionManager): List<com.icegood.findmeinwood.core.model.LinkStatus> {
-        val btOn = runCatching {
-            getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled == true
-        }.getOrDefault(false)
-        val wifiOn = runCatching {
-            getSystemService(android.net.wifi.WifiManager::class.java)?.isWifiEnabled == true
-        }.getOrDefault(false)
         return LinkAvailability.statuses(
             this@SessionService,
             LinkAvailability.Inputs(
-                bluetoothOn = btOn,
-                wifiOn = wifiOn,
+                bluetoothOn = bluetoothOn(),
+                wifiOn = wifiOn(),
                 lora = manager.radioStates.value[TransportId.LORA],
                 phoneNumber = Prefs.myPhoneNumber(this@SessionService),
                 smsPermitted = smsPermitted(),
@@ -369,6 +372,14 @@ class SessionService : Service() {
             ),
         )
     }
+
+    private fun bluetoothOn() = runCatching {
+        getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled == true
+    }.getOrDefault(false)
+
+    private fun wifiOn() = runCatching {
+        getSystemService(android.net.wifi.WifiManager::class.java)?.isWifiEnabled == true
+    }.getOrDefault(false)
 
     private fun smsPermitted() = listOf(android.Manifest.permission.SEND_SMS, android.Manifest.permission.RECEIVE_SMS).all {
         checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED

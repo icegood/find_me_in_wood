@@ -93,6 +93,12 @@ class WifiDirectTransport(
 
     fun isGroupOwner(): Boolean = preferOwner
 
+    /**
+     * P2P is usable (Wi-Fi on). Switched off outside the app, the group is gone and every
+     * request would only be refused: report the radio off and wait for it to come back.
+     */
+    @Volatile private var p2pOn = true
+
     /** Role agreed with the members in reach (LNP/3); null = none, find one by trying. */
     @Volatile private var role: GroupRole? = null
 
@@ -178,10 +184,32 @@ class WifiDirectTransport(
     private fun registerReceiver() {
         if (receiver != null) return
         receiver = wiring.register(
-            onWifiState = { on -> if (!on) dropGroup() },
+            onWifiState = ::onP2pState,
             onPeers = {},
             onConnection = { requestConnectionInfo() },
         )
+    }
+
+    /** Wi-Fi (and with it P2P) was switched on or off, in the app or outside it. */
+    internal fun onP2pState(on: Boolean) {
+        if (on == p2pOn) return
+        p2pOn = on
+        if (!running) return
+        if (!on) {
+            createPending = false
+            if (groupFormed || ready) dropGroup() else emit(RadioState.LINK_DOWN)
+            return
+        }
+        // Back on: look for the members' group at once, as at start.
+        if (channel == null) channel = wiring.initialize()
+        startMs = System.currentTimeMillis()
+        if (role == null) hostAfterMs = startMs + joinWindowMs()
+        lastDiscoverAtMs = 0L
+        discoveryOkAtMs = 0L
+        emit(RadioState.SCANNING)
+        discover()
+        requestConnectionInfo()
+        formGroup()
     }
 
     /**
@@ -207,6 +235,7 @@ class WifiDirectTransport(
                 delay(pollMs)
                 if (!running) break
                 expirePending()
+                if (!p2pOn) continue
                 if (!groupFormed) {
                     if (channel == null) channel = wiring.initialize() // self-heal
                     discover()
@@ -245,7 +274,7 @@ class WifiDirectTransport(
 
     /** Host or join as agreed; without a role join a member's group, or host one once the join window is over. */
     private fun formGroup() {
-        if (creds == null || groupFormed) return
+        if (creds == null || groupFormed || !p2pOn) return
         val host = when {
             preferOwner -> true
             role != null -> role == GroupRole.HOST

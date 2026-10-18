@@ -77,6 +77,11 @@ frame is encrypted and authenticated with the network's key.
   (`link.offers`: BLUETOOTH | WIFI_DIRECT | LORA | SMS + address, e.g. SMS number). An
   offer exists only while usable (radio on, node ready, SMS allowed + own number set).
   Link control rides on beacons when something changed or is pending, else every 5th.
+- FR-3.6a Radios switched in the app or outside it (quick settings, airplane mode) are
+  followed: the offer goes within seconds, the radio reports off and stops all requests
+  (no Wi-Fi Direct joins while P2P is off), and when it is back on it looks for its links
+  at once. Decisions hold meanwhile, so the agreed transport returns without a new one.
+  The link log records every switch (`radio_power`).
 - FR-3.7 Handshake, per transport: for each transport both offer (order BLUETOOTH,
   WIFI_DIRECT, LORA, SMS) each user decides on their own phone — Allow / No, then a switch
   to connect or disconnect it at any time. A transport is agreed only while **both** users

@@ -37,6 +37,10 @@ class WifiDirectRoleLogicTest {
     private fun transport(wiring: FakeWiring, owner: Boolean = false, pollMs: Long = 10_000L) =
         WifiDirectTransport(ctx, wiring, pollMs).apply { setPreferGroupOwner(owner); made += this }
 
+    private fun lastState(events: kotlinx.coroutines.flow.Flow<TransportEvent>): RadioState? =
+        (events as kotlinx.coroutines.flow.SharedFlow<TransportEvent>).replayCache
+            .filterIsInstance<TransportEvent.StateChanged>().lastOrNull()?.state
+
     private suspend fun firstState(t: WifiDirectTransport): RadioState? =
         (withTimeout(5_000) { t.start(cfg).first() } as? TransportEvent.StateChanged)?.state
 
@@ -178,6 +182,28 @@ class WifiDirectRoleLogicTest {
         } finally {
             WifiDirectTransport.JOIN_WINDOW_MS = window
         }
+    }
+
+    @Test
+    fun `wifi switched off outside the app - radio off, no requests until it is back on`() = runBlocking<Unit> {
+        val w = FakeWiring()
+        val t = transport(w, pollMs = 30L)
+        val events = t.start(cfg)
+        w.answerInfo(formed = true, owner = false, host = "192.168.49.1")
+        withTimeout(5_000) { events.first { (it as? TransportEvent.StateChanged)?.state == RadioState.READY } }
+        t.onP2pState(false)
+        assertEquals(RadioState.LINK_DOWN, lastState(events))
+        val joins = w.joins.size
+        val discovers = w.discoverCalls
+        delay(200)
+        assertEquals(joins, w.joins.size, "no joins while P2P is off")
+        assertEquals(discovers, w.discoverCalls)
+        assertEquals(0, w.createGroupCalls)
+        t.onP2pState(true)
+        assertEquals(RadioState.SCANNING, lastState(events))
+        assertTrue(w.joins.size > joins, "looks for the group again at once")
+        assertTrue(w.discoverCalls > discovers)
+        t.stop()
     }
 
     @Test
