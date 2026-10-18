@@ -8,11 +8,13 @@ import kotlin.test.assertTrue
 
 class DiscoveryApiTest {
     @Test
-    fun `findability and join links are no-ops for radios without them`() {
+    fun `findability and join links are no-ops for radios without them, and so are group roles`() {
         val t = FakeTransport(TransportId.LORA)
         t.setFindable(byteArrayOf(1))
         t.setFindable(null)
         t.connect("AA:BB")
+        GroupRole.entries.forEach { t.setGroupRole(it) }
+        t.setGroupRole(null)
         val ev = TransportEvent.NetworkAdvertSeen("AA:BB", byteArrayOf(1, 2), TransportId.BLUETOOTH)
         assertEquals("AA:BB", ev.radioPeerId)
         assertEquals(TransportId.BLUETOOTH, ev.transport)
