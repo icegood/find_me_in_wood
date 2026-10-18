@@ -16,6 +16,11 @@ class DiscoveryApiTest {
         GroupRole.entries.forEach { t.setGroupRole(it) }
         t.setGroupRole(null)
         t.setGroupSecrets(byteArrayOf(1), listOf(byteArrayOf(2)))
+        kotlinx.coroutines.runBlocking { assertEquals(null, t.relay(byteArrayOf(1), except = "AA:BB"), "radios relay back only when they can") }
+        assertEquals("L", TransportEvent.FrameReceived(
+            com.icegood.findmeinwood.core.model.EncryptedFrame(NetworkId(ByteArray(8)), com.icegood.findmeinwood.core.model.MemberId(ByteArray(32)), 1u, 3u, 0L, ByteArray(16)),
+            TransportId.WIFI_DIRECT, "L",
+        ).link)
         val ev = TransportEvent.NetworkAdvertSeen("AA:BB", byteArrayOf(1, 2), TransportId.BLUETOOTH)
         assertEquals("AA:BB", ev.radioPeerId)
         assertEquals(TransportId.BLUETOOTH, ev.transport)

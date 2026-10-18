@@ -60,7 +60,10 @@ frame is encrypted and authenticated with the network's key.
   ones with the reason and a fix (Turn on, Set number, Allow). Satellite is a note: SMS
   uses it when the carrier does. Only usable links are offered in the handshake.
 - FR-3.3 Frames relay: a valid frame not seen before is re-sent on the other radios while
-  TTL > 0 (start 3); duplicates and frames failing authentication are never relayed.
+  TTL > 0 (start 3), and on the radio it came in on to every link but that one — a Wi-Fi
+  Direct group owner, or a phone with several Bluetooth links, is the only way between the
+  members around it (LoRa is not relayed back onto its own air). Duplicates and frames
+  failing authentication are never relayed.
 - FR-3.4 A member heard only through others is shown "via others".
 - FR-3.5 Links are negotiated in-band by LNP/3: one handshake per pair agrees the *set* of
   usable transports; within it the link switches at any time without a new handshake.

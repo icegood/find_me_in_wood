@@ -158,10 +158,16 @@ class WifiDirectTransport(
         emit(RadioState.STOPPED)
     }
 
-    override suspend fun send(wireFrame: ByteArray): SendResult {
+    override suspend fun send(wireFrame: ByteArray): SendResult = write(wireFrame, except = null)
+
+    /** The group owner passes a member's frame on to the other members (they only reach it). */
+    override suspend fun relay(wireFrame: ByteArray, except: String): SendResult = write(wireFrame, except)
+
+    private fun write(wireFrame: ByteArray, except: String?): SendResult {
         if (!running || !ready) return SendResult.Failed("no p2p group")
-        if (sockets.isEmpty()) return SendResult.Failed("no p2p peer")
-        sockets.values.forEach { s ->
+        val targets = sockets.filterKeys { it != except }
+        if (targets.isEmpty()) return SendResult.Failed("no p2p peer")
+        targets.values.forEach { s ->
             runCatching {
                 // Beacons, chat and relays send concurrently: without the lock two frames'
                 // length prefixes and bodies interleave and the peer's stream desyncs.
@@ -421,7 +427,7 @@ class WifiDirectTransport(
                     val buf = ByteArray(len)
                     input.readFully(buf)
                     if (MgmtCodec.isMgmt(buf)) events.tryEmit(TransportEvent.MgmtFrameReceived(buf, id))
-                    else events.tryEmit(TransportEvent.FrameReceived(FrameCodec.decode(buf), id))
+                    else events.tryEmit(TransportEvent.FrameReceived(FrameCodec.decode(buf), id, key))
                 }
             } catch (_: Exception) {
                 runCatching { s.close() }

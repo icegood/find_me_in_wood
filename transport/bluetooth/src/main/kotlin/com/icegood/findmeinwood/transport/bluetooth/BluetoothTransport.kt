@@ -217,16 +217,24 @@ class BluetoothTransport internal constructor(
         emit(RadioState.STOPPED)
     }
 
-    override suspend fun send(wireFrame: ByteArray): SendResult {
+    override suspend fun send(wireFrame: ByteArray): SendResult = write(wireFrame, except = null)
+
+    /** Passes a frame from one linked phone on to the others (they may not reach each other). */
+    override suspend fun relay(wireFrame: ByteArray, except: String): SendResult = write(wireFrame, except)
+
+    /** Writes to every link, both directions, but those to the phone at [except]. */
+    private fun write(wireFrame: ByteArray, except: String?): SendResult {
         if (!running || !ready) return SendResult.Failed("link not ready")
         pruneStaleLinks()
-        val hasClientLink = clients.isNotEmpty()
-        val hasServerClients = serverDevices.isNotEmpty()
+        val clientLinks = clients.filterKeys { it != except }
+        val serverLinks = serverDevices.filter { it.address != except }
+        val hasClientLink = clientLinks.isNotEmpty()
+        val hasServerClients = serverLinks.isNotEmpty()
         if (!hasClientLink && !hasServerClients) return SendResult.Failed("no ble peer")
 
         if (hasClientLink) {
             synchronized(lock) {
-                clients.values.forEach { g ->
+                clientLinks.values.forEach { g ->
                     val mtu = (clientMtu[g.key()] ?: DEFAULT_MTU) - ATT_OVERHEAD
                     val q = clientQueues.getOrPut(g.key()) { ArrayDeque() }
                     FrameFramer.frameToChunks(wireFrame, mtu).forEach(q::add)
@@ -235,7 +243,7 @@ class BluetoothTransport internal constructor(
             }
         }
         if (hasServerClients) {
-            serverDevices.forEach { device ->
+            serverLinks.forEach { device ->
                 val mtu = (serverMtu[device.address] ?: DEFAULT_MTU) - ATT_OVERHEAD
                 FrameFramer.frameToChunks(wireFrame, mtu).forEach { chunk ->
                     notifyClient(device, chunk)
@@ -365,7 +373,7 @@ class BluetoothTransport internal constructor(
             val frame = serverFramers
                 .getOrPut(device.address) { framer() }
                 .offer(value) ?: return
-            emitFrame(frame)
+            emitFrame(frame, device.address)
             events.tryEmit(TransportEvent.PeerRadioVisible(device.address, id))
         }
 
@@ -616,7 +624,7 @@ class BluetoothTransport internal constructor(
                 DebugLog.d { "Bluetooth notify from a duplicate link to $key ignored" }
                 return
             }
-            clientFramers.getOrPut(key) { framer() }.offer(value)?.let(::emitFrame)
+            clientFramers.getOrPut(key) { framer() }.offer(value)?.let { emitFrame(it, key) }
         }
     }
 
@@ -666,14 +674,14 @@ class BluetoothTransport internal constructor(
     /** Every frame (mesh or management) starts with the "FM" magic: lets a stream resync. */
     private fun framer() = FrameFramer.Reassembler(FrameCodec.MAGIC)
 
-    private fun emitFrame(frame: ByteArray) {
+    private fun emitFrame(frame: ByteArray, link: String) {
         DebugLog.d { "Bluetooth rx frame ${frame.size}B mgmt=${MgmtCodec.isMgmt(frame)}" }
         if (MgmtCodec.isMgmt(frame)) {
             events.tryEmit(TransportEvent.MgmtFrameReceived(frame, id))
             return
         }
         val decoded = runCatching { FrameCodec.decode(frame) }.getOrNull() ?: return
-        events.tryEmit(TransportEvent.FrameReceived(decoded, id))
+        events.tryEmit(TransportEvent.FrameReceived(decoded, id, link))
     }
 
     /** Signal strength of one peer link and when it was measured. */

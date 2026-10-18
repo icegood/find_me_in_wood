@@ -501,7 +501,7 @@ class SessionManager(
             // Still differs (we know something they do not): answer with ours.
             if (book?.knowsMoreThan(sync) == true) syncBook()
             bump { it.copy(received = it.received + 1) }
-            relay(f, ev.source, only = SYNC_RADIOS)
+            relay(f, ev.source, ev.link, only = SYNC_RADIOS)
             return
         }
         // Chat messages are not beacons: route them to the app instead of dropping
@@ -533,7 +533,7 @@ class SessionManager(
         }
         bump { it.copy(received = it.received + 1) }
         onFrameReceived?.invoke(plain, f.senderId)
-        relay(f, ev.source)
+        relay(f, ev.source, ev.link)
     }
 
     /**
@@ -655,11 +655,19 @@ class SessionManager(
         replyNow(force = true)
     }
 
-    private suspend fun relay(f: EncryptedFrame, source: TransportId, only: Set<TransportId>? = null) {
+    /**
+     * Passes [f] on with one hop less: on every other radio, and on the radio it came in on
+     * to every link but [link] (a Wi-Fi Direct group owner or a phone with several Bluetooth
+     * links is the only way between the members around it). The replay window drops the
+     * copies that come back, so nothing loops.
+     */
+    private suspend fun relay(f: EncryptedFrame, source: TransportId, link: String?, only: Set<TransportId>? = null) {
         if (relayEnabled && f.ttl > 1u) {
             val relayed = f.copy(ttl = (f.ttl - 1u).toUByte())
             val wire = FrameCodec.encode(relayed)
-            routed().filter { it.id != source && (only == null || it.id in only) }.forEach { it.send(wire) }
+            routed().filter { only == null || it.id in only }.forEach { t ->
+                if (t.id != source) t.send(wire) else if (link != null) t.relay(wire, except = link)
+            }
             bump { it.copy(relayed = it.relayed + 1) }
         }
     }

@@ -67,6 +67,41 @@ class WifiDirectTransportTest {
     }
 
     @Test
+    fun `group owner relays a member's frame to the other members, not back to it`() = runBlocking<Unit> {
+        val events = t.start(cfg)
+        suspend fun connect(): Socket = Socket().also { c ->
+            withTimeout(5_000) {
+                while (true) {
+                    try { c.connect(InetSocketAddress("127.0.0.1", freePort), 500); break } catch (_: Exception) { delay(50) }
+                }
+            }
+        }
+        val a = connect()
+        val b = connect()
+        withTimeout(5_000) { while (t.peerLinkCount() < 2) delay(20) }
+        val wire = FrameCodec.encode(
+            EncryptedFrame(NetworkId(ByteArray(8)), MemberId(ByteArray(32) { 2 }), 9u, 3u, 0L, ByteArray(16) { 3 }),
+        )
+        DataOutputStream(a.getOutputStream()).apply { writeInt(wire.size); write(wire); flush() }
+        val got = withTimeout(5_000) {
+            events.first { it is TransportEvent.FrameReceived } as TransportEvent.FrameReceived
+        }
+        val link = requireNotNull(got.link) { "the frame names the socket it came in on" }
+
+        assertIs<SendResult.Sent>(t.relay(wire, except = link))
+        val din = DataInputStream(b.getInputStream())
+        val back = ByteArray(din.readInt()).also { din.readFully(it) }
+        assertTrue(back.contentEquals(wire), "B gets A's frame")
+        a.soTimeout = 300
+        assertTrue(runCatching { DataInputStream(a.getInputStream()).readInt() }.isFailure, "nothing back to A")
+        // A member with only the owner's socket has nobody to relay to.
+        assertIs<SendResult.Failed>(
+            WifiDirectTransport(dummyContext(), port = java.net.ServerSocket(0).use { it.localPort }).relay(wire, except = link),
+        )
+        a.close(); b.close()
+    }
+
+    @Test
     fun `tcp peer exchange over real localhost sockets`() = runBlocking<Unit> {
         val events = t.start(cfg)
 

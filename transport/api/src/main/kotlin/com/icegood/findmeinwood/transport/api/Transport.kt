@@ -8,7 +8,8 @@ import kotlinx.coroutines.flow.Flow
 enum class RadioState { STOPPED, SCANNING, CONNECTING, READY, LINK_DOWN }
 
 sealed interface TransportEvent {
-    data class FrameReceived(val frame: EncryptedFrame, val source: TransportId) : TransportEvent
+    /** [link]: the radio link it came in on (socket, Bluetooth address); null when unknown. */
+    data class FrameReceived(val frame: EncryptedFrame, val source: TransportId, val link: String? = null) : TransportEvent
     data class PeerRadioVisible(val radioPeerId: String, val transport: TransportId) : TransportEvent
     /** A link to a peer became usable for sending (BLE notifications on, socket open). */
     data class LinkUp(val radioPeerId: String, val transport: TransportId) : TransportEvent
@@ -55,6 +56,14 @@ interface Transport {
 
     /** Sends one encoded wire frame. Must not throw for normal failures. */
     suspend fun send(wireFrame: ByteArray): SendResult
+
+    /**
+     * Relays a frame back out on this radio to every link but [except], the one it came in
+     * on: a phone in the middle (Wi-Fi Direct group owner, Bluetooth with several links)
+     * passes frames between members that only reach it. Null: this radio does not (a LoRa
+     * node is a shared-air pipe).
+     */
+    suspend fun relay(wireFrame: ByteArray, except: String): SendResult? = null
 
     /**
      * Network info to advertise to new people (BleAdvert.Info bytes), or null to stop
