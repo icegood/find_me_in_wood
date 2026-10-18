@@ -182,7 +182,10 @@ class LinkE2ETest {
         a.session.confirmLinks(b.id)
         b.session.confirmLinks(a.id)
         repeat(2) { round() }
-        assertEquals(listOf(BLUETOOTH), a.peer(b)?.linkOptions)
+        // The handshake's extra replies run on their own: let the last of them go out first.
+        eventually { a.peer(b)?.linkOptions == listOf(BLUETOOTH) && b.peer(a)?.linkOptions == listOf(BLUETOOTH) }
+        eventually { !a.links.replyNow() && !b.links.replyNow() }
+        delay(SessionManager.REPLY_GAP_MS + 300)
         val wdBefore = a.wd.sentHistory.size
         val btBefore = a.bt.sentHistory.size
         a.session.sendBeaconSigned(BeaconPayload())

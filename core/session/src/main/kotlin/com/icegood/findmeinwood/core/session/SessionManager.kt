@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Wires profile -> transports -> scheduler -> tracker -> edge manager
@@ -74,6 +76,13 @@ class SessionManager(
     // (replay window, peer tracker) drop anything at or below the last seq they saw.
     private val seq = AtomicLong(clock() / 1000)
     private val jobs = mutableListOf<Job>()
+
+    /**
+     * Seq numbering through hand-off to the radios, one frame at a time: two frames sent at
+     * once (a scheduled beacon and a handshake reply) could otherwise arrive out of order,
+     * and the peer's replay window drops the older one with its link control.
+     */
+    private val sendLock = Mutex()
     private val running = MutableStateFlow(false)
     val runningFlow: StateFlow<Boolean> = running
     val peerFlow: StateFlow<Map<MemberId, PeerState>> get() = tracker.peersFlow
@@ -340,7 +349,7 @@ class SessionManager(
      * NFR-3: sends a beacon signed by the device identity. The signed bytes bind the
      * sequence number and timestamp, so a captured beacon cannot be replayed or re-attributed.
      */
-    suspend fun sendBeaconSigned(beacon: BeaconPayload) {
+    suspend fun sendBeaconSigned(beacon: BeaconPayload): Unit = sendLock.withLock {
         // Link control is part of the signed payload, so offers cannot be forged by relays.
         // Paused sharing: still a beacon (reachable, links work), just without my position.
         val payload = beacon.copy(
@@ -380,7 +389,7 @@ class SessionManager(
      * Seals and sends [payloadBytes] on every agreed radio, or only on those of [only]. [beacon] marks a
      * position beacon (reported to [onFrameSent]).
      */
-    suspend fun sendRaw(payloadBytes: ByteArray, beacon: Boolean = false, only: Set<TransportId>? = null) {
+    suspend fun sendRaw(payloadBytes: ByteArray, beacon: Boolean = false, only: Set<TransportId>? = null): Unit = sendLock.withLock {
         val s = (seq.getAndIncrement()).toUInt()
         val sentAt = clock()
         val aad = FrameCodec.aad(profile.networkId, profile.myMemberId, s, sentAt)

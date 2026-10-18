@@ -157,7 +157,9 @@ class LinkNegotiator(
         // Until the peer echoes our ack, and until we echoed theirs.
         val handshaking = acks.any { (id, ack) -> ackSent[id] != ack.h || peers[id]?.theirEcho != ack.h || echoSent[id] != ack.e }
         val sels = peers.filter { (_, p) -> p.announce > 0 && p.selected != null }
-        if (!dirty && !handshaking && sels.isEmpty() && beaconCount % OFFERS_EVERY != 0) return null
+        // An answer the peer waits for always goes out (and clears [urgent]), else every
+        // frame heard meanwhile would ask for one more extra beacon.
+        if (!dirty && !urgent && !handshaking && sels.isEmpty() && beaconCount % OFFERS_EVERY != 0) return null
         dirty = false
         urgent = false
         acks.forEach { (id, ack) -> ackSent[id] = ack.h; echoSent[id] = ack.e }
