@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.icegood.findmeinwood.core.auth.AuthManager
 import com.icegood.findmeinwood.core.auth.UserProfile
 import com.icegood.findmeinwood.core.chat.ChatRepository
@@ -245,15 +246,18 @@ class MainActivity : ComponentActivity() {
                     NavigationBarItem(
                         selected = selected, onClick = onClick,
                         icon = {},
-                        // Six items on a narrow screen leave ~60dp each, which is not enough for
-                        // "Networks" at the default label size, so it used to wrap onto two lines.
+                        // Six items on a narrow screen leave ~60dp each: long words ("Networks",
+                        // "Налаштування") shrink to fit on one line instead of wrapping or clipping.
                         label = {
-                            Text(
+                            val style = MaterialTheme.typography.labelSmall
+                            androidx.compose.foundation.text.BasicText(
                                 label,
-                                style = MaterialTheme.typography.labelSmall,
+                                style = style.copy(color = LocalContentColor.current),
                                 maxLines = 1,
                                 softWrap = false,
-                                overflow = TextOverflow.Clip,
+                                autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(
+                                    minFontSize = 7.sp, maxFontSize = style.fontSize,
+                                ),
                             )
                         },
                     )
