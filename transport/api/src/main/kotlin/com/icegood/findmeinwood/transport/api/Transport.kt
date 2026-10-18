@@ -27,6 +27,9 @@ sealed interface SendResult {
     data object HandedToUser : SendResult
 }
 
+/** This phone's part in a radio group shared by members (the Wi-Fi Direct group). */
+enum class GroupRole { HOST, JOIN }
+
 data class SessionConfig(
     val networkId: NetworkId,
     val transports: Set<TransportId>,
@@ -61,4 +64,10 @@ interface Transport {
 
     /** Opens a link to [radioPeerId] (seen in [TransportEvent.NetworkAdvertSeen]) to ask to join. */
     fun connect(radioPeerId: String) {}
+
+    /**
+     * The role members agreed for this phone in a shared group (LNP/3), or null while none
+     * is agreed: the radio then picks one itself. Radios without groups ignore it.
+     */
+    fun setGroupRole(role: GroupRole?) {}
 }

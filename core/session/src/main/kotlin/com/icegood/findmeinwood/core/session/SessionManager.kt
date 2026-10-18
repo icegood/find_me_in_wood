@@ -15,6 +15,7 @@ import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.NetworkProfile
 import com.icegood.findmeinwood.core.model.PayloadCodec
 import com.icegood.findmeinwood.core.model.TransportId
+import com.icegood.findmeinwood.transport.api.GroupRole
 import com.icegood.findmeinwood.transport.api.SessionConfig
 import com.icegood.findmeinwood.transport.api.Transport
 import com.icegood.findmeinwood.transport.api.RadioState
@@ -31,9 +32,9 @@ import kotlinx.coroutines.launch
 
 /**
  * Wires profile -> transports -> scheduler -> tracker -> edge manager
- * (T2.2/T6.2). Receiving happens on all transports; sending broadcasts on all
- * active transports (v1 degenerate mesh). Relay: valid unseen frames with ttl>1
- * are re-sent on all other transports (FR-3.3).
+ * (T2.2/T6.2). Receiving happens on all transports; sending broadcasts on the
+ * radios agreed with peers (LNP/3, [LinkNegotiator.radios]). Relay: valid unseen
+ * frames with ttl>1 are re-sent on the other agreed radios (FR-3.3).
  */
 class SessionManager(
     private val profile: NetworkProfile,
@@ -137,6 +138,7 @@ class SessionManager(
 
     private fun announce(switches: List<LinkNegotiator.Switch>) {
         switches.forEach { onLinkSwitch?.invoke(it) }
+        applyGroupRole()
         // Agreed set, selection and suggestion feed the member list.
         links?.all()?.forEach { v ->
             tracker.setLinkInfo(
@@ -241,6 +243,23 @@ class SessionManager(
 
     private fun live() = transports.filter { it.id !in muted }
 
+    /** Radios member frames go out on: the live ones agreed with peers (all before any). */
+    private fun routed(): List<Transport> {
+        val agreed = links?.radios() ?: return live()
+        return live().filter { it.id !in LinkNegotiator.RUNGS || it.id in agreed }
+    }
+
+    @Volatile private var groupRole: GroupRole? = null
+
+    /** Hands the agreed Wi-Fi Direct role to the radios when it changes. */
+    private fun applyGroupRole() {
+        val role = links?.wifiDirectRole()
+        if (role == groupRole) return
+        groupRole = role
+        com.icegood.findmeinwood.transport.api.DebugLog.d { "wifi direct role: ${role ?: "undecided"}" }
+        transports.forEach { it.setGroupRole(role) }
+    }
+
     /** Last known radio state per transport (drives the status line in the UI). */
     private val _radioStates = MutableStateFlow<Map<TransportId, RadioState>>(emptyMap())
     val radioStates: StateFlow<Map<TransportId, RadioState>> = _radioStates
@@ -337,7 +356,7 @@ class SessionManager(
         val wire = FrameCodec.encode(
             EncryptedFrame(profile.networkId, profile.myMemberId, s, INITIAL_TTL, sentAt, ct),
         )
-        live().forEach { it.send(wire) }
+        routed().forEach { it.send(wire) }
         bump { it.copy(sent = it.sent + 1) }
         onFrameSent?.invoke(wire)
     }
@@ -353,7 +372,7 @@ class SessionManager(
     }
 
     /**
-     * Seals and sends [payloadBytes] on every radio, or only on [only]. [beacon] marks a
+     * Seals and sends [payloadBytes] on every agreed radio, or only on those of [only]. [beacon] marks a
      * position beacon (reported to [onFrameSent]).
      */
     suspend fun sendRaw(payloadBytes: ByteArray, beacon: Boolean = false, only: Set<TransportId>? = null) {
@@ -365,7 +384,7 @@ class SessionManager(
             profile.networkId, profile.myMemberId, s, INITIAL_TTL, sentAt, ct,
         )
         val wire = FrameCodec.encode(frame)
-        live().filter { only == null || it.id in only }.forEach { it.send(wire) }
+        routed().filter { only == null || it.id in only }.forEach { it.send(wire) }
         bump { it.copy(sent = it.sent + 1) }
         if (beacon) onFrameSent?.invoke(wire)
     }
@@ -460,7 +479,7 @@ class SessionManager(
         if (relayEnabled && f.ttl > 1u) {
             val relayed = f.copy(ttl = (f.ttl - 1u).toUByte())
             val wire = FrameCodec.encode(relayed)
-            live().filter { it.id != source && (only == null || it.id in only) }.forEach { it.send(wire) }
+            routed().filter { it.id != source && (only == null || it.id in only) }.forEach { it.send(wire) }
             bump { it.copy(relayed = it.relayed + 1) }
         }
     }

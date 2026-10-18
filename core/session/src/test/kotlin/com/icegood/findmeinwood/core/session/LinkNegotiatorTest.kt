@@ -9,6 +9,7 @@ import com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH
 import com.icegood.findmeinwood.core.model.TransportId.LORA
 import com.icegood.findmeinwood.core.model.TransportId.SMS
 import com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT
+import com.icegood.findmeinwood.transport.api.GroupRole
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -171,5 +172,38 @@ class LinkNegotiatorTest {
         assertTrue(a.onFrame(idA, BLUETOOTH, direct = true, ctl = null).isEmpty(), "own frames ignored")
         assertTrue(a.onFrame(idB, BLUETOOTH, direct = true, ctl = LinkCtl(v = 2)).isEmpty(), "other versions ignored")
         assertEquals(BLUETOOTH, a.all().single().link)
+    }
+
+    @Test
+    fun `frames go on every radio until a set is agreed, then only on the agreed ones`() {
+        assertNull(a.radios(), "nobody met yet: every radio")
+        a.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT), LinkOffer(LORA)))
+        b.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT)))
+        exchange()
+        assertNull(a.radios(), "B is in its handshake: every radio")
+        a.confirm(idB); b.confirm(idA)
+        repeat(2) { exchange() }
+        assertEquals(setOf(BLUETOOTH, WIFI_DIRECT), a.radios(), "LoRa was never agreed with anyone")
+        now += beacon * 10
+        assertEquals(setOf(BLUETOOTH, WIFI_DIRECT), a.radios(), "a quiet peer keeps its agreed radios")
+        b.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT), LinkOffer(LORA)))
+        exchange()
+        assertNull(a.radios(), "a new transport needs a new confirmation: every radio meanwhile")
+    }
+
+    @Test
+    fun `the lower member id hosts the Wi-Fi Direct group while the pair hears each other`() {
+        assertNull(a.wifiDirectRole())
+        handshake()
+        assertEquals(GroupRole.HOST, a.wifiDirectRole())
+        assertEquals(GroupRole.JOIN, b.wifiDirectRole())
+        now += beacon * 4
+        assertNull(a.wifiDirectRole(), "nobody agreed in reach: the radio finds a group itself")
+        assertNull(b.wifiDirectRole())
+        exchange()
+        assertEquals(GroupRole.HOST, a.wifiDirectRole())
+        b.setOffers(listOf(LinkOffer(BLUETOOTH))) // B switched Wi-Fi off
+        repeat(2) { exchange() }
+        assertNull(a.wifiDirectRole(), "Wi-Fi Direct no longer agreed")
     }
 }

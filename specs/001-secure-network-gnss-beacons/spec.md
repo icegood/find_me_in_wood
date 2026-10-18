@@ -64,6 +64,15 @@ frame is encrypted and authenticated with the network's key.
 - FR-3.5 Links are negotiated in-band by LNP/3: one handshake per pair agrees the *set* of
   usable transports; within it the link switches at any time without a new handshake.
   There is no fallback — nothing switches by itself.
+- FR-3.5a Routing follows the agreement: member frames go out only on radios agreed with
+  some peer, and on every agreed radio, so a pair keeps reaching each other while any of
+  its agreed radios does. While a peer heard lately has no agreed set yet (handshake, or a
+  new transport awaiting confirmation) frames go on every radio. Management frames
+  (discovery, joining) are not limited.
+- FR-3.5b Wi-Fi Direct roles follow the agreement: of the members in reach (heard within
+  3 beacon intervals) agreed on Wi-Fi Direct, the lowest member id hosts the group and the
+  others only join; the host never gives up its group. A working group is never torn down
+  for a role change. With no such member in reach the radio finds a group by itself.
 - FR-3.6 Offers: each member lists its usable transports in its signed, encrypted beacon
   (`link.offers`: BLUETOOTH | WIFI_DIRECT | LORA | SMS + address, e.g. SMS number). An
   offer exists only while usable (radio on, node ready, SMS allowed + own number set).

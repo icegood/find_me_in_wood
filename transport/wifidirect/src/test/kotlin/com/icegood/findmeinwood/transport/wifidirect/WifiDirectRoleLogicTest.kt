@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.wifi.p2p.WifiP2pManager
 import com.icegood.findmeinwood.core.model.NetworkId
 import com.icegood.findmeinwood.core.model.TransportId
+import com.icegood.findmeinwood.transport.api.GroupRole
 import com.icegood.findmeinwood.transport.api.RadioState
 import com.icegood.findmeinwood.transport.api.SendResult
 import com.icegood.findmeinwood.transport.api.SessionConfig
@@ -136,6 +137,46 @@ class WifiDirectRoleLogicTest {
             t.stop()
         } finally {
             WifiDirectTransport.HOST_IDLE_MS = idle
+        }
+    }
+
+    @Test
+    fun `agreed host creates the group at once and never gives it up`() = runBlocking<Unit> {
+        val idle = WifiDirectTransport.HOST_IDLE_MS
+        WifiDirectTransport.HOST_IDLE_MS = 20
+        try {
+            val w = FakeWiring()
+            val t = transport(w, pollMs = 30L)
+            t.setGroupRole(GroupRole.HOST)
+            t.start(cfg)
+            assertEquals(listOf(creds), w.created, "hosts without a join window")
+            assertTrue(w.joins.isEmpty())
+            w.answerInfo(formed = true, owner = true, host = "192.168.49.1")
+            delay(250)
+            assertEquals(0, w.removeGroupCalls, "the agreed host waits for its members")
+            t.stop()
+        } finally {
+            WifiDirectTransport.HOST_IDLE_MS = idle
+        }
+    }
+
+    @Test
+    fun `agreed member only joins and gives up a group it hosts alone at once`() = runBlocking<Unit> {
+        val window = WifiDirectTransport.JOIN_WINDOW_MS
+        WifiDirectTransport.JOIN_WINDOW_MS = 20
+        try {
+            val w = FakeWiring().apply { failJoin = true }
+            val t = transport(w, pollMs = 30L)
+            t.start(cfg)
+            w.answerInfo(formed = true, owner = true, host = "192.168.49.1") // hosting before the agreement
+            t.setGroupRole(GroupRole.JOIN)
+            assertEquals(1, w.removeGroupCalls, "a lone host that should join gives up at once")
+            delay(200)
+            assertEquals(0, w.createGroupCalls, "never hosts, whatever the join window says")
+            assertTrue(w.joins.size >= 2)
+            t.stop()
+        } finally {
+            WifiDirectTransport.JOIN_WINDOW_MS = window
         }
     }
 

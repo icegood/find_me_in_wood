@@ -173,4 +173,21 @@ class LinkE2ETest {
         kotlin.test.assertTrue(tookMs < 10_000, "took $tookMs ms")
         kotlin.test.assertTrue(a.session.diagnostics.value.sent <= 3, "A sent ${a.session.diagnostics.value.sent}")
     }
+
+    @Test
+    fun `after the handshake frames go only on the radios the pair agreed`() = runBlocking {
+        b.links.setOffers(listOf(LinkOffer(BLUETOOTH))) // B has Wi-Fi off
+        a.session.start(); b.session.start()
+        round()
+        a.session.confirmLinks(b.id)
+        b.session.confirmLinks(a.id)
+        repeat(2) { round() }
+        assertEquals(listOf(BLUETOOTH), a.peer(b)?.linkOptions)
+        val wdBefore = a.wd.sentHistory.size
+        val btBefore = a.bt.sentHistory.size
+        a.session.sendBeaconSigned(BeaconPayload())
+        eventually { a.bt.sentHistory.size > btBefore }
+        assertEquals(wdBefore, a.wd.sentHistory.size, "Wi-Fi Direct was never agreed with B")
+    }
 }
+

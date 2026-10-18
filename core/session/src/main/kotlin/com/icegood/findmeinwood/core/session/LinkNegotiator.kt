@@ -6,6 +6,7 @@ import com.icegood.findmeinwood.core.model.LinkOffer
 import com.icegood.findmeinwood.core.model.LinkSel
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.TransportId
+import com.icegood.findmeinwood.transport.api.GroupRole
 import java.util.zip.CRC32
 
 /**
@@ -23,6 +24,10 @@ import java.util.zip.CRC32
  *   on both sides, so nothing needs to be sent.
  * - No fallback: nothing switches by itself. When the selected link goes quiet the
  *   negotiator only [suggest]s the next agreed transport; switching is the user's choice.
+ * - Routing: frames go out only on radios some pair agreed on ([radios]); every agreed
+ *   radio carries them, so a pair stays in touch while any of its agreed radios reaches.
+ * - Wi-Fi Direct roles follow from the agreement ([wifiDirectRole]): the lowest member id
+ *   hosts the group — computed the same on every phone, so nothing needs to be sent.
  */
 class LinkNegotiator(
     private val self: MemberId,
@@ -215,6 +220,31 @@ class LinkNegotiator(
     @Synchronized
     fun tick(): List<Switch> = peers.mapNotNull { (id, p) -> changed(id, p) }
 
+    /**
+     * Radios frames go out on: those agreed with any peer, or every radio (null) while a
+     * peer heard lately has no agreed set yet (its handshake must get through) or nothing
+     * is agreed at all. Radios outside [RUNGS] are not negotiated and never limited.
+     */
+    @Synchronized
+    fun radios(): Set<TransportId>? {
+        val now = nowMs()
+        if (peers.any { (id, p) -> agreedSet(id, p).isEmpty() && heardLately(p, now) }) return null
+        return peers.flatMap { (id, p) -> agreedSet(id, p) }.toSet().ifEmpty { null }
+    }
+
+    /**
+     * This phone's Wi-Fi Direct role: of the members heard lately that agreed on Wi-Fi
+     * Direct with this one, the lowest id hosts and the others join. Null while no such
+     * member is heard: the radio then finds a group by itself, as before any agreement.
+     */
+    @Synchronized
+    fun wifiDirectRole(): GroupRole? {
+        val now = nowMs()
+        val wd = peers.filter { (id, p) -> TransportId.WIFI_DIRECT in agreedSet(id, p) && heardLately(p, now) }
+        if (wd.isEmpty()) return null
+        return if (wd.keys.all { hex(self) < hex(it) }) GroupRole.HOST else GroupRole.JOIN
+    }
+
     @Synchronized
     fun common(peer: MemberId): List<TransportId> = peers[peer]?.offers?.let { commonOf(it) } ?: emptyList()
 
@@ -285,6 +315,9 @@ class LinkNegotiator(
         val set = agreedSet(id, p)
         return p.selected?.takeIf { it in set } ?: set.firstOrNull()
     }
+
+    /** Heard directly within three beacon intervals (the staleness of a peer). */
+    private fun heardLately(p: Peer, now: Long) = p.lastHeardMs > 0 && now - p.lastHeardMs <= beaconIntervalMs * 3
 
     private fun window(t: TransportId) = if (t == TransportId.SMS) smsIntervalMs else beaconIntervalMs
 

@@ -6,6 +6,7 @@ import android.net.wifi.p2p.WifiP2pManager
 import com.icegood.findmeinwood.core.crypto.FrameCodec
 import com.icegood.findmeinwood.core.crypto.MgmtCodec
 import com.icegood.findmeinwood.core.model.TransportId
+import com.icegood.findmeinwood.transport.api.GroupRole
 import com.icegood.findmeinwood.transport.api.RadioState
 import com.icegood.findmeinwood.transport.api.SendResult
 import com.icegood.findmeinwood.transport.api.SessionConfig
@@ -36,10 +37,12 @@ import kotlinx.coroutines.launch
  * The group runs under [GroupCredentials] derived from the network's secret: members
  * join it with name + passphrase (a WPA2 login, not an invitation), so no system dialog
  * appears on either phone and devices outside the network are never contacted. Roles:
- * a phone first tries to join for a randomised window; if no member hosts yet it hosts
- * itself. A host nobody joins gives the group up after a while and tries joining again,
- * which resolves two phones that started hosting at the same time. [setPreferGroupOwner]
- * makes this phone always host.
+ * once members agreed on Wi-Fi Direct, the agreement decides ([setGroupRole]): the host
+ * hosts and never gives up, the others only join. Before that (or with nobody agreed in
+ * reach) a phone first tries to join for a randomised window; if no member hosts yet it
+ * hosts itself. A host nobody joins gives the group up after a while and tries joining
+ * again, which resolves two phones that started hosting at the same time.
+ * [setPreferGroupOwner] makes this phone always host, whatever was agreed.
  */
 class WifiDirectTransport(
     private val context: Context,
@@ -89,6 +92,21 @@ class WifiDirectTransport(
     }
 
     fun isGroupOwner(): Boolean = preferOwner
+
+    /** Role agreed with the members in reach (LNP/3); null = none, find one by trying. */
+    @Volatile private var role: GroupRole? = null
+
+    /**
+     * A working group is kept whatever the role says: tearing it down would cut the very
+     * link the agreement came over. A host nobody joined that should join gives up at once.
+     */
+    override fun setGroupRole(role: GroupRole?) {
+        if (role == this.role) return
+        this.role = role
+        if (role == null) hostAfterMs = System.currentTimeMillis() + joinWindowMs()
+        if (!running) return
+        if (!groupFormed) formGroup() else yieldIdleHost()
+    }
 
     /** Open peer sockets (diagnostics). */
     fun peerLinkCount(): Int = sockets.size
@@ -225,10 +243,15 @@ class WifiDirectTransport(
         }
     }
 
-    /** Join a member's group, or host one once the join window is over (or by preference). */
+    /** Host or join as agreed; without a role join a member's group, or host one once the join window is over. */
     private fun formGroup() {
         if (creds == null || groupFormed) return
-        if (preferOwner || System.currentTimeMillis() >= hostAfterMs) createGroup() else joinGroup()
+        val host = when {
+            preferOwner -> true
+            role != null -> role == GroupRole.HOST
+            else -> System.currentTimeMillis() >= hostAfterMs
+        }
+        if (host) createGroup() else joinGroup()
     }
 
     private fun joinGroup() {
@@ -255,16 +278,17 @@ class WifiDirectTransport(
 
     /**
      * A host nobody joined for a while gives the group up and goes back to joining: when
-     * two phones started hosting at once, one of them ends up in the other's group.
+     * two phones started hosting at once, one of them ends up in the other's group. The
+     * agreed host never gives up; one agreed to join gives up at once.
      */
     private fun yieldIdleHost() {
-        if (preferOwner || !isOwnerNow || sockets.isNotEmpty()) {
+        if (preferOwner || role == GroupRole.HOST || !isOwnerNow || sockets.isNotEmpty()) {
             hostingAloneSinceMs = 0L
             return
         }
         val now = System.currentTimeMillis()
         if (hostingAloneSinceMs == 0L) hostingAloneSinceMs = now
-        if (now - hostingAloneSinceMs >= hostIdleMs()) {
+        if (role == GroupRole.JOIN || now - hostingAloneSinceMs >= hostIdleMs()) {
             hostingAloneSinceMs = 0L
             wiring.removeGroup(channel)
             dropGroup()
