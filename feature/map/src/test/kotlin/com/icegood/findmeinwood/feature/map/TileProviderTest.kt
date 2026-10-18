@@ -13,6 +13,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [29])
 class TileProviderTest {
+    private val ctx: android.content.Context = org.robolectric.RuntimeEnvironment.getApplication()
     @Test
     fun `provider ids round-trip`() {
         TileProvider.entries.forEach { p ->
@@ -87,12 +88,12 @@ class TileProviderTest {
 
     @Test
     fun `chooser texts say coverage and what is missing`() {
-        assertEquals("satellite · USA only", providerHint(TileProvider.USGS_SAT, emptyMap()))
-        assertEquals("satellite · needs Access token", providerHint(TileProvider.MAPBOX_SAT, emptyMap()))
-        assertEquals("satellite · ArcGIS token set", providerHint(TileProvider.ESRI_SAT, mapOf("token" to "T")))
-        assertEquals("streets", providerHint(TileProvider.OPENFREEMAP, emptyMap()))
-        assertEquals("Offline (OpenFreeMap)", layerLabel(MapLayer.DEFAULT))
-        assertEquals("Esri World Imagery", layerLabel(MapLayer(TileProvider.ESRI_SAT, offline = false)))
+        assertEquals("satellite · USA only", providerHint(ctx, TileProvider.USGS_SAT, emptyMap()))
+        assertEquals("satellite · needs Access token", providerHint(ctx, TileProvider.MAPBOX_SAT, emptyMap()))
+        assertEquals("satellite · ArcGIS token set", providerHint(ctx, TileProvider.ESRI_SAT, mapOf("token" to "T")))
+        assertEquals("streets", providerHint(ctx, TileProvider.OPENFREEMAP, emptyMap()))
+        assertEquals("Offline (OpenFreeMap)", layerLabel(ctx, MapLayer.DEFAULT))
+        assertEquals("Esri World Imagery", layerLabel(ctx, MapLayer(TileProvider.ESRI_SAT, offline = false)))
     }
 
     @Test

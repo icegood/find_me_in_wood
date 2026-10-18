@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">само САД</string>
+    <string name="option_api_key">API кључ</string>
+    <string name="option_arcgis_token">ArcGIS токен</string>
+    <string name="option_access_token">Приступни токен</string>
+    <string name="estimate_k_tiles">%1$s хиљ. плочица · ~%2$s MB</string>
+    <string name="estimate_tiles">плочице: %1$s · ~%2$s MB</string>
+    <string name="downloading">Преузимање „%1$s“</string>
+    <string name="saved_offline">„%1$s“ сачувано за офлајн употребу</string>
+    <string name="download_error">Грешка при преузимању: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Офлајн (%1$s)</string>
+    <string name="kind_satellite">сателит</string>
+    <string name="kind_streets">улице</string>
+    <string name="needs">треба %1$s</string>
+    <string name="option_set">%1$s подешен</string>
+    <string-array name="compass_points">
+        <item>С</item>
+        <item>СИ</item>
+        <item>И</item>
+        <item>ЈИ</item>
+        <item>Ј</item>
+        <item>ЈЗ</item>
+        <item>З</item>
+        <item>СЗ</item>
+    </string-array>
+    <string name="area_name_default">Област %1$s</string>
+    <string name="save_offline_area">Сачувај офлајн област</string>
+    <string name="area_name">Назив области</string>
+    <string name="area_trail_detail">%1$s, до детаља стаза · %2$s</string>
+    <string name="area_too_large">Превелико за %1$s (највише %2$s плочица са детаљима стаза): нацртајте мању област.</string>
+    <string name="download">Преузми</string>
+    <string name="nearby_within">близу ≤%1$d m</string>
+    <string name="no_network_running">Ниједна мрежа није активна</string>
+    <string name="others_heard">чују се други: %1$d</string>
+    <string name="map_chip">Мапа: %1$s ▾</string>
+    <string name="offline">Офлајн</string>
+    <string name="offline_hint">сачуване области и прегледана места из %1$s — без интернета</string>
+    <string name="provider_options_menu">Опције за %1$s…</string>
+    <string name="provider_needs">%1$s треба %2$s</string>
+    <string name="set_it">Подеси</string>
+    <string name="finding">Тражење: %1$s</string>
+    <string name="too_rough_direction">положаји су превише непрецизни за смер</string>
+    <string name="relayed">прослеђено</string>
+    <string name="waiting_first_fix">чека се први положај…</string>
+    <string name="save_area_offline">Сачувај ову област офлајн</string>
+    <string name="drag_rectangle">превуците правоугаоник преко мапе</string>
+    <string name="drag_larger">превуците већи правоугаоник</string>
+    <string name="too_large_draw_smaller">превелико за %1$s: нацртајте мање</string>
+    <string name="cancel">Откажи</string>
+    <string name="use_this_area">Користи ову област</string>
+    <string name="parts_done">%1$s / %2$s делова</string>
+    <string name="preparing">припрема…</string>
+    <string name="errors_count">грешке: %1$d</string>
+    <string name="done">Готово</string>
+    <string name="cancelling">отказивање…</string>
+    <string name="members">Чланови</string>
+    <string name="no_members_heard">Још се не чује ниједан члан.</string>
+    <string name="tap_find_hint">Додирните Пронађи за стрелицу и удаљеност до некога на мапи.</string>
+    <string name="member">члан</string>
+    <string name="unlocated_seen">%1$s — без локације, последњи пут чуо се пре %2$s</string>
+    <string name="bearing">смер %1$s</string>
+    <string name="rename">Преименуј</string>
+    <string name="stop">Заустави</string>
+    <string name="find">Пронађи</string>
+    <string name="rename_member">Преименуј члана</string>
+    <string name="rename_hint">Само на овом телефону. Празно = име које је особа изабрала.</string>
+    <string name="save">Сачувај</string>
+    <string name="nearby_range">близу (≤%1$d m: домет %2$s)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">друга страна</string>
+    <string name="link_exchanging">веза: размена понуда… (чује се преко %1$s)</string>
+    <string name="confirm_link">Потврди везу: %1$s</string>
+    <string name="link_waiting">веза: %1$s — чека се потврда: %2$s</string>
+    <string name="link_chip">веза: %1$s ▾</string>
+    <string name="link_quiet">%1$s ћути — користити %2$s?</string>
+    <string name="not_offered_by">%1$s то не нуди</string>
+    <string name="fix_turn_on">Укључи</string>
+    <string name="fix_set_number">Подеси број</string>
+    <string name="fix_allow">Дозволи</string>
+    <string name="via_others">преко других</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">месинџер</string>
+    <string name="age_s">%1$d с</string>
+    <string name="age_min">%1$d мин</string>
+    <string name="waiting_gps">чека се GPS</string>
+    <string name="gps_faked">GPS у близини је лажиран, користи се мрежа ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">мрежа ±%1$d m</string>
+    <string name="provider_options">Опције за %1$s</string>
+    <string name="optional">(опционо)</string>
+    <string name="option_sent_only">шаље се само ка %1$s као %2$s</string>
+    <string name="get_one_at">Набавите на %1$s</string>
+    <string name="coverage">Покривеност: %1$s</string>
+</resources>

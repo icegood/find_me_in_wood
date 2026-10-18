@@ -10,6 +10,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [29])
 class MapMathTest {
+    private val ctx: android.content.Context = org.robolectric.RuntimeEnvironment.getApplication()
     private fun loc(lat: Double, lon: Double) = Location("test").apply { latitude = lat; longitude = lon }
 
     @Test
@@ -59,27 +60,27 @@ class MapMathTest {
 
     @Test
     fun `distance label switches to km`() {
-        assertTrue(formatDistance(850.4) == "850 m")
+        assertTrue(formatDistance(ctx, 850.4) == "850 m")
         // decimal separator follows the device locale
-        assertTrue(formatDistance(1530.0).matches(Regex("1[.,]5 km")), formatDistance(1530.0))
+        assertTrue(formatDistance(ctx, 1530.0).matches(Regex("1[.,]5 km")), formatDistance(ctx, 1530.0))
     }
 
     @Test
     fun `distance uncertainty is shown only when the fixes are rough`() {
-        kotlin.test.assertEquals("", uncertainty(10, 15))
-        kotlin.test.assertEquals(" (±518 m)", uncertainty(500, 18))
-        kotlin.test.assertEquals("", uncertainty(-1, 0))
+        kotlin.test.assertEquals("", uncertainty(ctx, 10, 15))
+        kotlin.test.assertEquals(" (±518 m)", uncertainty(ctx, 500, 18))
+        kotlin.test.assertEquals("", uncertainty(ctx, -1, 0))
     }
 
     @Test
     fun `a direct radio link overrides positions that contradict it`() {
         val bt = com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH
         // Side by side, one phone on a ±500 m network fix that is 1.9 km off.
-        kotlin.test.assertEquals("nearby (≤100 m: Bluetooth range)", distanceText(1877.0, 500, 18, bt, heardRecently = true))
+        kotlin.test.assertEquals("nearby (≤100 m: Bluetooth range)", distanceText(ctx, 1877.0, 500, 18, bt, heardRecently = true))
         // Plausible positions keep their distance.
-        kotlin.test.assertEquals("40 m", distanceText(40.0, 5, 5, bt, heardRecently = true))
+        kotlin.test.assertEquals("40 m", distanceText(ctx, 40.0, 5, 5, bt, heardRecently = true))
         // Only relayed, or not heard lately: no radio evidence, positions are all there is.
-        kotlin.test.assertEquals("1.9 km (±518 m)".replace('.', java.text.DecimalFormatSymbols.getInstance().decimalSeparator), distanceText(1877.0, 500, 18, null, heardRecently = true))
+        kotlin.test.assertEquals("1.9 km (±518 m)".replace('.', java.text.DecimalFormatSymbols.getInstance().decimalSeparator), distanceText(ctx, 1877.0, 500, 18, null, heardRecently = true))
         kotlin.test.assertEquals(null, radioBoundM(1877.0, bt, heardRecently = false))
         kotlin.test.assertEquals(200, radioBoundM(1877.0, com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT, heardRecently = true))
         kotlin.test.assertEquals(null, radioRangeM(com.icegood.findmeinwood.core.model.TransportId.SMS))
@@ -98,13 +99,13 @@ class MapMathTest {
         )
         kotlin.test.assertEquals(
             listOf("SMS" to "set this phone's number", "Satellite" to "not supported before Android 15"),
-            unavailableLinks(peer, st), "offers not known yet: only what is off here",
+            unavailableLinks(ctx, peer, st), "offers not known yet: only what is off here",
         )
         val agreed = peer.copy(link = com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH, linkOptions = listOf(com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH))
         kotlin.test.assertEquals(
             listOf("Wi-Fi Direct" to "not offered by Ira", "SMS" to "set this phone's number", "Satellite" to "not supported before Android 15"),
-            unavailableLinks(agreed, st),
+            unavailableLinks(ctx, agreed, st),
         )
-        kotlin.test.assertEquals("Set number", fixLabel(com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER))
+        kotlin.test.assertEquals("Set number", fixLabel(ctx, com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER))
     }
 }

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">chỉ Hoa Kỳ</string>
+    <string name="option_api_key">Khóa API</string>
+    <string name="option_arcgis_token">Mã ArcGIS</string>
+    <string name="option_access_token">Mã truy cập</string>
+    <string name="estimate_k_tiles">%1$s nghìn ô · ~%2$s MB</string>
+    <string name="estimate_tiles">số ô: %1$s · ~%2$s MB</string>
+    <string name="downloading">Đang tải “%1$s”</string>
+    <string name="saved_offline">Đã lưu “%1$s” để dùng ngoại tuyến</string>
+    <string name="download_error">Lỗi tải xuống: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Ngoại tuyến (%1$s)</string>
+    <string name="kind_satellite">vệ tinh</string>
+    <string name="kind_streets">đường phố</string>
+    <string name="needs">cần %1$s</string>
+    <string name="option_set">đã đặt %1$s</string>
+    <string-array name="compass_points">
+        <item>B</item>
+        <item>ĐB</item>
+        <item>Đ</item>
+        <item>ĐN</item>
+        <item>N</item>
+        <item>TN</item>
+        <item>T</item>
+        <item>TB</item>
+    </string-array>
+    <string name="area_name_default">Khu vực %1$s</string>
+    <string name="save_offline_area">Lưu khu vực ngoại tuyến</string>
+    <string name="area_name">Tên khu vực</string>
+    <string name="area_trail_detail">%1$s, tới mức chi tiết đường mòn · %2$s</string>
+    <string name="area_too_large">Quá lớn cho %1$s (tối đa %2$s ô ở mức đường mòn): hãy vẽ khu vực nhỏ hơn.</string>
+    <string name="download">Tải xuống</string>
+    <string name="nearby_within">gần ≤%1$d m</string>
+    <string name="no_network_running">Không có mạng nào đang chạy</string>
+    <string name="others_heard">người khác nghe thấy: %1$d</string>
+    <string name="map_chip">Bản đồ: %1$s ▾</string>
+    <string name="offline">Ngoại tuyến</string>
+    <string name="offline_hint">khu vực đã lưu và nơi đã xem từ %1$s — không cần internet</string>
+    <string name="provider_options_menu">Tùy chọn %1$s…</string>
+    <string name="provider_needs">%1$s cần %2$s</string>
+    <string name="set_it">Đặt</string>
+    <string name="finding">Đang tìm %1$s</string>
+    <string name="too_rough_direction">vị trí quá thô để xác định hướng</string>
+    <string name="relayed">đã chuyển tiếp</string>
+    <string name="waiting_first_fix">đang chờ vị trí đầu tiên…</string>
+    <string name="save_area_offline">Lưu khu vực này ngoại tuyến</string>
+    <string name="drag_rectangle">kéo một hình chữ nhật trên bản đồ</string>
+    <string name="drag_larger">kéo hình chữ nhật lớn hơn</string>
+    <string name="too_large_draw_smaller">quá lớn cho %1$s: hãy vẽ nhỏ hơn</string>
+    <string name="cancel">Hủy</string>
+    <string name="use_this_area">Dùng khu vực này</string>
+    <string name="parts_done">%1$s / %2$s phần</string>
+    <string name="preparing">đang chuẩn bị…</string>
+    <string name="errors_count">lỗi: %1$d</string>
+    <string name="done">Xong</string>
+    <string name="cancelling">đang hủy…</string>
+    <string name="members">Thành viên</string>
+    <string name="no_members_heard">Chưa nghe thấy thành viên nào.</string>
+    <string name="tap_find_hint">Nhấn Tìm để có mũi tên và khoảng cách đến ai đó trên bản đồ.</string>
+    <string name="member">thành viên</string>
+    <string name="unlocated_seen">%1$s — không có vị trí, nghe thấy lần cuối %2$s trước</string>
+    <string name="bearing">hướng %1$s</string>
+    <string name="rename">Đổi tên</string>
+    <string name="stop">Dừng</string>
+    <string name="find">Tìm</string>
+    <string name="rename_member">Đổi tên thành viên</string>
+    <string name="rename_hint">Chỉ trên điện thoại này. Trống = tên người đó tự chọn.</string>
+    <string name="save">Lưu</string>
+    <string name="nearby_range">gần (≤%1$d m: tầm của %2$s)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">bên kia</string>
+    <string name="link_exchanging">kết nối: đang trao đổi đề nghị… (nghe qua %1$s)</string>
+    <string name="confirm_link">Xác nhận kết nối: %1$s</string>
+    <string name="link_waiting">kết nối: %1$s — đang chờ xác nhận: %2$s</string>
+    <string name="link_chip">kết nối: %1$s ▾</string>
+    <string name="link_quiet">%1$s im lặng — dùng %2$s?</string>
+    <string name="not_offered_by">%1$s không cung cấp</string>
+    <string name="fix_turn_on">Bật</string>
+    <string name="fix_set_number">Nhập số</string>
+    <string name="fix_allow">Cho phép</string>
+    <string name="via_others">qua người khác</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">ứng dụng nhắn tin</string>
+    <string name="age_s">%1$d giây</string>
+    <string name="age_min">%1$d phút</string>
+    <string name="waiting_gps">đang chờ GPS</string>
+    <string name="gps_faked">GPS gần đây bị giả mạo, dùng mạng ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">mạng ±%1$d m</string>
+    <string name="provider_options">Tùy chọn %1$s</string>
+    <string name="optional">(không bắt buộc)</string>
+    <string name="option_sent_only">chỉ gửi đến %1$s dưới dạng %2$s</string>
+    <string name="get_one_at">Lấy tại %1$s</string>
+    <string name="coverage">Phạm vi: %1$s</string>
+</resources>

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">jen USA</string>
+    <string name="option_api_key">Klíč API</string>
+    <string name="option_arcgis_token">Token ArcGIS</string>
+    <string name="option_access_token">Přístupový token</string>
+    <string name="estimate_k_tiles">%1$s tis. dlaždic · ~%2$s MB</string>
+    <string name="estimate_tiles">dlaždice: %1$s · ~%2$s MB</string>
+    <string name="downloading">Stahování „%1$s“</string>
+    <string name="saved_offline">„%1$s“ uloženo pro offline použití</string>
+    <string name="download_error">Chyba stahování: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Offline (%1$s)</string>
+    <string name="kind_satellite">satelit</string>
+    <string name="kind_streets">ulice</string>
+    <string name="needs">potřebuje %1$s</string>
+    <string name="option_set">%1$s nastaven</string>
+    <string-array name="compass_points">
+        <item>S</item>
+        <item>SV</item>
+        <item>V</item>
+        <item>JV</item>
+        <item>J</item>
+        <item>JZ</item>
+        <item>Z</item>
+        <item>SZ</item>
+    </string-array>
+    <string name="area_name_default">Oblast %1$s</string>
+    <string name="save_offline_area">Uložit offline oblast</string>
+    <string name="area_name">Název oblasti</string>
+    <string name="area_trail_detail">%1$s, do detailu stezek · %2$s</string>
+    <string name="area_too_large">Příliš velká pro %1$s (nejvýš %2$s dlaždic v detailu stezek): nakreslete menší oblast.</string>
+    <string name="download">Stáhnout</string>
+    <string name="nearby_within">poblíž ≤%1$d m</string>
+    <string name="no_network_running">Žádná síť neběží</string>
+    <string name="others_heard">slyšet ostatních: %1$d</string>
+    <string name="map_chip">Mapa: %1$s ▾</string>
+    <string name="offline">Offline</string>
+    <string name="offline_hint">uložené oblasti a prohlédnutá místa z %1$s — bez internetu</string>
+    <string name="provider_options_menu">Možnosti %1$s…</string>
+    <string name="provider_needs">%1$s potřebuje %2$s</string>
+    <string name="set_it">Nastavit</string>
+    <string name="finding">Hledám: %1$s</string>
+    <string name="too_rough_direction">polohy jsou na směr příliš nepřesné</string>
+    <string name="relayed">předáno</string>
+    <string name="waiting_first_fix">čekám na první polohu…</string>
+    <string name="save_area_offline">Uložit tuto oblast offline</string>
+    <string name="drag_rectangle">táhněte obdélník přes mapu</string>
+    <string name="drag_larger">táhněte větší obdélník</string>
+    <string name="too_large_draw_smaller">příliš velká pro %1$s: nakreslete menší</string>
+    <string name="cancel">Zrušit</string>
+    <string name="use_this_area">Použít tuto oblast</string>
+    <string name="parts_done">%1$s / %2$s částí</string>
+    <string name="preparing">příprava…</string>
+    <string name="errors_count">chyby: %1$d</string>
+    <string name="done">Hotovo</string>
+    <string name="cancelling">rušení…</string>
+    <string name="members">Členové</string>
+    <string name="no_members_heard">Zatím žádní členové.</string>
+    <string name="tap_find_hint">Klepněte na Najít a uvidíte šipku a vzdálenost k někomu na mapě.</string>
+    <string name="member">člen</string>
+    <string name="unlocated_seen">%1$s — bez polohy, naposledy slyšen před %2$s</string>
+    <string name="bearing">směr %1$s</string>
+    <string name="rename">Přejmenovat</string>
+    <string name="stop">Stop</string>
+    <string name="find">Najít</string>
+    <string name="rename_member">Přejmenovat člena</string>
+    <string name="rename_hint">Jen v tomto telefonu. Prázdné = jméno, které si člověk zvolil.</string>
+    <string name="save">Uložit</string>
+    <string name="nearby_range">poblíž (≤%1$d m: dosah %2$s)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">druhá strana</string>
+    <string name="link_exchanging">spojení: výměna nabídek… (slyšen přes %1$s)</string>
+    <string name="confirm_link">Potvrdit spojení: %1$s</string>
+    <string name="link_waiting">spojení: %1$s — čeká se na potvrzení: %2$s</string>
+    <string name="link_chip">spojení: %1$s ▾</string>
+    <string name="link_quiet">%1$s mlčí — použít %2$s?</string>
+    <string name="not_offered_by">%1$s to nenabízí</string>
+    <string name="fix_turn_on">Zapnout</string>
+    <string name="fix_set_number">Zadat číslo</string>
+    <string name="fix_allow">Povolit</string>
+    <string name="via_others">přes ostatní</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">komunikátor</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_min">%1$d min</string>
+    <string name="waiting_gps">čekám na GPS</string>
+    <string name="gps_faked">GPS poblíž je podvržené, používám síť ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">síť ±%1$d m</string>
+    <string name="provider_options">Možnosti %1$s</string>
+    <string name="optional">(volitelné)</string>
+    <string name="option_sent_only">posílá se jen do %1$s jako %2$s</string>
+    <string name="get_one_at">Získáte na %1$s</string>
+    <string name="coverage">Pokrytí: %1$s</string>
+</resources>

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">yalnızca ABD</string>
+    <string name="option_api_key">API anahtarı</string>
+    <string name="option_arcgis_token">ArcGIS belirteci</string>
+    <string name="option_access_token">Erişim belirteci</string>
+    <string name="estimate_k_tiles">%1$s bin karo · ~%2$s MB</string>
+    <string name="estimate_tiles">karolar: %1$s · ~%2$s MB</string>
+    <string name="downloading">“%1$s” indiriliyor</string>
+    <string name="saved_offline">“%1$s” çevrimdışı kullanım için kaydedildi</string>
+    <string name="download_error">İndirme hatası: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Çevrimdışı (%1$s)</string>
+    <string name="kind_satellite">uydu</string>
+    <string name="kind_streets">sokaklar</string>
+    <string name="needs">%1$s gerekli</string>
+    <string name="option_set">%1$s ayarlı</string>
+    <string-array name="compass_points">
+        <item>K</item>
+        <item>KD</item>
+        <item>D</item>
+        <item>GD</item>
+        <item>G</item>
+        <item>GB</item>
+        <item>B</item>
+        <item>KB</item>
+    </string-array>
+    <string name="area_name_default">Alan %1$s</string>
+    <string name="save_offline_area">Çevrimdışı alanı kaydet</string>
+    <string name="area_name">Alan adı</string>
+    <string name="area_trail_detail">%1$s, patika ayrıntısına kadar · %2$s</string>
+    <string name="area_too_large">%1$s için çok büyük (patika ayrıntısında en çok %2$s karo): daha küçük bir alan çizin.</string>
+    <string name="download">İndir</string>
+    <string name="nearby_within">yakında ≤%1$d m</string>
+    <string name="no_network_running">Çalışan ağ yok</string>
+    <string name="others_heard">duyulan diğerleri: %1$d</string>
+    <string name="map_chip">Harita: %1$s ▾</string>
+    <string name="offline">Çevrimdışı</string>
+    <string name="offline_hint">%1$s üzerinden kayıtlı alanlar ve bakılan yerler — internet gerekmez</string>
+    <string name="provider_options_menu">%1$s seçenekleri…</string>
+    <string name="provider_needs">%1$s için %2$s gerekli</string>
+    <string name="set_it">Ayarla</string>
+    <string name="finding">Aranıyor: %1$s</string>
+    <string name="too_rough_direction">konumlar yön için fazla belirsiz</string>
+    <string name="relayed">aktarıldı</string>
+    <string name="waiting_first_fix">ilk konum bekleniyor…</string>
+    <string name="save_area_offline">Bu alanı çevrimdışı kaydet</string>
+    <string name="drag_rectangle">haritada bir dikdörtgen çizin</string>
+    <string name="drag_larger">daha büyük bir dikdörtgen çizin</string>
+    <string name="too_large_draw_smaller">%1$s için çok büyük: daha küçük çizin</string>
+    <string name="cancel">İptal</string>
+    <string name="use_this_area">Bu alanı kullan</string>
+    <string name="parts_done">%1$s / %2$s parça</string>
+    <string name="preparing">hazırlanıyor…</string>
+    <string name="errors_count">hatalar: %1$d</string>
+    <string name="done">Bitti</string>
+    <string name="cancelling">iptal ediliyor…</string>
+    <string name="members">Üyeler</string>
+    <string name="no_members_heard">Henüz hiçbir üye duyulmadı.</string>
+    <string name="tap_find_hint">Haritada birine ok ve mesafe görmek için Bul\'a dokunun.</string>
+    <string name="member">üye</string>
+    <string name="unlocated_seen">%1$s — konumsuz, en son %2$s önce duyuldu</string>
+    <string name="bearing">yön %1$s</string>
+    <string name="rename">Yeniden adlandır</string>
+    <string name="stop">Durdur</string>
+    <string name="find">Bul</string>
+    <string name="rename_member">Üyeyi yeniden adlandır</string>
+    <string name="rename_hint">Yalnızca bu telefonda. Boş = kişinin seçtiği ad.</string>
+    <string name="save">Kaydet</string>
+    <string name="nearby_range">yakında (≤%1$d m: %2$s menzili)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">karşı taraf</string>
+    <string name="link_exchanging">bağlantı: teklifler değişiliyor… (%1$s üzerinden duyuldu)</string>
+    <string name="confirm_link">Bağlantıyı onayla: %1$s</string>
+    <string name="link_waiting">bağlantı: %1$s — onay bekleniyor: %2$s</string>
+    <string name="link_chip">bağlantı: %1$s ▾</string>
+    <string name="link_quiet">%1$s sessiz — %2$s kullanılsın mı?</string>
+    <string name="not_offered_by">%1$s bunu sunmuyor</string>
+    <string name="fix_turn_on">Aç</string>
+    <string name="fix_set_number">Numara gir</string>
+    <string name="fix_allow">İzin ver</string>
+    <string name="via_others">diğerleri üzerinden</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">mesajlaşma</string>
+    <string name="age_s">%1$d sn</string>
+    <string name="age_min">%1$d dk</string>
+    <string name="waiting_gps">GPS bekleniyor</string>
+    <string name="gps_faked">yakındaki GPS sahte, ağ kullanılıyor ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">ağ ±%1$d m</string>
+    <string name="provider_options">%1$s seçenekleri</string>
+    <string name="optional">(isteğe bağlı)</string>
+    <string name="option_sent_only">yalnızca %1$s adresine %2$s olarak gönderilir</string>
+    <string name="get_one_at">Şuradan alın: %1$s</string>
+    <string name="coverage">Kapsam: %1$s</string>
+</resources>

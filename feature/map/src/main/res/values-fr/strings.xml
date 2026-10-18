@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">États-Unis seulement</string>
+    <string name="option_api_key">Clé API</string>
+    <string name="option_arcgis_token">Jeton ArcGIS</string>
+    <string name="option_access_token">Jeton d\'accès</string>
+    <string name="estimate_k_tiles">%1$s k tuiles · ~%2$s Mo</string>
+    <string name="estimate_tiles">tuiles : %1$s · ~%2$s Mo</string>
+    <string name="downloading">Téléchargement de « %1$s »</string>
+    <string name="saved_offline">« %1$s » enregistrée pour le hors ligne</string>
+    <string name="download_error">Erreur de téléchargement : %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Hors ligne (%1$s)</string>
+    <string name="kind_satellite">satellite</string>
+    <string name="kind_streets">rues</string>
+    <string name="needs">nécessite %1$s</string>
+    <string name="option_set">%1$s défini</string>
+    <string-array name="compass_points">
+        <item>N</item>
+        <item>NE</item>
+        <item>E</item>
+        <item>SE</item>
+        <item>S</item>
+        <item>SO</item>
+        <item>O</item>
+        <item>NO</item>
+    </string-array>
+    <string name="area_name_default">Zone %1$s</string>
+    <string name="save_offline_area">Enregistrer une zone hors ligne</string>
+    <string name="area_name">Nom de la zone</string>
+    <string name="area_trail_detail">%1$s, jusqu\'au détail des sentiers · %2$s</string>
+    <string name="area_too_large">Trop grande pour %1$s (au plus %2$s tuiles au détail des sentiers) : tracez une zone plus petite.</string>
+    <string name="download">Télécharger</string>
+    <string name="nearby_within">tout près ≤%1$d m</string>
+    <string name="no_network_running">Aucun réseau actif</string>
+    <string name="others_heard">autres entendus : %1$d</string>
+    <string name="map_chip">Carte : %1$s ▾</string>
+    <string name="offline">Hors ligne</string>
+    <string name="offline_hint">zones enregistrées et lieux consultés de %1$s — sans Internet</string>
+    <string name="provider_options_menu">Options %1$s…</string>
+    <string name="provider_needs">%1$s nécessite %2$s</string>
+    <string name="set_it">Définir</string>
+    <string name="finding">Recherche de %1$s</string>
+    <string name="too_rough_direction">positions trop imprécises pour une direction</string>
+    <string name="relayed">relayé</string>
+    <string name="waiting_first_fix">en attente de la première position…</string>
+    <string name="save_area_offline">Enregistrer cette zone hors ligne</string>
+    <string name="drag_rectangle">tracez un rectangle sur la carte</string>
+    <string name="drag_larger">tracez un rectangle plus grand</string>
+    <string name="too_large_draw_smaller">trop grande pour %1$s : tracez plus petit</string>
+    <string name="cancel">Annuler</string>
+    <string name="use_this_area">Utiliser cette zone</string>
+    <string name="parts_done">%1$s / %2$s parties</string>
+    <string name="preparing">préparation…</string>
+    <string name="errors_count">erreurs : %1$d</string>
+    <string name="done">Terminé</string>
+    <string name="cancelling">annulation…</string>
+    <string name="members">Membres</string>
+    <string name="no_members_heard">Aucun membre entendu.</string>
+    <string name="tap_find_hint">Appuyez sur Trouver pour avoir une flèche et la distance jusqu\'à quelqu\'un sur la carte.</string>
+    <string name="member">membre</string>
+    <string name="unlocated_seen">%1$s — sans position, entendu il y a %2$s</string>
+    <string name="bearing">cap %1$s</string>
+    <string name="rename">Renommer</string>
+    <string name="stop">Arrêter</string>
+    <string name="find">Trouver</string>
+    <string name="rename_member">Renommer le membre</string>
+    <string name="rename_hint">Seulement sur ce téléphone. Vide = le nom choisi par la personne.</string>
+    <string name="save">Enregistrer</string>
+    <string name="nearby_range">tout près (≤%1$d m : portée %2$s)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">l\'autre personne</string>
+    <string name="link_exchanging">liaison : échange des offres… (entendu via %1$s)</string>
+    <string name="confirm_link">Confirmer la liaison : %1$s</string>
+    <string name="link_waiting">liaison : %1$s — en attente de confirmation : %2$s</string>
+    <string name="link_chip">liaison : %1$s ▾</string>
+    <string name="link_quiet">%1$s silencieux — utiliser %2$s ?</string>
+    <string name="not_offered_by">%1$s ne le propose pas</string>
+    <string name="fix_turn_on">Activer</string>
+    <string name="fix_set_number">Indiquer le numéro</string>
+    <string name="fix_allow">Autoriser</string>
+    <string name="via_others">via d\'autres</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">messagerie</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_min">%1$d min</string>
+    <string name="waiting_gps">en attente du GPS</string>
+    <string name="gps_faked">GPS falsifié à proximité, réseau utilisé ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">réseau ±%1$d m</string>
+    <string name="provider_options">Options %1$s</string>
+    <string name="optional">(facultatif)</string>
+    <string name="option_sent_only">envoyé seulement à %1$s comme %2$s</string>
+    <string name="get_one_at">À obtenir sur %1$s</string>
+    <string name="coverage">Couverture : %1$s</string>
+</resources>

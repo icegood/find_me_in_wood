@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">僅限美國</string>
+    <string name="option_api_key">API 金鑰</string>
+    <string name="option_arcgis_token">ArcGIS 權杖</string>
+    <string name="option_access_token">存取權杖</string>
+    <string name="estimate_k_tiles">%1$s 千個圖磚 · 約 %2$s MB</string>
+    <string name="estimate_tiles">圖磚：%1$s · 約 %2$s MB</string>
+    <string name="downloading">正在下載「%1$s」</string>
+    <string name="saved_offline">已儲存「%1$s」供離線使用</string>
+    <string name="download_error">下載錯誤：%1$s</string>
+    <string name="distance_km">%1$s 公里</string>
+    <string name="distance_m">%1$d 公尺</string>
+    <string name="layer_offline">離線（%1$s）</string>
+    <string name="kind_satellite">衛星</string>
+    <string name="kind_streets">街道</string>
+    <string name="needs">需要%1$s</string>
+    <string name="option_set">已設定%1$s</string>
+    <string-array name="compass_points">
+        <item>北</item>
+        <item>東北</item>
+        <item>東</item>
+        <item>東南</item>
+        <item>南</item>
+        <item>西南</item>
+        <item>西</item>
+        <item>西北</item>
+    </string-array>
+    <string name="area_name_default">區域 %1$s</string>
+    <string name="save_offline_area">儲存離線區域</string>
+    <string name="area_name">區域名稱</string>
+    <string name="area_trail_detail">%1$s，細至步道 · %2$s</string>
+    <string name="area_too_large">對 %1$s 來說太大（步道細節最多 %2$s 個圖磚）：請畫更小的區域。</string>
+    <string name="download">下載</string>
+    <string name="nearby_within">附近 ≤%1$d 公尺</string>
+    <string name="no_network_running">沒有執行中的網路</string>
+    <string name="others_heard">收到其他成員：%1$d</string>
+    <string name="map_chip">地圖：%1$s ▾</string>
+    <string name="offline">離線</string>
+    <string name="offline_hint">來自 %1$s 的已儲存區域和瀏覽過的地方 — 不需要網際網路</string>
+    <string name="provider_options_menu">%1$s 選項…</string>
+    <string name="provider_needs">%1$s 需要%2$s</string>
+    <string name="set_it">設定</string>
+    <string name="finding">正在尋找 %1$s</string>
+    <string name="too_rough_direction">位置太粗略，無法指示方向</string>
+    <string name="relayed">已轉送</string>
+    <string name="waiting_first_fix">正在等待第一次定位…</string>
+    <string name="save_area_offline">離線儲存這個區域</string>
+    <string name="drag_rectangle">在地圖上拖曳出矩形</string>
+    <string name="drag_larger">拖曳出更大的矩形</string>
+    <string name="too_large_draw_smaller">對 %1$s 來說太大：請畫小一點</string>
+    <string name="cancel">取消</string>
+    <string name="use_this_area">使用這個區域</string>
+    <string name="parts_done">%1$s / %2$s 部分</string>
+    <string name="preparing">準備中…</string>
+    <string name="errors_count">錯誤：%1$d</string>
+    <string name="done">完成</string>
+    <string name="cancelling">正在取消…</string>
+    <string name="members">成員</string>
+    <string name="no_members_heard">尚未收到任何成員。</string>
+    <string name="tap_find_hint">點「尋找」即可在地圖上看到指向某人的箭頭和距離。</string>
+    <string name="member">成員</string>
+    <string name="unlocated_seen">%1$s — 無位置，最後收到於 %2$s前</string>
+    <string name="bearing">方位 %1$s</string>
+    <string name="rename">重新命名</string>
+    <string name="stop">停止</string>
+    <string name="find">尋找</string>
+    <string name="rename_member">重新命名成員</string>
+    <string name="rename_hint">僅限這支手機。留空 = 對方自己選的名字。</string>
+    <string name="save">儲存</string>
+    <string name="nearby_range">附近（≤%1$d 公尺：%2$s 範圍）</string>
+    <string name="plus_minus_m">±%1$d 公尺</string>
+    <string name="them">對方</string>
+    <string name="link_exchanging">連線：正在交換方式…（經由 %1$s 收到）</string>
+    <string name="confirm_link">確認連線：%1$s</string>
+    <string name="link_waiting">連線：%1$s — 等待確認：%2$s</string>
+    <string name="link_chip">連線：%1$s ▾</string>
+    <string name="link_quiet">%1$s 沒有回應 — 改用 %2$s？</string>
+    <string name="not_offered_by">%1$s 未提供這個方式</string>
+    <string name="fix_turn_on">開啟</string>
+    <string name="fix_set_number">設定號碼</string>
+    <string name="fix_allow">允許</string>
+    <string name="via_others">經由他人</string>
+    <string name="via_bluetooth">藍牙</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">簡訊</string>
+    <string name="via_messenger">通訊應用程式</string>
+    <string name="age_s">%1$d 秒</string>
+    <string name="age_min">%1$d 分鐘</string>
+    <string name="waiting_gps">正在等待 GPS</string>
+    <string name="gps_faked">附近的 GPS 遭偽造，改用網路定位 ±%1$d 公尺</string>
+    <string name="fix_gps">GPS ±%1$d 公尺</string>
+    <string name="fix_network">網路 ±%1$d 公尺</string>
+    <string name="provider_options">%1$s 選項</string>
+    <string name="optional">（選填）</string>
+    <string name="option_sent_only">只會以 %2$s 傳送給 %1$s</string>
+    <string name="get_one_at">在 %1$s 取得</string>
+    <string name="coverage">涵蓋範圍：%1$s</string>
+</resources>

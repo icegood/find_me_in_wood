@@ -17,15 +17,15 @@ class AuthManager(private val context: Context) : AuthService {
     override suspend fun register(email: String, password: String, displayName: String): AuthResult =
         withContext(Dispatchers.IO) {
             if (email.isBlank() || password.length < 6) {
-                return@withContext AuthResult.Error("Invalid email or password too short")
+                return@withContext AuthResult.Error(AuthError.INVALID_INPUT)
             }
             if (store.queryByEmail(email) != null) {
-                return@withContext AuthResult.Error("Email already registered")
+                return@withContext AuthResult.Error(AuthError.EMAIL_TAKEN)
             }
             val hash = SQLiteAuthStore.hashPassword(password)
             val id = store.insertUser(email, hash, displayName)
             val profile = store.queryById(id.toString())
-                ?: return@withContext AuthResult.Error("Registration failed")
+                ?: return@withContext AuthResult.Error(AuthError.REGISTRATION_FAILED)
             currentUserId = profile.uid
             AuthResult.Success(profile)
         }
@@ -33,7 +33,7 @@ class AuthManager(private val context: Context) : AuthService {
     override suspend fun login(email: String, password: String): AuthResult =
         withContext(Dispatchers.IO) {
             val profile = store.verifyPassword(email, password)
-                ?: return@withContext AuthResult.Error("Invalid credentials")
+                ?: return@withContext AuthResult.Error(AuthError.INVALID_CREDENTIALS)
             currentUserId = profile.uid
             AuthResult.Success(profile)
         }
@@ -41,7 +41,7 @@ class AuthManager(private val context: Context) : AuthService {
     override suspend fun linkGoogle(uid: String, googleId: String): AuthResult =
         withContext(Dispatchers.IO) {
             val existing = store.queryById(uid)
-                ?: return@withContext AuthResult.Error("User not found")
+                ?: return@withContext AuthResult.Error(AuthError.USER_NOT_FOUND)
             if (existing.googleId != null) {
                 return@withContext AuthResult.AlreadyLinked
             }
@@ -61,12 +61,12 @@ class AuthManager(private val context: Context) : AuthService {
             return@withContext AuthResult.Success(byGoogle)
         }
         val mail = email?.trim().takeUnless { it.isNullOrEmpty() }
-            ?: return@withContext AuthResult.Error("Google account has no email; cannot sign in")
+            ?: return@withContext AuthResult.Error(AuthError.GOOGLE_NO_EMAIL)
         val existing = store.queryByEmail(mail)
         if (existing != null) {
             val previous = existing.googleId
             if (previous != null && !previous.startsWith(DEVICE_PREFIX)) {
-                return@withContext AuthResult.Error("This email is linked to another Google account")
+                return@withContext AuthResult.Error(AuthError.EMAIL_LINKED_ELSEWHERE)
             }
             store.updateGoogleId(existing.uid, googleId)
             currentUserId = existing.uid
@@ -77,7 +77,7 @@ class AuthManager(private val context: Context) : AuthService {
         val id = store.insertUser(mail, hash, displayName?.ifBlank { null } ?: mail.substringBefore("@"))
         store.updateGoogleId(id.toString(), googleId)
         val profile = store.queryById(id.toString())
-            ?: return@withContext AuthResult.Error("Registration failed")
+            ?: return@withContext AuthResult.Error(AuthError.REGISTRATION_FAILED)
         currentUserId = profile.uid
         AuthResult.Success(profile)
     }

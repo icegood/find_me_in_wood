@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">vain Yhdysvallat</string>
+    <string name="option_api_key">API-avain</string>
+    <string name="option_arcgis_token">ArcGIS-tunnus</string>
+    <string name="option_access_token">Käyttötunnus</string>
+    <string name="estimate_k_tiles">%1$s tuhatta ruutua · ~%2$s Mt</string>
+    <string name="estimate_tiles">ruutuja: %1$s · ~%2$s Mt</string>
+    <string name="downloading">Ladataan ”%1$s”</string>
+    <string name="saved_offline">”%1$s” tallennettu offline-käyttöön</string>
+    <string name="download_error">Latausvirhe: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Offline (%1$s)</string>
+    <string name="kind_satellite">satelliitti</string>
+    <string name="kind_streets">kadut</string>
+    <string name="needs">tarvitsee: %1$s</string>
+    <string name="option_set">%1$s asetettu</string>
+    <string-array name="compass_points">
+        <item>P</item>
+        <item>KO</item>
+        <item>I</item>
+        <item>KA</item>
+        <item>E</item>
+        <item>LO</item>
+        <item>L</item>
+        <item>LU</item>
+    </string-array>
+    <string name="area_name_default">Alue %1$s</string>
+    <string name="save_offline_area">Tallenna offline-alue</string>
+    <string name="area_name">Alueen nimi</string>
+    <string name="area_trail_detail">%1$s, polkujen tarkkuuteen · %2$s</string>
+    <string name="area_too_large">Liian suuri palvelulle %1$s (enintään %2$s ruutua polkujen tarkkuudella): piirrä pienempi alue.</string>
+    <string name="download">Lataa</string>
+    <string name="nearby_within">lähellä ≤%1$d m</string>
+    <string name="no_network_running">Mikään verkko ei ole käynnissä</string>
+    <string name="others_heard">muita kuultu: %1$d</string>
+    <string name="map_chip">Kartta: %1$s ▾</string>
+    <string name="offline">Offline</string>
+    <string name="offline_hint">tallennetut alueet ja katsotut paikat palvelusta %1$s — ilman internetiä</string>
+    <string name="provider_options_menu">%1$s-asetukset…</string>
+    <string name="provider_needs">%1$s tarvitsee: %2$s</string>
+    <string name="set_it">Aseta</string>
+    <string name="finding">Etsitään: %1$s</string>
+    <string name="too_rough_direction">sijainnit liian epätarkkoja suunnalle</string>
+    <string name="relayed">välitetty</string>
+    <string name="waiting_first_fix">odotetaan ensimmäistä sijaintia…</string>
+    <string name="save_area_offline">Tallenna tämä alue offline-tilaan</string>
+    <string name="drag_rectangle">vedä suorakulmio kartalle</string>
+    <string name="drag_larger">vedä suurempi suorakulmio</string>
+    <string name="too_large_draw_smaller">liian suuri palvelulle %1$s: piirrä pienempi</string>
+    <string name="cancel">Peruuta</string>
+    <string name="use_this_area">Käytä tätä aluetta</string>
+    <string name="parts_done">%1$s / %2$s osaa</string>
+    <string name="preparing">valmistellaan…</string>
+    <string name="errors_count">virheitä: %1$d</string>
+    <string name="done">Valmis</string>
+    <string name="cancelling">peruutetaan…</string>
+    <string name="members">Jäsenet</string>
+    <string name="no_members_heard">Jäseniä ei ole vielä kuultu.</string>
+    <string name="tap_find_hint">Napauta Etsi saadaksesi nuolen ja etäisyyden johonkuhun kartalla.</string>
+    <string name="member">jäsen</string>
+    <string name="unlocated_seen">%1$s — ei sijaintia, kuultu viimeksi %2$s sitten</string>
+    <string name="bearing">suunta %1$s</string>
+    <string name="rename">Nimeä uudelleen</string>
+    <string name="stop">Lopeta</string>
+    <string name="find">Etsi</string>
+    <string name="rename_member">Nimeä jäsen uudelleen</string>
+    <string name="rename_hint">Vain tässä puhelimessa. Tyhjä = henkilön itse valitsema nimi.</string>
+    <string name="save">Tallenna</string>
+    <string name="nearby_range">lähellä (≤%1$d m: yhteyden %2$s kantama)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">toinen osapuoli</string>
+    <string name="link_exchanging">yhteys: tarjouksia vaihdetaan… (kuultu: %1$s)</string>
+    <string name="confirm_link">Vahvista yhteys: %1$s</string>
+    <string name="link_waiting">yhteys: %1$s — odotetaan vahvistusta: %2$s</string>
+    <string name="link_chip">yhteys: %1$s ▾</string>
+    <string name="link_quiet">%1$s hiljaa — käytetäänkö yhteyttä %2$s?</string>
+    <string name="not_offered_by">%1$s ei tarjoa tätä</string>
+    <string name="fix_turn_on">Kytke päälle</string>
+    <string name="fix_set_number">Anna numero</string>
+    <string name="fix_allow">Salli</string>
+    <string name="via_others">muiden kautta</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">tekstiviesti</string>
+    <string name="via_messenger">viestisovellus</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_min">%1$d min</string>
+    <string name="waiting_gps">odotetaan GPS:ää</string>
+    <string name="gps_faked">lähellä oleva GPS väärennetty, käytetään verkkoa ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">verkko ±%1$d m</string>
+    <string name="provider_options">%1$s-asetukset</string>
+    <string name="optional">(valinnainen)</string>
+    <string name="option_sent_only">lähetetään vain palveluun %1$s muodossa %2$s</string>
+    <string name="get_one_at">Hanki osoitteesta %1$s</string>
+    <string name="coverage">Kattavuus: %1$s</string>
+</resources>

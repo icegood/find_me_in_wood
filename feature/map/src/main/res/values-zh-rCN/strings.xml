@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">仅限美国</string>
+    <string name="option_api_key">API 密钥</string>
+    <string name="option_arcgis_token">ArcGIS 令牌</string>
+    <string name="option_access_token">访问令牌</string>
+    <string name="estimate_k_tiles">%1$s 千个图块 · 约 %2$s MB</string>
+    <string name="estimate_tiles">图块：%1$s · 约 %2$s MB</string>
+    <string name="downloading">正在下载“%1$s”</string>
+    <string name="saved_offline">已保存“%1$s”供离线使用</string>
+    <string name="download_error">下载出错：%1$s</string>
+    <string name="distance_km">%1$s 公里</string>
+    <string name="distance_m">%1$d 米</string>
+    <string name="layer_offline">离线（%1$s）</string>
+    <string name="kind_satellite">卫星</string>
+    <string name="kind_streets">街道</string>
+    <string name="needs">需要%1$s</string>
+    <string name="option_set">已设置%1$s</string>
+    <string-array name="compass_points">
+        <item>北</item>
+        <item>东北</item>
+        <item>东</item>
+        <item>东南</item>
+        <item>南</item>
+        <item>西南</item>
+        <item>西</item>
+        <item>西北</item>
+    </string-array>
+    <string name="area_name_default">区域 %1$s</string>
+    <string name="save_offline_area">保存离线区域</string>
+    <string name="area_name">区域名称</string>
+    <string name="area_trail_detail">%1$s，细至小路 · %2$s</string>
+    <string name="area_too_large">对 %1$s 来说太大（小路级别最多 %2$s 个图块）：请画一个更小的区域。</string>
+    <string name="download">下载</string>
+    <string name="nearby_within">附近 ≤%1$d 米</string>
+    <string name="no_network_running">没有正在运行的网络</string>
+    <string name="others_heard">收到其他成员：%1$d</string>
+    <string name="map_chip">地图：%1$s ▾</string>
+    <string name="offline">离线</string>
+    <string name="offline_hint">来自 %1$s 的已保存区域和浏览过的地方 — 无需互联网</string>
+    <string name="provider_options_menu">%1$s 选项…</string>
+    <string name="provider_needs">%1$s 需要%2$s</string>
+    <string name="set_it">设置</string>
+    <string name="finding">正在寻找 %1$s</string>
+    <string name="too_rough_direction">位置太粗略，无法指示方向</string>
+    <string name="relayed">已转发</string>
+    <string name="waiting_first_fix">正在等待首次定位…</string>
+    <string name="save_area_offline">离线保存此区域</string>
+    <string name="drag_rectangle">在地图上拖出一个矩形</string>
+    <string name="drag_larger">拖出一个更大的矩形</string>
+    <string name="too_large_draw_smaller">对 %1$s 来说太大：请画小一些</string>
+    <string name="cancel">取消</string>
+    <string name="use_this_area">使用此区域</string>
+    <string name="parts_done">%1$s / %2$s 部分</string>
+    <string name="preparing">正在准备…</string>
+    <string name="errors_count">错误：%1$d</string>
+    <string name="done">完成</string>
+    <string name="cancelling">正在取消…</string>
+    <string name="members">成员</string>
+    <string name="no_members_heard">尚未收到任何成员。</string>
+    <string name="tap_find_hint">点“寻找”即可在地图上看到指向某人的箭头和距离。</string>
+    <string name="member">成员</string>
+    <string name="unlocated_seen">%1$s — 无位置，最后收到于 %2$s前</string>
+    <string name="bearing">方位 %1$s</string>
+    <string name="rename">重命名</string>
+    <string name="stop">停止</string>
+    <string name="find">寻找</string>
+    <string name="rename_member">重命名成员</string>
+    <string name="rename_hint">仅在此手机上。留空 = 对方自己选的名字。</string>
+    <string name="save">保存</string>
+    <string name="nearby_range">附近（≤%1$d 米：%2$s 范围）</string>
+    <string name="plus_minus_m">±%1$d 米</string>
+    <string name="them">对方</string>
+    <string name="link_exchanging">连接：正在交换方式…（经由 %1$s 收到）</string>
+    <string name="confirm_link">确认连接：%1$s</string>
+    <string name="link_waiting">连接：%1$s — 等待确认：%2$s</string>
+    <string name="link_chip">连接：%1$s ▾</string>
+    <string name="link_quiet">%1$s 无响应 — 改用 %2$s？</string>
+    <string name="not_offered_by">%1$s 未提供此方式</string>
+    <string name="fix_turn_on">打开</string>
+    <string name="fix_set_number">设置号码</string>
+    <string name="fix_allow">允许</string>
+    <string name="via_others">经由他人</string>
+    <string name="via_bluetooth">蓝牙</string>
+    <string name="via_wifi_direct">WLAN 直连</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">短信</string>
+    <string name="via_messenger">聊天应用</string>
+    <string name="age_s">%1$d 秒</string>
+    <string name="age_min">%1$d 分钟</string>
+    <string name="waiting_gps">正在等待 GPS</string>
+    <string name="gps_faked">附近 GPS 被伪造，改用网络定位 ±%1$d 米</string>
+    <string name="fix_gps">GPS ±%1$d 米</string>
+    <string name="fix_network">网络 ±%1$d 米</string>
+    <string name="provider_options">%1$s 选项</string>
+    <string name="optional">（可选）</string>
+    <string name="option_sent_only">仅以 %2$s 发送给 %1$s</string>
+    <string name="get_one_at">在 %1$s 获取</string>
+    <string name="coverage">覆盖范围：%1$s</string>
+</resources>

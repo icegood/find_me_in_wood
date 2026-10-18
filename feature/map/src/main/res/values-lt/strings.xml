@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">tik JAV</string>
+    <string name="option_api_key">API raktas</string>
+    <string name="option_arcgis_token">ArcGIS prieigos raktas</string>
+    <string name="option_access_token">Prieigos raktas</string>
+    <string name="estimate_k_tiles">%1$s tūkst. plytelių · ~%2$s MB</string>
+    <string name="estimate_tiles">plytelės: %1$s · ~%2$s MB</string>
+    <string name="downloading">Atsisiunčiama „%1$s“</string>
+    <string name="saved_offline">„%1$s“ išsaugota naudoti neprisijungus</string>
+    <string name="download_error">Atsisiuntimo klaida: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Neprisijungus (%1$s)</string>
+    <string name="kind_satellite">palydovas</string>
+    <string name="kind_streets">gatvės</string>
+    <string name="needs">reikia: %1$s</string>
+    <string name="option_set">%1$s nustatytas</string>
+    <string-array name="compass_points">
+        <item>Š</item>
+        <item>ŠR</item>
+        <item>R</item>
+        <item>PR</item>
+        <item>P</item>
+        <item>PV</item>
+        <item>V</item>
+        <item>ŠV</item>
+    </string-array>
+    <string name="area_name_default">Sritis %1$s</string>
+    <string name="save_offline_area">Išsaugoti sritį neprisijungus</string>
+    <string name="area_name">Srities pavadinimas</string>
+    <string name="area_trail_detail">%1$s, iki takų detalių · %2$s</string>
+    <string name="area_too_large">Per didelė paslaugai %1$s (ne daugiau kaip %2$s plytelių su takų detalėmis): nubrėžkite mažesnę sritį.</string>
+    <string name="download">Atsisiųsti</string>
+    <string name="nearby_within">netoli ≤%1$d m</string>
+    <string name="no_network_running">Neveikia joks tinklas</string>
+    <string name="others_heard">girdimi kiti: %1$d</string>
+    <string name="map_chip">Žemėlapis: %1$s ▾</string>
+    <string name="offline">Neprisijungus</string>
+    <string name="offline_hint">išsaugotos sritys ir peržiūrėtos vietos iš %1$s — be interneto</string>
+    <string name="provider_options_menu">%1$s nustatymai…</string>
+    <string name="provider_needs">%1$s reikia: %2$s</string>
+    <string name="set_it">Nustatyti</string>
+    <string name="finding">Ieškoma: %1$s</string>
+    <string name="too_rough_direction">vietos per netikslios krypčiai</string>
+    <string name="relayed">persiųsta</string>
+    <string name="waiting_first_fix">laukiama pirmos vietos…</string>
+    <string name="save_area_offline">Išsaugoti šią sritį neprisijungus</string>
+    <string name="drag_rectangle">nubrėžkite stačiakampį žemėlapyje</string>
+    <string name="drag_larger">nubrėžkite didesnį stačiakampį</string>
+    <string name="too_large_draw_smaller">per didelė paslaugai %1$s: nubrėžkite mažesnę</string>
+    <string name="cancel">Atšaukti</string>
+    <string name="use_this_area">Naudoti šią sritį</string>
+    <string name="parts_done">%1$s / %2$s dalių</string>
+    <string name="preparing">ruošiama…</string>
+    <string name="errors_count">klaidos: %1$d</string>
+    <string name="done">Atlikta</string>
+    <string name="cancelling">atšaukiama…</string>
+    <string name="members">Nariai</string>
+    <string name="no_members_heard">Narių dar negirdėti.</string>
+    <string name="tap_find_hint">Palieskite Rasti, kad matytumėte rodyklę ir atstumą iki kažko žemėlapyje.</string>
+    <string name="member">narys</string>
+    <string name="unlocated_seen">%1$s — be vietos, paskutinį kartą girdėtas prieš %2$s</string>
+    <string name="bearing">kryptis %1$s</string>
+    <string name="rename">Pervadinti</string>
+    <string name="stop">Stabdyti</string>
+    <string name="find">Rasti</string>
+    <string name="rename_member">Pervadinti narį</string>
+    <string name="rename_hint">Tik šiame telefone. Tuščia = paties asmens pasirinktas vardas.</string>
+    <string name="save">Išsaugoti</string>
+    <string name="nearby_range">netoli (≤%1$d m: %2$s veikimo zona)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">kita pusė</string>
+    <string name="link_exchanging">ryšys: keičiamasi pasiūlymais… (girdėta per %1$s)</string>
+    <string name="confirm_link">Patvirtinti ryšį: %1$s</string>
+    <string name="link_waiting">ryšys: %1$s — laukiama patvirtinimo: %2$s</string>
+    <string name="link_chip">ryšys: %1$s ▾</string>
+    <string name="link_quiet">%1$s tyli — naudoti %2$s?</string>
+    <string name="not_offered_by">%1$s to nesiūlo</string>
+    <string name="fix_turn_on">Įjungti</string>
+    <string name="fix_set_number">Nurodyti numerį</string>
+    <string name="fix_allow">Leisti</string>
+    <string name="via_others">per kitus</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">pokalbių programa</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_min">%1$d min.</string>
+    <string name="waiting_gps">laukiama GPS</string>
+    <string name="gps_faked">netoliese suklastotas GPS, naudojamas tinklas ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">tinklas ±%1$d m</string>
+    <string name="provider_options">%1$s nustatymai</string>
+    <string name="optional">(neprivaloma)</string>
+    <string name="option_sent_only">siunčiama tik į %1$s kaip %2$s</string>
+    <string name="get_one_at">Gaukite adresu %1$s</string>
+    <string name="coverage">Aprėptis: %1$s</string>
+</resources>

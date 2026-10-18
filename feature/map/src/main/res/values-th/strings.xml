@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">เฉพาะสหรัฐฯ</string>
+    <string name="option_api_key">คีย์ API</string>
+    <string name="option_arcgis_token">โทเค็น ArcGIS</string>
+    <string name="option_access_token">โทเค็นการเข้าถึง</string>
+    <string name="estimate_k_tiles">%1$s พันไทล์ · ~%2$s MB</string>
+    <string name="estimate_tiles">ไทล์: %1$s · ~%2$s MB</string>
+    <string name="downloading">กำลังดาวน์โหลด “%1$s”</string>
+    <string name="saved_offline">บันทึก “%1$s” สำหรับใช้ออฟไลน์แล้ว</string>
+    <string name="download_error">ดาวน์โหลดผิดพลาด: %1$s</string>
+    <string name="distance_km">%1$s กม.</string>
+    <string name="distance_m">%1$d ม.</string>
+    <string name="layer_offline">ออฟไลน์ (%1$s)</string>
+    <string name="kind_satellite">ดาวเทียม</string>
+    <string name="kind_streets">ถนน</string>
+    <string name="needs">ต้องใช้ %1$s</string>
+    <string name="option_set">ตั้ง %1$s แล้ว</string>
+    <string-array name="compass_points">
+        <item>N</item>
+        <item>NE</item>
+        <item>E</item>
+        <item>SE</item>
+        <item>S</item>
+        <item>SW</item>
+        <item>W</item>
+        <item>NW</item>
+    </string-array>
+    <string name="area_name_default">พื้นที่ %1$s</string>
+    <string name="save_offline_area">บันทึกพื้นที่ออฟไลน์</string>
+    <string name="area_name">ชื่อพื้นที่</string>
+    <string name="area_trail_detail">%1$s ละเอียดถึงระดับทางเดิน · %2$s</string>
+    <string name="area_too_large">ใหญ่เกินไปสำหรับ %1$s (สูงสุด %2$s ไทล์ที่ระดับทางเดิน): วาดพื้นที่ให้เล็กลง</string>
+    <string name="download">ดาวน์โหลด</string>
+    <string name="nearby_within">ใกล้ ≤%1$d ม.</string>
+    <string name="no_network_running">ไม่มีเครือข่ายทำงาน</string>
+    <string name="others_heard">ได้ยินคนอื่น: %1$d</string>
+    <string name="map_chip">แผนที่: %1$s ▾</string>
+    <string name="offline">ออฟไลน์</string>
+    <string name="offline_hint">พื้นที่ที่บันทึกและสถานที่ที่ดูจาก %1$s — ไม่ต้องใช้อินเทอร์เน็ต</string>
+    <string name="provider_options_menu">ตัวเลือก %1$s…</string>
+    <string name="provider_needs">%1$s ต้องใช้ %2$s</string>
+    <string name="set_it">ตั้ง</string>
+    <string name="finding">กำลังหา %1$s</string>
+    <string name="too_rough_direction">ตำแหน่งหยาบเกินไปสำหรับบอกทิศ</string>
+    <string name="relayed">ส่งต่อแล้ว</string>
+    <string name="waiting_first_fix">กำลังรอตำแหน่งแรก…</string>
+    <string name="save_area_offline">บันทึกพื้นที่นี้แบบออฟไลน์</string>
+    <string name="drag_rectangle">ลากเป็นสี่เหลี่ยมบนแผนที่</string>
+    <string name="drag_larger">ลากสี่เหลี่ยมให้ใหญ่ขึ้น</string>
+    <string name="too_large_draw_smaller">ใหญ่เกินไปสำหรับ %1$s: วาดให้เล็กลง</string>
+    <string name="cancel">ยกเลิก</string>
+    <string name="use_this_area">ใช้พื้นที่นี้</string>
+    <string name="parts_done">%1$s / %2$s ส่วน</string>
+    <string name="preparing">กำลังเตรียม…</string>
+    <string name="errors_count">ข้อผิดพลาด: %1$d</string>
+    <string name="done">เสร็จ</string>
+    <string name="cancelling">กำลังยกเลิก…</string>
+    <string name="members">สมาชิก</string>
+    <string name="no_members_heard">ยังไม่ได้ยินสมาชิก</string>
+    <string name="tap_find_hint">แตะ “หา” เพื่อดูลูกศรและระยะทางไปยังใครสักคนบนแผนที่</string>
+    <string name="member">สมาชิก</string>
+    <string name="unlocated_seen">%1$s — ไม่มีตำแหน่ง ได้ยินล่าสุดเมื่อ %2$s ที่แล้ว</string>
+    <string name="bearing">ทิศ %1$s</string>
+    <string name="rename">เปลี่ยนชื่อ</string>
+    <string name="stop">หยุด</string>
+    <string name="find">หา</string>
+    <string name="rename_member">เปลี่ยนชื่อสมาชิก</string>
+    <string name="rename_hint">เฉพาะในโทรศัพท์เครื่องนี้ ว่าง = ชื่อที่เขาเลือกเอง</string>
+    <string name="save">บันทึก</string>
+    <string name="nearby_range">ใกล้ (≤%1$d ม.: ระยะของ %2$s)</string>
+    <string name="plus_minus_m">±%1$d ม.</string>
+    <string name="them">อีกฝ่าย</string>
+    <string name="link_exchanging">การเชื่อมต่อ: กำลังแลกข้อเสนอ… (ได้ยินผ่าน %1$s)</string>
+    <string name="confirm_link">ยืนยันการเชื่อมต่อ: %1$s</string>
+    <string name="link_waiting">การเชื่อมต่อ: %1$s — กำลังรอการยืนยัน: %2$s</string>
+    <string name="link_chip">การเชื่อมต่อ: %1$s ▾</string>
+    <string name="link_quiet">%1$s เงียบ — ใช้ %2$s ไหม</string>
+    <string name="not_offered_by">%1$s ไม่ได้เสนอสิ่งนี้</string>
+    <string name="fix_turn_on">เปิด</string>
+    <string name="fix_set_number">ตั้งหมายเลข</string>
+    <string name="fix_allow">อนุญาต</string>
+    <string name="via_others">ผ่านคนอื่น</string>
+    <string name="via_bluetooth">บลูทูธ</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">แอปแชท</string>
+    <string name="age_s">%1$d วิ</string>
+    <string name="age_min">%1$d นาที</string>
+    <string name="waiting_gps">กำลังรอ GPS</string>
+    <string name="gps_faked">GPS ใกล้ๆ ถูกปลอม ใช้เครือข่ายแทน ±%1$d ม.</string>
+    <string name="fix_gps">GPS ±%1$d ม.</string>
+    <string name="fix_network">เครือข่าย ±%1$d ม.</string>
+    <string name="provider_options">ตัวเลือก %1$s</string>
+    <string name="optional">(ไม่บังคับ)</string>
+    <string name="option_sent_only">ส่งไปที่ %1$s เท่านั้นในรูปแบบ %2$s</string>
+    <string name="get_one_at">รับได้ที่ %1$s</string>
+    <string name="coverage">พื้นที่ครอบคลุม: %1$s</string>
+</resources>

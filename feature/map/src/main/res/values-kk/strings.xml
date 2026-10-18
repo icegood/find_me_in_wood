@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">тек АҚШ</string>
+    <string name="option_api_key">API кілті</string>
+    <string name="option_arcgis_token">ArcGIS токені</string>
+    <string name="option_access_token">Кіру токені</string>
+    <string name="estimate_k_tiles">%1$s мың тақта · ~%2$s МБ</string>
+    <string name="estimate_tiles">тақталар: %1$s · ~%2$s МБ</string>
+    <string name="downloading">«%1$s» жүктелуде</string>
+    <string name="saved_offline">«%1$s» офлайн пайдалану үшін сақталды</string>
+    <string name="download_error">Жүктеу қатесі: %1$s</string>
+    <string name="distance_km">%1$s км</string>
+    <string name="distance_m">%1$d м</string>
+    <string name="layer_offline">Офлайн (%1$s)</string>
+    <string name="kind_satellite">жерсерік</string>
+    <string name="kind_streets">көшелер</string>
+    <string name="needs">қажет: %1$s</string>
+    <string name="option_set">%1$s орнатылған</string>
+    <string-array name="compass_points">
+        <item>С</item>
+        <item>СШ</item>
+        <item>Ш</item>
+        <item>ОШ</item>
+        <item>О</item>
+        <item>ОБ</item>
+        <item>Б</item>
+        <item>СБ</item>
+    </string-array>
+    <string name="area_name_default">Аймақ %1$s</string>
+    <string name="save_offline_area">Офлайн аймақты сақтау</string>
+    <string name="area_name">Аймақ атауы</string>
+    <string name="area_trail_detail">%1$s, соқпақ деталіне дейін · %2$s</string>
+    <string name="area_too_large">%1$s үшін тым үлкен (соқпақ деталімен ең көбі %2$s тақта): кішірек аймақ сызыңыз.</string>
+    <string name="download">Жүктеу</string>
+    <string name="nearby_within">жақын ≤%1$d м</string>
+    <string name="no_network_running">Ешбір желі жұмыс істемейді</string>
+    <string name="others_heard">басқалар естіледі: %1$d</string>
+    <string name="map_chip">Карта: %1$s ▾</string>
+    <string name="offline">Офлайн</string>
+    <string name="offline_hint">%1$s бойынша сақталған аймақтар мен қаралған орындар — интернет керек емес</string>
+    <string name="provider_options_menu">%1$s баптаулары…</string>
+    <string name="provider_needs">%1$s үшін қажет: %2$s</string>
+    <string name="set_it">Орнату</string>
+    <string name="finding">Ізделуде: %1$s</string>
+    <string name="too_rough_direction">орындар бағыт үшін тым дәл емес</string>
+    <string name="relayed">қайта жіберілген</string>
+    <string name="waiting_first_fix">алғашқы орын күтілуде…</string>
+    <string name="save_area_offline">Бұл аймақты офлайн сақтау</string>
+    <string name="drag_rectangle">картаға тіктөртбұрыш сызыңыз</string>
+    <string name="drag_larger">үлкенірек тіктөртбұрыш сызыңыз</string>
+    <string name="too_large_draw_smaller">%1$s үшін тым үлкен: кішірек сызыңыз</string>
+    <string name="cancel">Бас тарту</string>
+    <string name="use_this_area">Осы аймақты пайдалану</string>
+    <string name="parts_done">%1$s / %2$s бөлік</string>
+    <string name="preparing">дайындалуда…</string>
+    <string name="errors_count">қателер: %1$d</string>
+    <string name="done">Дайын</string>
+    <string name="cancelling">тоқтатылуда…</string>
+    <string name="members">Мүшелер</string>
+    <string name="no_members_heard">Мүшелер әлі естілмейді.</string>
+    <string name="tap_find_hint">Картада біреуге дейінгі бағыт пен қашықтықты көру үшін «Табу» түймесін түртіңіз.</string>
+    <string name="member">мүше</string>
+    <string name="unlocated_seen">%1$s — орынсыз, соңғы рет %2$s бұрын естілді</string>
+    <string name="bearing">бағыт %1$s</string>
+    <string name="rename">Атын өзгерту</string>
+    <string name="stop">Тоқтату</string>
+    <string name="find">Табу</string>
+    <string name="rename_member">Мүшенің атын өзгерту</string>
+    <string name="rename_hint">Тек осы телефонда. Бос = адам өзі таңдаған ат.</string>
+    <string name="save">Сақтау</string>
+    <string name="nearby_range">жақын (≤%1$d м: %2$s аясы)</string>
+    <string name="plus_minus_m">±%1$d м</string>
+    <string name="them">екінші тарап</string>
+    <string name="link_exchanging">байланыс: ұсыныстар алмасылуда… (%1$s арқылы естілді)</string>
+    <string name="confirm_link">Байланысты растау: %1$s</string>
+    <string name="link_waiting">байланыс: %1$s — растау күтілуде: %2$s</string>
+    <string name="link_chip">байланыс: %1$s ▾</string>
+    <string name="link_quiet">%1$s үнсіз — %2$s пайдаланылсын ба?</string>
+    <string name="not_offered_by">%1$s мұны ұсынбайды</string>
+    <string name="fix_turn_on">Қосу</string>
+    <string name="fix_set_number">Нөмір көрсету</string>
+    <string name="fix_allow">Рұқсат беру</string>
+    <string name="via_others">басқалар арқылы</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">мессенджер</string>
+    <string name="age_s">%1$d с</string>
+    <string name="age_min">%1$d мин</string>
+    <string name="waiting_gps">GPS күтілуде</string>
+    <string name="gps_faked">маңайдағы GPS жалған, желі пайдаланылады ±%1$d м</string>
+    <string name="fix_gps">GPS ±%1$d м</string>
+    <string name="fix_network">желі ±%1$d м</string>
+    <string name="provider_options">%1$s баптаулары</string>
+    <string name="optional">(міндетті емес)</string>
+    <string name="option_sent_only">тек %1$s қызметіне %2$s ретінде жіберіледі</string>
+    <string name="get_one_at">Мына жерден алыңыз: %1$s</string>
+    <string name="coverage">Қамту: %1$s</string>
+</resources>

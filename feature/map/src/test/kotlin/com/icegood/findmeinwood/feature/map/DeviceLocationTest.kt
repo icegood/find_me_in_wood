@@ -16,6 +16,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [29])
 class DeviceLocationTest {
+    private val ctx: android.content.Context = org.robolectric.RuntimeEnvironment.getApplication()
     private fun loc(provider: String, lat: Double, lon: Double, t: Long, acc: Float = 5f) =
         Location(provider).apply { latitude = lat; longitude = lon; time = t; accuracy = acc }
 
@@ -42,9 +43,9 @@ class DeviceLocationTest {
     fun `status line says where my position comes from`() {
         val gps = loc(LocationManager.GPS_PROVIDER, 0.0, 0.0, 0, acc = 4f)
         val net = loc(LocationManager.NETWORK_PROVIDER, 0.0, 0.0, 0, acc = 30f)
-        assertEquals("waiting for GPS", myFixText(null))
-        assertEquals("GPS ±4 m", myFixText(DeviceFix(gps, null)))
-        assertEquals("network ±30 m", myFixText(DeviceFix(net, null)))
-        assertTrue(myFixText(DeviceFix(net, null, gpsSpoofed = true)).startsWith("GPS faked nearby"))
+        assertEquals("waiting for GPS", myFixText(ctx, null))
+        assertEquals("GPS ±4 m", myFixText(ctx, DeviceFix(gps, null)))
+        assertEquals("network ±30 m", myFixText(ctx, DeviceFix(net, null)))
+        assertTrue(myFixText(ctx, DeviceFix(net, null, gpsSpoofed = true)).startsWith("GPS faked nearby"))
     }
 }

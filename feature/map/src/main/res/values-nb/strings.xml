@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">bare USA</string>
+    <string name="option_api_key">API-nøkkel</string>
+    <string name="option_arcgis_token">ArcGIS-token</string>
+    <string name="option_access_token">Tilgangstoken</string>
+    <string name="estimate_k_tiles">%1$s tusen fliser · ~%2$s MB</string>
+    <string name="estimate_tiles">fliser: %1$s · ~%2$s MB</string>
+    <string name="downloading">Laster ned «%1$s»</string>
+    <string name="saved_offline">«%1$s» lagret for frakoblet bruk</string>
+    <string name="download_error">Nedlastingsfeil: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Frakoblet (%1$s)</string>
+    <string name="kind_satellite">satellitt</string>
+    <string name="kind_streets">gater</string>
+    <string name="needs">trenger %1$s</string>
+    <string name="option_set">%1$s angitt</string>
+    <string-array name="compass_points">
+        <item>N</item>
+        <item>NØ</item>
+        <item>Ø</item>
+        <item>SØ</item>
+        <item>S</item>
+        <item>SV</item>
+        <item>V</item>
+        <item>NV</item>
+    </string-array>
+    <string name="area_name_default">Område %1$s</string>
+    <string name="save_offline_area">Lagre frakoblet område</string>
+    <string name="area_name">Navn på området</string>
+    <string name="area_trail_detail">%1$s, ned til stidetaljer · %2$s</string>
+    <string name="area_too_large">For stort for %1$s (maks %2$s fliser med stidetaljer): tegn et mindre område.</string>
+    <string name="download">Last ned</string>
+    <string name="nearby_within">i nærheten ≤%1$d m</string>
+    <string name="no_network_running">Ingen nettverk kjører</string>
+    <string name="others_heard">andre hørt: %1$d</string>
+    <string name="map_chip">Kart: %1$s ▾</string>
+    <string name="offline">Frakoblet</string>
+    <string name="offline_hint">lagrede områder og viste steder fra %1$s — uten internett</string>
+    <string name="provider_options_menu">%1$s-innstillinger…</string>
+    <string name="provider_needs">%1$s trenger %2$s</string>
+    <string name="set_it">Angi</string>
+    <string name="finding">Finner %1$s</string>
+    <string name="too_rough_direction">posisjonene er for unøyaktige for en retning</string>
+    <string name="relayed">videresendt</string>
+    <string name="waiting_first_fix">venter på første posisjon…</string>
+    <string name="save_area_offline">Lagre området frakoblet</string>
+    <string name="drag_rectangle">dra et rektangel over kartet</string>
+    <string name="drag_larger">dra et større rektangel</string>
+    <string name="too_large_draw_smaller">for stort for %1$s: tegn mindre</string>
+    <string name="cancel">Avbryt</string>
+    <string name="use_this_area">Bruk området</string>
+    <string name="parts_done">%1$s / %2$s deler</string>
+    <string name="preparing">forbereder…</string>
+    <string name="errors_count">feil: %1$d</string>
+    <string name="done">Ferdig</string>
+    <string name="cancelling">avbryter…</string>
+    <string name="members">Medlemmer</string>
+    <string name="no_members_heard">Ingen medlemmer hørt ennå.</string>
+    <string name="tap_find_hint">Trykk Finn for å få en pil og avstanden til noen på kartet.</string>
+    <string name="member">medlem</string>
+    <string name="unlocated_seen">%1$s — uten plassering, sist hørt for %2$s siden</string>
+    <string name="bearing">retning %1$s</string>
+    <string name="rename">Gi nytt navn</string>
+    <string name="stop">Stopp</string>
+    <string name="find">Finn</string>
+    <string name="rename_member">Gi medlem nytt navn</string>
+    <string name="rename_hint">Bare på denne telefonen. Tomt = navnet personen valgte.</string>
+    <string name="save">Lagre</string>
+    <string name="nearby_range">i nærheten (≤%1$d m: rekkevidde for %2$s)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">den andre</string>
+    <string name="link_exchanging">kobling: utveksler tilbud… (hørt via %1$s)</string>
+    <string name="confirm_link">Bekreft kobling: %1$s</string>
+    <string name="link_waiting">kobling: %1$s — venter på bekreftelse: %2$s</string>
+    <string name="link_chip">kobling: %1$s ▾</string>
+    <string name="link_quiet">%1$s er stille — bruke %2$s?</string>
+    <string name="not_offered_by">%1$s tilbyr ikke dette</string>
+    <string name="fix_turn_on">Slå på</string>
+    <string name="fix_set_number">Angi nummer</string>
+    <string name="fix_allow">Tillat</string>
+    <string name="via_others">via andre</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">meldingsapp</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_min">%1$d min</string>
+    <string name="waiting_gps">venter på GPS</string>
+    <string name="gps_faked">GPS i nærheten forfalsket, bruker nettverk ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">nettverk ±%1$d m</string>
+    <string name="provider_options">%1$s-innstillinger</string>
+    <string name="optional">(valgfritt)</string>
+    <string name="option_sent_only">sendes bare til %1$s som %2$s</string>
+    <string name="get_one_at">Skaff en på %1$s</string>
+    <string name="coverage">Dekning: %1$s</string>
+</resources>

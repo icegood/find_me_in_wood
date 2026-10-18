@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">USA only</string>
+    <string name="option_api_key">API key</string>
+    <string name="option_arcgis_token">ArcGIS token</string>
+    <string name="option_access_token">Access token</string>
+    <string name="estimate_k_tiles">%1$s k tiles · ~%2$s MB</string>
+    <string name="estimate_tiles">%1$s tiles · ~%2$s MB</string>
+    <string name="downloading">Downloading “%1$s”</string>
+    <string name="saved_offline">Saved “%1$s” for offline use</string>
+    <string name="download_error">Download error: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Offline (%1$s)</string>
+    <string name="kind_satellite">satellite</string>
+    <string name="kind_streets">streets</string>
+    <string name="needs">needs %1$s</string>
+    <string name="option_set">%1$s set</string>
+    <string-array name="compass_points">
+        <item>N</item>
+        <item>NE</item>
+        <item>E</item>
+        <item>SE</item>
+        <item>S</item>
+        <item>SW</item>
+        <item>W</item>
+        <item>NW</item>
+    </string-array>
+    <string name="area_name_default">Area %1$s</string>
+    <string name="save_offline_area">Save offline area</string>
+    <string name="area_name">Area name</string>
+    <string name="area_trail_detail">%1$s, down to trail detail · %2$s</string>
+    <string name="area_too_large">Too large for %1$s (at most %2$s tiles at trail detail): draw a smaller area.</string>
+    <string name="download">Download</string>
+    <string name="nearby_within">nearby ≤%1$d m</string>
+    <string name="no_network_running">No network running</string>
+    <string name="others_heard">others heard: %1$d</string>
+    <string name="map_chip">Map: %1$s ▾</string>
+    <string name="offline">Offline</string>
+    <string name="offline_hint">saved areas and places viewed from %1$s — no internet needed</string>
+    <string name="provider_options_menu">%1$s options…</string>
+    <string name="provider_needs">%1$s needs %2$s</string>
+    <string name="set_it">Set it</string>
+    <string name="finding">Finding %1$s</string>
+    <string name="too_rough_direction">positions too rough for a direction</string>
+    <string name="relayed">relayed</string>
+    <string name="waiting_first_fix">waiting for first fix…</string>
+    <string name="save_area_offline">Save this area offline</string>
+    <string name="drag_rectangle">drag a rectangle over the map</string>
+    <string name="drag_larger">drag a larger rectangle</string>
+    <string name="too_large_draw_smaller">too large for %1$s: draw smaller</string>
+    <string name="cancel">Cancel</string>
+    <string name="use_this_area">Use this area</string>
+    <string name="parts_done">%1$s / %2$s parts</string>
+    <string name="preparing">preparing…</string>
+    <string name="errors_count">errors: %1$d</string>
+    <string name="done">Done</string>
+    <string name="cancelling">cancelling…</string>
+    <string name="members">Members</string>
+    <string name="no_members_heard">No members heard yet.</string>
+    <string name="tap_find_hint">Tap Find to get an arrow and distance to someone on the map.</string>
+    <string name="member">member</string>
+    <string name="unlocated_seen">%1$s — unlocated, last seen %2$s ago</string>
+    <string name="bearing">bearing %1$s</string>
+    <string name="rename">Rename</string>
+    <string name="stop">Stop</string>
+    <string name="find">Find</string>
+    <string name="rename_member">Rename member</string>
+    <string name="rename_hint">Only on this phone. Empty = the name they chose.</string>
+    <string name="save">Save</string>
+    <string name="nearby_range">nearby (≤%1$d m: %2$s range)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">them</string>
+    <string name="link_exchanging">link: exchanging offers… (heard %1$s)</string>
+    <string name="confirm_link">Confirm link: %1$s</string>
+    <string name="link_waiting">link: %1$s — waiting for %2$s to confirm</string>
+    <string name="link_chip">link: %1$s ▾</string>
+    <string name="link_quiet">%1$s quiet — use %2$s?</string>
+    <string name="not_offered_by">not offered by %1$s</string>
+    <string name="fix_turn_on">Turn on</string>
+    <string name="fix_set_number">Set number</string>
+    <string name="fix_allow">Allow</string>
+    <string name="via_others">via others</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">messenger</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_min">%1$d min</string>
+    <string name="waiting_gps">waiting for GPS</string>
+    <string name="gps_faked">GPS faked nearby, using network ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">network ±%1$d m</string>
+    <string name="provider_options">%1$s options</string>
+    <string name="optional">(optional)</string>
+    <string name="option_sent_only">sent only to %1$s as %2$s</string>
+    <string name="get_one_at">Get one at %1$s</string>
+    <string name="coverage">Coverage: %1$s</string>
+</resources>

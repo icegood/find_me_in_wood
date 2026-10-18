@@ -14,6 +14,8 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
+    // The text helpers read string resources; Robolectric needs them merged.
+    testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
 dependencies {

@@ -420,24 +420,26 @@ class SmsLogicTest {
 }
 
 class UiTextTest {
+    private val ctx = EnglishTexts.context
+
     @Test
     fun `findability reads as minutes left, or members-only`() {
-        assertEquals("findable by new members: 10 min left", UiText.findable(600_000, 0))
-        assertEquals("findable by new members: 1 min left", UiText.findable(1_000, 0))
-        assertTrue(UiText.findable(0, 5).startsWith("not findable"))
+        assertEquals("findable by new members: 10 min left", UiText.findable(ctx, 600_000, 0))
+        assertEquals("findable by new members: 1 min left", UiText.findable(ctx, 1_000, 0))
+        assertTrue(UiText.findable(ctx, 0, 5).startsWith("not findable"))
         // FR-12.3: launchers that already put every app on the home screen are not asked.
         assertTrue(homeScreenNeedsOffer("com.google.android.apps.nexuslauncher"))
         assertTrue(!homeScreenNeedsOffer("com.huawei.android.launcher"))
         assertTrue(!homeScreenNeedsOffer("com.hihonor.android.launcher"))
         assertTrue(!homeScreenNeedsOffer(""))
         // FR-8.8: radios that stop discovery are named, for the master and for the joiner.
-        assertNull(UiText.discoveryBlocked(bluetoothOn = true, locationOn = true, finding = true))
-        assertEquals("Nobody can find this network: Bluetooth is off.", UiText.discoveryBlocked(false, true, finding = false))
+        assertNull(UiText.discoveryBlocked(ctx, bluetoothOn = true, locationOn = true, finding = true))
+        assertEquals("Nobody can find this network: Bluetooth is off.", UiText.discoveryBlocked(ctx, false, true, finding = false))
         assertEquals(
             "Bluetooth and Location are off: no network nearby can show up here.",
-            UiText.discoveryBlocked(false, false, finding = true),
+            UiText.discoveryBlocked(ctx, false, false, finding = true),
         )
-        assertEquals("Location is off: no network nearby can show up here.", UiText.discoveryBlocked(true, false, finding = true))
+        assertEquals("Location is off: no network nearby can show up here.", UiText.discoveryBlocked(ctx, true, false, finding = true))
     }
 
     @Test
@@ -451,7 +453,7 @@ class UiTextTest {
 
     @Test
     fun `radios read as plain words, optional ones only when working`() {
-        val lines = UiText.radios(
+        val lines = UiText.radios(ctx, 
             mapOf(
                 com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT to com.icegood.findmeinwood.transport.api.RadioState.LINK_DOWN,
                 com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH to com.icegood.findmeinwood.transport.api.RadioState.READY,
@@ -460,9 +462,9 @@ class UiTextTest {
             ),
         )
         assertEquals(listOf("Bluetooth: connected", "Wi-Fi Direct: off or unavailable"), lines)
-        assertEquals("via SMS", UiText.via(com.icegood.findmeinwood.core.model.TransportId.SMS))
-        assertEquals("via other members", UiText.via(null))
-        val lora = UiText.radios(
+        assertEquals("via SMS", UiText.via(ctx, com.icegood.findmeinwood.core.model.TransportId.SMS))
+        assertEquals("via other members", UiText.via(ctx, null))
+        val lora = UiText.radios(ctx, 
             mapOf(
                 com.icegood.findmeinwood.core.model.TransportId.LORA to com.icegood.findmeinwood.transport.api.RadioState.READY,
                 com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH to com.icegood.findmeinwood.transport.api.RadioState.SCANNING,
@@ -471,8 +473,35 @@ class UiTextTest {
         assertEquals(listOf("Bluetooth: searching", "LoRa: connected"), lora)
         assertEquals(
             emptyList(),
-            UiText.radios(mapOf(com.icegood.findmeinwood.core.model.TransportId.INTERNET to com.icegood.findmeinwood.transport.api.RadioState.READY)),
+            UiText.radios(ctx, mapOf(com.icegood.findmeinwood.core.model.TransportId.INTERNET to com.icegood.findmeinwood.transport.api.RadioState.READY)),
         )
+    }
+
+    @Test
+    fun `members read as links and when they were heard`() {
+        assertEquals("links not announced yet", UiText.offers(ctx, emptyList()))
+        assertEquals(
+            "Bluetooth · SMS +380",
+            UiText.offers(ctx, 
+                listOf(
+                    com.icegood.findmeinwood.core.model.LinkOffer(com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH),
+                    com.icegood.findmeinwood.core.model.LinkOffer(com.icegood.findmeinwood.core.model.TransportId.SMS, "+380"),
+                ),
+            ),
+        )
+        assertEquals("not heard yet", UiText.heard(ctx, null, 0))
+        assertEquals("heard just now", UiText.heard(ctx, 1_000, 30_000))
+        assertEquals("heard 5 min ago", UiText.heard(ctx, 0, 300_000))
+        assertEquals("heard 2 h ago", UiText.heard(ctx, 0, 7_200_000))
+    }
+}
+
+class AuthErrorTextTest {
+    @Test
+    fun `every sign-in failure has its own words`() {
+        val texts = com.icegood.findmeinwood.core.auth.AuthError.entries.map { authErrorText(EnglishTexts.context, it) }
+        assertEquals(texts.size, texts.toSet().size)
+        assertEquals("Wrong email or password", authErrorText(EnglishTexts.context, com.icegood.findmeinwood.core.auth.AuthError.INVALID_CREDENTIALS))
     }
 }
 
@@ -492,6 +521,8 @@ class MemberNamingTest {
 }
 
 class LinkAvailabilityTest {
+    private val ctx = EnglishTexts.context
+
     private val all = LinkAvailability.Inputs(
         bluetoothOn = true, wifiOn = true, lora = com.icegood.findmeinwood.transport.api.RadioState.READY,
         phoneNumber = " +380001 ", smsPermitted = true, sdk = 35, onSatellite = false,
@@ -499,7 +530,7 @@ class LinkAvailabilityTest {
 
     @Test
     fun `every supported link is listed, the usable ones are offered`() {
-        val s = LinkAvailability.statuses(all)
+        val s = LinkAvailability.statuses(ctx, all)
         assertEquals(listOf("Bluetooth", "Wi-Fi Direct", "LoRa", "SMS", "Satellite"), s.map { it.label })
         val offers = LinkAvailability.offers(s)
         assertEquals(
@@ -513,12 +544,12 @@ class LinkAvailabilityTest {
         )
         assertEquals("+380001", offers.last().addr)
         assertTrue(s.last().reason!!.contains("not now"), "satellite is a note, never offered")
-        assertEquals("on satellite now: SMS goes through it", LinkAvailability.statuses(all.copy(onSatellite = true)).last().reason)
+        assertEquals("on satellite now: SMS goes through it", LinkAvailability.statuses(ctx, all.copy(onSatellite = true)).last().reason)
     }
 
     @Test
     fun `unusable links are kept, greyed with the reason and the fix`() {
-        val s = LinkAvailability.statuses(all.copy(bluetoothOn = false, wifiOn = false, lora = null, phoneNumber = "", sdk = 29))
+        val s = LinkAvailability.statuses(ctx, all.copy(bluetoothOn = false, wifiOn = false, lora = null, phoneNumber = "", sdk = 29))
         assertTrue(LinkAvailability.offers(s).isEmpty())
         assertEquals(
             listOf(
@@ -532,7 +563,7 @@ class LinkAvailabilityTest {
         )
         assertEquals("no LoRa node connected", s[2].reason)
         assertEquals("not supported before Android 15", s[4].reason)
-        val noPerm = LinkAvailability.statuses(all.copy(smsPermitted = false))
+        val noPerm = LinkAvailability.statuses(ctx, all.copy(smsPermitted = false))
         assertEquals(com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS, noPerm[3].fix)
         assertEquals("goes by SMS: set SMS up first", noPerm[4].reason)
         assertEquals(com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS, noPerm[4].fix)
@@ -586,22 +617,17 @@ class MemberBookStoreTest {
         ProfileStore.setMaster(dir, joined.networkIdHex, "ab".repeat(32))
         assertEquals("ab".repeat(32), ProfileStore.load(dir).single().masterIdHex)
     }
+}
+
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [29], qualifiers = "uk")
+class TranslationTest {
+    private val ctx: android.content.Context = androidx.test.core.app.ApplicationProvider.getApplicationContext()
 
     @Test
-    fun `members read as links and when they were heard`() {
-        assertEquals("links not announced yet", UiText.offers(emptyList()))
-        assertEquals(
-            "Bluetooth · SMS +380",
-            UiText.offers(
-                listOf(
-                    com.icegood.findmeinwood.core.model.LinkOffer(com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH),
-                    com.icegood.findmeinwood.core.model.LinkOffer(com.icegood.findmeinwood.core.model.TransportId.SMS, "+380"),
-                ),
-            ),
-        )
-        assertEquals("not heard yet", UiText.heard(null, 0))
-        assertEquals("heard just now", UiText.heard(1_000, 30_000))
-        assertEquals("heard 5 min ago", UiText.heard(0, 300_000))
-        assertEquals("heard 2 h ago", UiText.heard(0, 7_200_000))
+    fun `texts follow the phone's language`() {
+        assertEquals("видима для нових учасників: ще 10 хв", UiText.findable(ctx, 600_000, 0))
+        assertEquals("Цю мережу ніхто не знайде: Bluetooth вимкнено.", UiText.discoveryBlocked(ctx, false, true, finding = false))
+        assertEquals("Неправильний пароль для «ліс»", JoinResult.Error(R.string.err_wrong_password, "ліс").text(ctx))
     }
 }

@@ -29,6 +29,7 @@ fun qrBitmap(text: String, sizePx: Int): Bitmap {
  */
 @Composable
 fun rememberInviteScanner(onResult: (JoinInvite?) -> Unit): () -> Unit {
+    val prompt = androidx.compose.ui.res.stringResource(R.string.scan_prompt)
     val launcher = androidx.activity.compose.rememberLauncherForActivityResult(ScanContract()) { r ->
         r.contents?.let { onResult(JoinInvite.parse(it)) }
     }
@@ -36,7 +37,7 @@ fun rememberInviteScanner(onResult: (JoinInvite?) -> Unit): () -> Unit {
         launcher.launch(
             ScanOptions()
                 .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                .setPrompt("Point at the invite QR code on the master's phone")
+                .setPrompt(prompt)
                 .setBeepEnabled(false)
                 .setOrientationLocked(false),
         )

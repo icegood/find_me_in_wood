@@ -13,8 +13,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.icegood.findmeinwood.core.auth.AuthError
 import com.icegood.findmeinwood.core.auth.AuthManager
 import com.icegood.findmeinwood.core.auth.AuthResult
 import com.icegood.findmeinwood.core.auth.UserProfile
@@ -37,6 +39,19 @@ internal fun idTokenClaim(idToken: String, claim: String): String? = runCatching
         .decodeToString()
     Json.parseToJsonElement(payload).jsonObject[claim]?.jsonPrimitive?.content
 }.getOrNull()
+
+/** A sign-in failure in the phone's language. */
+internal fun authErrorText(ctx: android.content.Context, e: AuthError): String = ctx.getString(
+    when (e) {
+        AuthError.INVALID_INPUT -> R.string.auth_invalid_input
+        AuthError.EMAIL_TAKEN -> R.string.auth_email_taken
+        AuthError.REGISTRATION_FAILED -> R.string.auth_registration_failed
+        AuthError.INVALID_CREDENTIALS -> R.string.auth_invalid_credentials
+        AuthError.USER_NOT_FOUND -> R.string.auth_user_not_found
+        AuthError.GOOGLE_NO_EMAIL -> R.string.auth_google_no_email
+        AuthError.EMAIL_LINKED_ELSEWHERE -> R.string.auth_email_linked_elsewhere
+    },
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,12 +86,12 @@ fun AuthScreen(
         contract = ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         if (result.resultCode != Activity.RESULT_OK) {
-            error = "No Google account selected"
+            error = context.getString(R.string.auth_no_account_selected)
             return@rememberLauncherForActivityResult
         }
         val mail = result.data?.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)
         if (mail.isNullOrBlank()) {
-            error = "No Google account selected"
+            error = context.getString(R.string.auth_no_account_selected)
             return@rememberLauncherForActivityResult
         }
         scope.launch {
@@ -85,14 +100,14 @@ fun AuthScreen(
             loading = false
             when (res) {
                 is AuthResult.Success -> finish(res.profile)
-                is AuthResult.Error -> error = res.message
-                is AuthResult.AlreadyLinked -> error = "Account already linked"
+                is AuthResult.Error -> error = authErrorText(context, res.reason)
+                is AuthResult.AlreadyLinked -> error = context.getString(R.string.auth_already_linked)
             }
         }
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(if (isLogin) "Sign In" else "Register") }) },
+        topBar = { TopAppBar(title = { Text(stringResource(if (isLogin) R.string.auth_sign_in else R.string.auth_register)) }) },
     ) { pad ->
         Column(
             Modifier.padding(pad).padding(24.dp).fillMaxWidth(),
@@ -102,18 +117,18 @@ fun AuthScreen(
             if (!isLogin) {
                 OutlinedTextField(
                     value = displayName, onValueChange = { displayName = it },
-                    label = { Text("Display name") }, singleLine = true,
+                    label = { Text(stringResource(R.string.auth_display_name)) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             OutlinedTextField(
                 value = email, onValueChange = { email = it },
-                label = { Text("Email") }, singleLine = true,
+                label = { Text(stringResource(R.string.auth_email)) }, singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = password, onValueChange = { password = it },
-                label = { Text("Password") }, singleLine = true,
+                label = { Text(stringResource(R.string.password)) }, singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(autoCorrectEnabled = false, keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
@@ -134,15 +149,15 @@ fun AuthScreen(
                         loading = false
                         when (result) {
                             is AuthResult.Success -> onAuthenticated(result.profile)
-                            is AuthResult.Error -> error = result.message
-                            is AuthResult.AlreadyLinked -> error = "Account already linked"
+                            is AuthResult.Error -> error = authErrorText(context, result.reason)
+                            is AuthResult.AlreadyLinked -> error = context.getString(R.string.auth_already_linked)
                         }
                     }
                 },
                 enabled = !loading && email.isNotBlank() && password.length >= 6,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (loading) "Please wait…" else if (isLogin) "Sign In" else "Register")
+                Text(stringResource(if (loading) R.string.please_wait else if (isLogin) R.string.auth_sign_in else R.string.auth_register))
             }
             OutlinedButton(
                 onClick = {
@@ -155,7 +170,7 @@ fun AuthScreen(
                                     null, null, arrayOf("com.google"), null, null, null, null,
                                 ),
                             )
-                        }.onFailure { error = "No Google account on this device" }
+                        }.onFailure { error = context.getString(R.string.auth_no_google_account) }
                         return@OutlinedButton
                     }
                     scope.launch {
@@ -183,16 +198,16 @@ fun AuthScreen(
                                             authManager.setCurrentUserId(res.profile.uid)
                                             onAuthenticated(res.profile)
                                         }
-                                        is AuthResult.Error -> error = res.message
-                                        is AuthResult.AlreadyLinked -> error = "Account already linked"
-                                        null -> error = "Could not read Google ID token"
+                                        is AuthResult.Error -> error = authErrorText(context, res.reason)
+                                        is AuthResult.AlreadyLinked -> error = context.getString(R.string.auth_already_linked)
+                                        null -> error = context.getString(R.string.auth_no_id_token)
                                     }
                                 } else {
-                                    error = "Unexpected credential type"
+                                    error = context.getString(R.string.auth_unexpected_credential)
                                 }
                             },
                             onFailure = { e ->
-                                error = "Google sign-in failed: ${e.message ?: e.javaClass.simpleName}"
+                                error = context.getString(R.string.auth_google_failed, e.message ?: e.javaClass.simpleName)
                             },
                         )
                     }
@@ -200,10 +215,10 @@ fun AuthScreen(
                 enabled = !loading,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Continue with Google")
+                Text(stringResource(R.string.auth_continue_google))
             }
             TextButton(onClick = { isLogin = !isLogin; error = null }) {
-                Text(if (isLogin) "Don't have an account? Register" else "Already have an account? Sign in")
+                Text(stringResource(if (isLogin) R.string.auth_to_register else R.string.auth_to_sign_in))
             }
         }
     }

@@ -1,46 +1,52 @@
 package com.icegood.findmeinwood.app
 
+import android.content.Context
 import com.icegood.findmeinwood.core.model.TransportId
 import com.icegood.findmeinwood.transport.api.RadioState
 
-/** Plain-language status strings for the screens; pure, unit-tested on the JVM. */
+/** Plain-language status strings for the screens, from the app's string resources. */
 internal object UiText {
-    fun name(t: TransportId) = when (t) {
-        TransportId.BLUETOOTH -> "Bluetooth"
-        TransportId.WIFI_DIRECT -> "Wi-Fi Direct"
-        TransportId.LORA -> "LoRa"
-        TransportId.INTERNET -> "Messenger"
-        TransportId.SMS -> "SMS"
-    }
+    fun name(ctx: Context, t: TransportId): String = ctx.getString(
+        when (t) {
+            TransportId.BLUETOOTH -> R.string.transport_bluetooth
+            TransportId.WIFI_DIRECT -> R.string.transport_wifi_direct
+            TransportId.LORA -> R.string.transport_lora
+            TransportId.INTERNET -> R.string.transport_messenger
+            TransportId.SMS -> R.string.transport_sms
+        },
+    )
 
     /** How a member is currently reached, for the member list. */
-    fun via(t: TransportId?): String = if (t == null) "via other members" else "via ${name(t)}"
+    fun via(ctx: Context, t: TransportId?): String =
+        if (t == null) ctx.getString(R.string.via_other_members) else ctx.getString(R.string.via_transport, name(ctx, t))
 
-    private fun state(s: RadioState) = when (s) {
-        RadioState.READY -> "connected"
-        RadioState.SCANNING -> "searching"
-        RadioState.CONNECTING -> "connecting"
-        RadioState.LINK_DOWN -> "off or unavailable"
-        RadioState.STOPPED -> "stopped"
-    }
+    private fun state(ctx: Context, s: RadioState) = ctx.getString(
+        when (s) {
+            RadioState.READY -> R.string.radio_connected
+            RadioState.SCANNING -> R.string.radio_searching
+            RadioState.CONNECTING -> R.string.radio_connecting
+            RadioState.LINK_DOWN -> R.string.radio_off
+            RadioState.STOPPED -> R.string.radio_stopped
+        },
+    )
 
     /**
      * One line per radio, Bluetooth first. LoRa (optional external node) is only listed once
      * it works, so a missing node is not an error; the messenger carrier is not a radio.
      */
-    fun radios(states: Map<TransportId, RadioState>): List<String> =
+    fun radios(ctx: Context, states: Map<TransportId, RadioState>): List<String> =
         states.entries
             .filter { (t, s) -> t != TransportId.INTERNET && t != TransportId.SMS && (t != TransportId.LORA || s == RadioState.READY) }
             .sortedBy { it.key.ordinal.let { o -> if (it.key == TransportId.BLUETOOTH) -1 else o } }
-            .map { (t, s) -> "${name(t)}: ${state(s)}" }
+            .map { (t, s) -> ctx.getString(R.string.radio_line, name(ctx, t), state(ctx, s)) }
 
     /** The active network's findability, e.g. "findable by new members: 7 min left". */
-    fun findable(untilMs: Long, nowMs: Long): String {
+    fun findable(ctx: Context, untilMs: Long, nowMs: Long): String {
         val left = untilMs - nowMs
         return if (left <= 0) {
-            "not findable by new members (members still reach each other)"
+            ctx.getString(R.string.not_findable)
         } else {
-            "findable by new members: ${(left + 59_999) / 60_000} min left"
+            ctx.getString(R.string.findable_min_left, ((left + 59_999) / 60_000).toInt())
         }
     }
 
@@ -49,27 +55,33 @@ internal object UiText {
      * Android hides nearby phones while Location is off. [finding] words it for the joining
      * phone, otherwise for the master who should be found. Null when nothing does.
      */
-    fun discoveryBlocked(bluetoothOn: Boolean, locationOn: Boolean, finding: Boolean): String? {
-        val off = listOfNotNull("Bluetooth".takeIf { !bluetoothOn }, "Location".takeIf { !locationOn })
-        if (off.isEmpty()) return null
-        val what = off.joinToString(" and ") + if (off.size == 1) " is off" else " are off"
-        return if (finding) "$what: no network nearby can show up here."
-        else "Nobody can find this network: $what."
+    fun discoveryBlocked(ctx: Context, bluetoothOn: Boolean, locationOn: Boolean, finding: Boolean): String? {
+        val what = when {
+            !bluetoothOn && !locationOn -> R.string.off_bluetooth_location
+            !bluetoothOn -> R.string.off_bluetooth
+            !locationOn -> R.string.off_location
+            else -> return null
+        }
+        // Starts the sentence when finding: some languages write it lowercase mid-sentence.
+        return ctx.getString(
+            if (finding) R.string.blocked_finding else R.string.blocked_master,
+            ctx.getString(what),
+        ).replaceFirstChar { it.titlecase() }
     }
 
     /** How a member can be reached, from their card: "Bluetooth · Wi-Fi Direct · SMS +380…". */
-    fun offers(offers: List<com.icegood.findmeinwood.core.model.LinkOffer>): String =
-        if (offers.isEmpty()) "links not announced yet"
-        else offers.joinToString(" · ") { o -> name(o.t) + (o.addr?.let { " $it" } ?: "") }
+    fun offers(ctx: Context, offers: List<com.icegood.findmeinwood.core.model.LinkOffer>): String =
+        if (offers.isEmpty()) ctx.getString(R.string.links_not_announced)
+        else offers.joinToString(" · ") { o -> name(ctx, o.t) + (o.addr?.let { " $it" } ?: "") }
 
     /** When a member was last heard on any radio. */
-    fun heard(lastSeenMs: Long?, nowMs: Long): String {
-        if (lastSeenMs == null) return "not heard yet"
+    fun heard(ctx: Context, lastSeenMs: Long?, nowMs: Long): String {
+        if (lastSeenMs == null) return ctx.getString(R.string.heard_never)
         val s = ((nowMs - lastSeenMs) / 1000).coerceAtLeast(0)
         return when {
-            s < 60 -> "heard just now"
-            s < 3600 -> "heard ${s / 60} min ago"
-            else -> "heard ${s / 3600} h ago"
+            s < 60 -> ctx.getString(R.string.heard_now)
+            s < 3600 -> ctx.getString(R.string.heard_min_ago, (s / 60).toInt())
+            else -> ctx.getString(R.string.heard_h_ago, (s / 3600).toInt())
         }
     }
 }

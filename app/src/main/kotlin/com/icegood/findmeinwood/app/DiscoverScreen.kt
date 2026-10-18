@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -56,25 +57,23 @@ fun DiscoverScreen(
         Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Networks around you", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.networks_around), style = MaterialTheme.typography.titleMedium)
         val blocked = tick >= 0 && DiscoveryBlockers(context, finding = true)
         when {
             blocked -> Unit
             !running -> {
                 Text(
-                    "Turn on the radios to see networks nearby. A network shows up only while " +
-                        "one of its members has discovery on (Start discovery or Invite on their phone).",
+                    stringResource(R.string.discover_turn_on_radios),
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Button(onClick = onListen, modifier = Modifier.fillMaxWidth()) { Text("Look for networks") }
+                Button(onClick = onListen, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.look_for_networks)) }
             }
             listening -> Text(
-                "Looking… a network appears within seconds once a member nearby has discovery on " +
-                    "(Start discovery or Invite on their phone).",
+                stringResource(R.string.discover_looking),
                 style = MaterialTheme.typography.bodySmall,
             )
             else -> Text(
-                "Listening while “${current?.name ?: "your network"}” runs.",
+                stringResource(R.string.discover_listening_while, current?.name ?: stringResource(R.string.your_network)),
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -84,22 +83,22 @@ fun DiscoverScreen(
             val stored = mine[net.networkId.bytes.joinToString("") { "%02x".format(it) }]
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(net.name ?: "(unnamed)", style = MaterialTheme.typography.titleMedium)
+                    Text(net.name ?: stringResource(R.string.unnamed), style = MaterialTheme.typography.titleMedium)
 
                     if (stored != null) {
-                        Text("You are a member.", style = MaterialTheme.typography.bodySmall)
-                        Button(onClick = { onStart(stored) }) { Text("Start") }
+                        Text(stringResource(R.string.you_are_member), style = MaterialTheme.typography.bodySmall)
+                        Button(onClick = { onStart(stored) }) { Text(stringResource(R.string.start)) }
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { passwordFor = net }) { Text("Enter password") }
+                            Button(onClick = { passwordFor = net }) { Text(stringResource(R.string.enter_password)) }
                             OutlinedButton(onClick = {
                                 DiscoveryBridge.requestJoin(net.networkId)
-                                asked = net.name ?: "the network"
-                            }) { Text("Ask a member") }
+                                asked = net.networkId.bytes.joinToString("") { "%02x".format(it) }
+                            }) { Text(stringResource(R.string.ask_member)) }
                         }
-                        if (asked != null && asked == (net.name ?: "the network")) {
+                        if (asked == net.networkId.bytes.joinToString("") { "%02x".format(it) }) {
                             Text(
-                                "Asked. The network's master must tap Accept on their phone.",
+                                stringResource(R.string.asked_master_accept),
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -113,16 +112,17 @@ fun DiscoverScreen(
                 Column(Modifier.padding(12.dp)) {
                     when (result) {
                         is JoinOutcome.Joined -> Column {
-                            Text(
-                                "Joined “${result.name}”. Check that the member who let you in sees " +
-                                    "the same code: ${result.sas}",
-                            )
+                            Text(stringResource(R.string.joined_check_code, result.name, result.sas))
                             TextButton(onClick = {
                                 Prefs.setUnverifiedCode(context, ProfileStore.networkIdOf(result.secret).bytes.joinToString("") { "%02x".format(it) }, null)
                                 SessionBus.publishJoinOutcome(null)
-                            }) { Text("The codes matched") }
+                            }) { Text(stringResource(R.string.codes_matched)) }
                         }
-                        is JoinOutcome.Rejected -> Text("Not let in: ${result.reason}")
+                        is JoinOutcome.Rejected -> Text(
+                            // The default reason is the master's plain "no"; others come as sent.
+                            if (result.reason == "rejected by owner") stringResource(R.string.not_let_in_master)
+                            else stringResource(R.string.not_let_in, result.reason),
+                        )
                     }
                 }
             }
@@ -133,10 +133,10 @@ fun DiscoverScreen(
 
     passwordFor?.let { net ->
         PasswordDialog(
-            title = "Join “${net.name ?: "network"}”",
+            title = stringResource(R.string.join_named, net.name ?: stringResource(R.string.network)),
             onDismiss = { passwordFor = null },
             onJoin = { password ->
-                when (val r = ProfileStore.join(net.name ?: "network", password, expected = net.networkId)) {
+                when (val r = ProfileStore.join(net.name ?: context.getString(R.string.network), password, expected = net.networkId)) {
                     is JoinResult.Ok -> {
                         ProfileStore.add(context, r.profile)
                         Prefs.setSecretFor(context, r.profile.networkIdHex, password)
@@ -144,7 +144,7 @@ fun DiscoverScreen(
                         onStart(r.profile)
                         null
                     }
-                    is JoinResult.Error -> r.message
+                    is JoinResult.Error -> r.text(context)
                 }
             },
         )
@@ -163,7 +163,7 @@ private fun bluetoothOn(ctx: android.content.Context): Boolean = runCatching {
 internal fun DiscoveryBlockers(ctx: android.content.Context, finding: Boolean): Boolean {
     val bt = bluetoothOn(ctx)
     val loc = locationOn(ctx)
-    val why = UiText.discoveryBlocked(bt, loc, finding) ?: return false
+    val why = UiText.discoveryBlocked(ctx, bt, loc, finding) ?: return false
     fun open(intent: android.content.Intent) = runCatching {
         ctx.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
     }
@@ -173,10 +173,10 @@ internal fun DiscoveryBlockers(ctx: android.content.Context, finding: Boolean): 
             open(android.content.Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE)).onFailure {
                 open(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
             }
-        }) { Text("Turn on Bluetooth") }
+        }) { Text(stringResource(R.string.turn_on_bluetooth)) }
         if (!loc) Button(onClick = {
             open(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-        }) { Text("Turn on Location") }
+        }) { Text(stringResource(R.string.turn_on_location)) }
     }
     return true
 }
@@ -204,9 +204,10 @@ internal fun PasswordDialog(
     // Keyboards like to append a space; no password starts or ends with one.
     fun join(n: String, pw: String) = if (askName) onJoinNamed?.invoke(n.trim(), pw.trim()) else onJoin(pw.trim())
     // A scanned invite joins at once: name and password come from the master's phone.
+    val notInvite = stringResource(R.string.qr_not_invite)
     val scan = rememberInviteScanner { invite ->
         if (invite == null) {
-            error = "That QR code is not a network invite."
+            error = notInvite
         } else {
             name = invite.name
             password = invite.password
@@ -221,18 +222,18 @@ internal fun PasswordDialog(
                 if (askName) {
                     OutlinedTextField(
                         value = name, onValueChange = { name = it; error = null },
-                        label = { Text("Network name (your label)") }, singleLine = true,
+                        label = { Text(stringResource(R.string.network_name_label)) }, singleLine = true,
                     )
                 }
                 OutlinedTextField(
                     value = password, onValueChange = { password = it; error = null },
-                    label = { Text("Password") }, singleLine = true,
+                    label = { Text(stringResource(R.string.password)) }, singleLine = true,
                     // No suggestions or autocorrect: keyboards otherwise mangle and remember passwords.
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(autoCorrectEnabled = false, keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
                     visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = { TextButton(onClick = { show = !show }) { Text(if (show) "Hide" else "Show") } },
+                    trailingIcon = { TextButton(onClick = { show = !show }) { Text(stringResource(if (show) R.string.hide else R.string.show)) } },
                 )
-                OutlinedButton(onClick = scan) { Text("Scan QR") }
+                OutlinedButton(onClick = scan) { Text(stringResource(R.string.scan_qr)) }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
         },
@@ -240,9 +241,9 @@ internal fun PasswordDialog(
             TextButton(
                 enabled = password.isNotEmpty() && (!askName || name.isNotBlank()),
                 onClick = { error = join(name, password) },
-            ) { Text("Join") }
+            ) { Text(stringResource(R.string.join)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -254,22 +255,22 @@ internal fun JoinRequests(networkName: String?) {
     val note by SessionBus.ownerNote.collectAsState()
     if (sas != null || note != null) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            sas?.let { Text("Code $it — the person joining must see the same", style = MaterialTheme.typography.bodyMedium) }
+            sas?.let { Text(stringResource(R.string.code_same, it), style = MaterialTheme.typography.bodyMedium) }
             note?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         }
     }
     if (pending.isNotEmpty()) {
-        Text("Asking to join “${networkName ?: "your network"}”", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.asking_to_join, networkName ?: stringResource(R.string.your_network)), style = MaterialTheme.typography.titleMedium)
         pending.forEach { req ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        req.joinerNick ?: "device ${req.joinerId.bytes.take(4).joinToString("") { "%02x".format(it) }}",
+                        req.joinerNick ?: stringResource(R.string.device_id, req.joinerId.bytes.take(4).joinToString("") { "%02x".format(it) }),
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { DiscoveryBridge.approve(req.joinerId) }) { Text("Accept") }
-                        OutlinedButton(onClick = { DiscoveryBridge.reject(req.joinerId) }) { Text("Reject") }
+                        Button(onClick = { DiscoveryBridge.approve(req.joinerId) }) { Text(stringResource(R.string.accept)) }
+                        OutlinedButton(onClick = { DiscoveryBridge.reject(req.joinerId) }) { Text(stringResource(R.string.reject)) }
                     }
                 }
             }

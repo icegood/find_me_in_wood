@@ -103,6 +103,14 @@ class Phone:
         raise Step(f"{self.label}: keyboard would not type '{text}'")
 
     # --- app --------------------------------------------------------------------
+    def english(self):
+        """The steps find buttons by their English text: the app runs in English for the test
+        (per-app language on Android 13+); older phones must use English system-wide."""
+        if int(self.sh("getprop ro.build.version.sdk") or 0) >= 33:
+            self.sh(f"cmd locale set-app-locales {PKG} --locales en-US")
+            return True
+        return self.sh("getprop persist.sys.locale").startswith("en")
+
     def launch(self):
         self.adb("shell", "monkey", "-p", PKG, "-c", "android.intent.category.LAUNCHER", "1")
         time.sleep(2)
@@ -245,6 +253,8 @@ def main():
     for p in (master, joiner):
         if p.adb("get-state").stdout.decode().strip() != "device":
             sys.exit(f"{p.label} {p.serial} is not connected")
+        if not p.english():
+            sys.exit(f"{p.label}: set the phone's language to English (Android < 13 has no per-app language)")
         if not p.radios_on():
             sys.exit(f"{p.label}: Bluetooth or Location is off and adb cannot turn it on")
         p.sh(f"setprop persist.log.tag.{TAG} D; setprop log.tag.{TAG} D")

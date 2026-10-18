@@ -17,7 +17,7 @@ data class MapLayer(val provider: TileProvider, val offline: Boolean) {
  * One setting a provider takes (API key, access token…), sent as `?<param>=<value>`
  * on that provider's tile requests only.
  */
-data class TileOption(val param: String, val label: String, val required: Boolean)
+data class TileOption(val param: String, @androidx.annotation.StringRes val label: Int, val required: Boolean)
 
 /**
  * A map provider with its own [options]. Values are stored per provider, so a key for one
@@ -30,8 +30,8 @@ enum class TileProvider(
     val id: String,
     val label: String,
     val satellite: Boolean,
-    /** Where the imagery exists, when not worldwide. */
-    val coverage: String?,
+    /** Where the imagery exists, when not worldwide (a string resource). */
+    @androidx.annotation.StringRes val coverage: Int?,
     val attribution: String,
     val options: List<TileOption>,
     /** Where to get the key or token, shown in the provider's options. */
@@ -63,30 +63,30 @@ enum class TileProvider(
     CARTO_DARK(
         "CartoDB-DarkMatter", "CARTO dark", satellite = false, coverage = null,
         attribution = "© OpenStreetMap contributors © CARTO",
-        options = listOf(TileOption("key", "API key", required = true)),
+        options = listOf(TileOption("key", R.string.option_api_key, required = true)),
         signUp = "carto.com/basemaps/apikey",
     ),
     // The National Map basemaps are public; no token is accepted or required.
     USGS_SAT(
-        "USGS_SAT", "USGS", satellite = true, coverage = "USA only",
+        "USGS_SAT", "USGS", satellite = true, coverage = R.string.coverage_usa,
         attribution = "USGS The National Map", options = emptyList(), signUp = null,
     ),
     ESRI_SAT(
         "Esri-WorldImagery", "Esri World Imagery", satellite = true, coverage = null,
         attribution = "Esri, Maxar, Earthstar Geographics",
-        options = listOf(TileOption("token", "ArcGIS token", required = false)),
+        options = listOf(TileOption("token", R.string.option_arcgis_token, required = false)),
         signUp = "developers.arcgis.com",
     ),
     MAPTILER_SAT(
         "MapTiler-Satellite", "MapTiler", satellite = true, coverage = null,
         attribution = "© MapTiler © OpenStreetMap contributors",
-        options = listOf(TileOption("key", "API key", required = true)),
+        options = listOf(TileOption("key", R.string.option_api_key, required = true)),
         signUp = "cloud.maptiler.com",
     ),
     MAPBOX_SAT(
         "Mapbox-Satellite", "Mapbox", satellite = true, coverage = null,
         attribution = "© Mapbox © Maxar",
-        options = listOf(TileOption("access_token", "Access token", required = true)),
+        options = listOf(TileOption("access_token", R.string.option_access_token, required = true)),
         signUp = "account.mapbox.com",
     ),
     ;

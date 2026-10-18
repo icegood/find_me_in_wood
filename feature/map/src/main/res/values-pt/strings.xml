@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">só EUA</string>
+    <string name="option_api_key">Chave de API</string>
+    <string name="option_arcgis_token">Token ArcGIS</string>
+    <string name="option_access_token">Token de acesso</string>
+    <string name="estimate_k_tiles">%1$s mil blocos · ~%2$s MB</string>
+    <string name="estimate_tiles">blocos: %1$s · ~%2$s MB</string>
+    <string name="downloading">Baixando “%1$s”</string>
+    <string name="saved_offline">“%1$s” salva para uso off-line</string>
+    <string name="download_error">Erro no download: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Off-line (%1$s)</string>
+    <string name="kind_satellite">satélite</string>
+    <string name="kind_streets">ruas</string>
+    <string name="needs">precisa de %1$s</string>
+    <string name="option_set">%1$s definido</string>
+    <string-array name="compass_points">
+        <item>N</item>
+        <item>NE</item>
+        <item>L</item>
+        <item>SE</item>
+        <item>S</item>
+        <item>SO</item>
+        <item>O</item>
+        <item>NO</item>
+    </string-array>
+    <string name="area_name_default">Área %1$s</string>
+    <string name="save_offline_area">Salvar área off-line</string>
+    <string name="area_name">Nome da área</string>
+    <string name="area_trail_detail">%1$s, até o detalhe das trilhas · %2$s</string>
+    <string name="area_too_large">Grande demais para %1$s (no máximo %2$s blocos com detalhe das trilhas): desenhe uma área menor.</string>
+    <string name="download">Baixar</string>
+    <string name="nearby_within">perto ≤%1$d m</string>
+    <string name="no_network_running">Nenhuma rede ativa</string>
+    <string name="others_heard">outros ouvidos: %1$d</string>
+    <string name="map_chip">Mapa: %1$s ▾</string>
+    <string name="offline">Off-line</string>
+    <string name="offline_hint">áreas salvas e lugares vistos de %1$s — sem internet</string>
+    <string name="provider_options_menu">Opções de %1$s…</string>
+    <string name="provider_needs">%1$s precisa de %2$s</string>
+    <string name="set_it">Definir</string>
+    <string name="finding">Procurando %1$s</string>
+    <string name="too_rough_direction">posições imprecisas demais para uma direção</string>
+    <string name="relayed">repassado</string>
+    <string name="waiting_first_fix">aguardando a primeira posição…</string>
+    <string name="save_area_offline">Salvar esta área off-line</string>
+    <string name="drag_rectangle">arraste um retângulo sobre o mapa</string>
+    <string name="drag_larger">arraste um retângulo maior</string>
+    <string name="too_large_draw_smaller">grande demais para %1$s: desenhe menor</string>
+    <string name="cancel">Cancelar</string>
+    <string name="use_this_area">Usar esta área</string>
+    <string name="parts_done">%1$s / %2$s partes</string>
+    <string name="preparing">preparando…</string>
+    <string name="errors_count">erros: %1$d</string>
+    <string name="done">Concluído</string>
+    <string name="cancelling">cancelando…</string>
+    <string name="members">Membros</string>
+    <string name="no_members_heard">Nenhum membro ouvido ainda.</string>
+    <string name="tap_find_hint">Toque em Encontrar para ver uma seta e a distância até alguém no mapa.</string>
+    <string name="member">membro</string>
+    <string name="unlocated_seen">%1$s — sem localização, ouvido pela última vez há %2$s</string>
+    <string name="bearing">rumo %1$s</string>
+    <string name="rename">Renomear</string>
+    <string name="stop">Parar</string>
+    <string name="find">Encontrar</string>
+    <string name="rename_member">Renomear membro</string>
+    <string name="rename_hint">Só neste telefone. Vazio = o nome que a pessoa escolheu.</string>
+    <string name="save">Salvar</string>
+    <string name="nearby_range">perto (≤%1$d m: alcance de %2$s)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">a outra pessoa</string>
+    <string name="link_exchanging">conexão: trocando ofertas… (ouvido por %1$s)</string>
+    <string name="confirm_link">Confirmar conexão: %1$s</string>
+    <string name="link_waiting">conexão: %1$s — aguardando confirmação: %2$s</string>
+    <string name="link_chip">conexão: %1$s ▾</string>
+    <string name="link_quiet">%1$s em silêncio — usar %2$s?</string>
+    <string name="not_offered_by">%1$s não oferece isso</string>
+    <string name="fix_turn_on">Ligar</string>
+    <string name="fix_set_number">Informar número</string>
+    <string name="fix_allow">Permitir</string>
+    <string name="via_others">por outros</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">mensageiro</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_min">%1$d min</string>
+    <string name="waiting_gps">aguardando GPS</string>
+    <string name="gps_faked">GPS falsificado por perto, usando a rede ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">rede ±%1$d m</string>
+    <string name="provider_options">Opções de %1$s</string>
+    <string name="optional">(opcional)</string>
+    <string name="option_sent_only">enviado só para %1$s como %2$s</string>
+    <string name="get_one_at">Obtenha em %1$s</string>
+    <string name="coverage">Cobertura: %1$s</string>
+</resources>

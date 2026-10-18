@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">ארה״ב בלבד</string>
+    <string name="option_api_key">מפתח API</string>
+    <string name="option_arcgis_token">אסימון ArcGIS</string>
+    <string name="option_access_token">אסימון גישה</string>
+    <string name="estimate_k_tiles">%1$s אלף אריחים · ~%2$s MB</string>
+    <string name="estimate_tiles">אריחים: %1$s · ~%2$s MB</string>
+    <string name="downloading">מוריד את „%1$s”</string>
+    <string name="saved_offline">„%1$s” נשמר לשימוש אופליין</string>
+    <string name="download_error">שגיאת הורדה: %1$s</string>
+    <string name="distance_km">%1$s ק״מ</string>
+    <string name="distance_m">%1$d מ׳</string>
+    <string name="layer_offline">אופליין (%1$s)</string>
+    <string name="kind_satellite">לוויין</string>
+    <string name="kind_streets">רחובות</string>
+    <string name="needs">צריך %1$s</string>
+    <string name="option_set">%1$s הוגדר</string>
+    <string-array name="compass_points">
+        <item>צ</item>
+        <item>צמז</item>
+        <item>מז</item>
+        <item>דמז</item>
+        <item>ד</item>
+        <item>דמע</item>
+        <item>מע</item>
+        <item>צמע</item>
+    </string-array>
+    <string name="area_name_default">אזור %1$s</string>
+    <string name="save_offline_area">שמירת אזור אופליין</string>
+    <string name="area_name">שם האזור</string>
+    <string name="area_trail_detail">%1$s, עד רמת השבילים · %2$s</string>
+    <string name="area_too_large">גדול מדי עבור %1$s (לכל היותר %2$s אריחים ברמת השבילים): ציירו אזור קטן יותר.</string>
+    <string name="download">הורדה</string>
+    <string name="nearby_within">קרוב ≤%1$d מ׳</string>
+    <string name="no_network_running">אף רשת לא פועלת</string>
+    <string name="others_heard">אחרים נשמעים: %1$d</string>
+    <string name="map_chip">מפה: %1$s ▾</string>
+    <string name="offline">אופליין</string>
+    <string name="offline_hint">אזורים שמורים ומקומות שנצפו מ-%1$s — בלי אינטרנט</string>
+    <string name="provider_options_menu">אפשרויות %1$s…</string>
+    <string name="provider_needs">%1$s צריך %2$s</string>
+    <string name="set_it">הגדרה</string>
+    <string name="finding">מאתר את %1$s</string>
+    <string name="too_rough_direction">המיקומים לא מדויקים מספיק לכיוון</string>
+    <string name="relayed">הועבר</string>
+    <string name="waiting_first_fix">ממתין למיקום ראשון…</string>
+    <string name="save_area_offline">שמירת האזור הזה אופליין</string>
+    <string name="drag_rectangle">גררו מלבן על המפה</string>
+    <string name="drag_larger">גררו מלבן גדול יותר</string>
+    <string name="too_large_draw_smaller">גדול מדי עבור %1$s: ציירו קטן יותר</string>
+    <string name="cancel">ביטול</string>
+    <string name="use_this_area">שימוש באזור הזה</string>
+    <string name="parts_done">%1$s / %2$s חלקים</string>
+    <string name="preparing">מכין…</string>
+    <string name="errors_count">שגיאות: %1$d</string>
+    <string name="done">סיום</string>
+    <string name="cancelling">מבטל…</string>
+    <string name="members">חברים</string>
+    <string name="no_members_heard">עדיין לא נשמעו חברים.</string>
+    <string name="tap_find_hint">הקישו „איתור” כדי לקבל חץ ומרחק למישהו במפה.</string>
+    <string name="member">חבר</string>
+    <string name="unlocated_seen">%1$s — בלי מיקום, נשמע לאחרונה לפני %2$s</string>
+    <string name="bearing">כיוון %1$s</string>
+    <string name="rename">שינוי שם</string>
+    <string name="stop">עצירה</string>
+    <string name="find">איתור</string>
+    <string name="rename_member">שינוי שם החבר</string>
+    <string name="rename_hint">רק בטלפון הזה. ריק = השם שהאדם בחר.</string>
+    <string name="save">שמירה</string>
+    <string name="nearby_range">קרוב (≤%1$d מ׳: טווח %2$s)</string>
+    <string name="plus_minus_m">±%1$d מ׳</string>
+    <string name="them">הצד השני</string>
+    <string name="link_exchanging">קישור: מחליפים הצעות… (נשמע דרך %1$s)</string>
+    <string name="confirm_link">אישור קישור: %1$s</string>
+    <string name="link_waiting">קישור: %1$s — ממתין לאישור: %2$s</string>
+    <string name="link_chip">קישור: %1$s ▾</string>
+    <string name="link_quiet">%1$s שקט — לעבור ל-%2$s?</string>
+    <string name="not_offered_by">%1$s לא מציע את זה</string>
+    <string name="fix_turn_on">הפעלה</string>
+    <string name="fix_set_number">הגדרת מספר</string>
+    <string name="fix_allow">אישור</string>
+    <string name="via_others">דרך אחרים</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">אפליקציית הודעות</string>
+    <string name="age_s">%1$d שנ׳</string>
+    <string name="age_min">%1$d דק׳</string>
+    <string name="waiting_gps">ממתין ל-GPS</string>
+    <string name="gps_faked">GPS מזויף בקרבת מקום, משתמש ברשת ±%1$d מ׳</string>
+    <string name="fix_gps">GPS ±%1$d מ׳</string>
+    <string name="fix_network">רשת ±%1$d מ׳</string>
+    <string name="provider_options">אפשרויות %1$s</string>
+    <string name="optional">(אופציונלי)</string>
+    <string name="option_sent_only">נשלח רק אל %1$s בתור %2$s</string>
+    <string name="get_one_at">להשגה ב-%1$s</string>
+    <string name="coverage">כיסוי: %1$s</string>
+</resources>

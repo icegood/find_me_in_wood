@@ -87,6 +87,8 @@ android {
         compose = true
         buildConfig = true
     }
+    // Android 13+ lists the translations (scripts/l10n) in the app's own language setting.
+    androidResources { generateLocaleConfig = true }
     testOptions {
         unitTests {
             isIncludeAndroidResources = true

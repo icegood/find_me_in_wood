@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">doar SUA</string>
+    <string name="option_api_key">Cheie API</string>
+    <string name="option_arcgis_token">Token ArcGIS</string>
+    <string name="option_access_token">Token de acces</string>
+    <string name="estimate_k_tiles">%1$s mii de plăci · ~%2$s MB</string>
+    <string name="estimate_tiles">plăci: %1$s · ~%2$s MB</string>
+    <string name="downloading">Se descarcă „%1$s”</string>
+    <string name="saved_offline">„%1$s” salvată pentru uz offline</string>
+    <string name="download_error">Eroare la descărcare: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Offline (%1$s)</string>
+    <string name="kind_satellite">satelit</string>
+    <string name="kind_streets">străzi</string>
+    <string name="needs">necesită %1$s</string>
+    <string name="option_set">%1$s setat</string>
+    <string-array name="compass_points">
+        <item>N</item>
+        <item>NE</item>
+        <item>E</item>
+        <item>SE</item>
+        <item>S</item>
+        <item>SV</item>
+        <item>V</item>
+        <item>NV</item>
+    </string-array>
+    <string name="area_name_default">Zona %1$s</string>
+    <string name="save_offline_area">Salvează zona offline</string>
+    <string name="area_name">Numele zonei</string>
+    <string name="area_trail_detail">%1$s, până la detaliul potecilor · %2$s</string>
+    <string name="area_too_large">Prea mare pentru %1$s (cel mult %2$s plăci la detaliul potecilor): desenați o zonă mai mică.</string>
+    <string name="download">Descarcă</string>
+    <string name="nearby_within">aproape ≤%1$d m</string>
+    <string name="no_network_running">Nicio rețea activă</string>
+    <string name="others_heard">alții auziți: %1$d</string>
+    <string name="map_chip">Hartă: %1$s ▾</string>
+    <string name="offline">Offline</string>
+    <string name="offline_hint">zone salvate și locuri văzute din %1$s — fără internet</string>
+    <string name="provider_options_menu">Opțiuni %1$s…</string>
+    <string name="provider_needs">%1$s necesită %2$s</string>
+    <string name="set_it">Setează</string>
+    <string name="finding">Se caută %1$s</string>
+    <string name="too_rough_direction">poziții prea imprecise pentru o direcție</string>
+    <string name="relayed">retransmis</string>
+    <string name="waiting_first_fix">se așteaptă prima poziție…</string>
+    <string name="save_area_offline">Salvează această zonă offline</string>
+    <string name="drag_rectangle">trageți un dreptunghi pe hartă</string>
+    <string name="drag_larger">trageți un dreptunghi mai mare</string>
+    <string name="too_large_draw_smaller">prea mare pentru %1$s: desenați mai mic</string>
+    <string name="cancel">Anulează</string>
+    <string name="use_this_area">Folosește această zonă</string>
+    <string name="parts_done">%1$s / %2$s părți</string>
+    <string name="preparing">se pregătește…</string>
+    <string name="errors_count">erori: %1$d</string>
+    <string name="done">Gata</string>
+    <string name="cancelling">se anulează…</string>
+    <string name="members">Membri</string>
+    <string name="no_members_heard">Încă nu se aude niciun membru.</string>
+    <string name="tap_find_hint">Atingeți Găsește pentru o săgeată și distanța până la cineva pe hartă.</string>
+    <string name="member">membru</string>
+    <string name="unlocated_seen">%1$s — fără locație, auzit ultima dată acum %2$s</string>
+    <string name="bearing">direcție %1$s</string>
+    <string name="rename">Redenumește</string>
+    <string name="stop">Oprește</string>
+    <string name="find">Găsește</string>
+    <string name="rename_member">Redenumește membrul</string>
+    <string name="rename_hint">Doar pe acest telefon. Gol = numele ales de persoană.</string>
+    <string name="save">Salvează</string>
+    <string name="nearby_range">aproape (≤%1$d m: raza %2$s)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">cealaltă persoană</string>
+    <string name="link_exchanging">legătură: schimb de oferte… (auzit prin %1$s)</string>
+    <string name="confirm_link">Confirmă legătura: %1$s</string>
+    <string name="link_waiting">legătură: %1$s — se așteaptă confirmarea: %2$s</string>
+    <string name="link_chip">legătură: %1$s ▾</string>
+    <string name="link_quiet">%1$s tace — folosiți %2$s?</string>
+    <string name="not_offered_by">%1$s nu oferă asta</string>
+    <string name="fix_turn_on">Pornește</string>
+    <string name="fix_set_number">Setează numărul</string>
+    <string name="fix_allow">Permite</string>
+    <string name="via_others">prin alții</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">mesagerie</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_min">%1$d min</string>
+    <string name="waiting_gps">se așteaptă GPS</string>
+    <string name="gps_faked">GPS falsificat în apropiere, se folosește rețeaua ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">rețea ±%1$d m</string>
+    <string name="provider_options">Opțiuni %1$s</string>
+    <string name="optional">(opțional)</string>
+    <string name="option_sent_only">trimis doar către %1$s ca %2$s</string>
+    <string name="get_one_at">Obțineți de la %1$s</string>
+    <string name="coverage">Acoperire: %1$s</string>
+</resources>

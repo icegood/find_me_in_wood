@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">فقط آمریکا</string>
+    <string name="option_api_key">کلید API</string>
+    <string name="option_arcgis_token">توکن ArcGIS</string>
+    <string name="option_access_token">توکن دسترسی</string>
+    <string name="estimate_k_tiles">%1$s هزار کاشی · ~%2$s مگابایت</string>
+    <string name="estimate_tiles">کاشی‌ها: %1$s · ~%2$s مگابایت</string>
+    <string name="downloading">در حال بارگیری «%1$s»</string>
+    <string name="saved_offline">«%1$s» برای استفادهٔ آفلاین ذخیره شد</string>
+    <string name="download_error">خطای بارگیری: %1$s</string>
+    <string name="distance_km">%1$s کیلومتر</string>
+    <string name="distance_m">%1$d متر</string>
+    <string name="layer_offline">آفلاین (%1$s)</string>
+    <string name="kind_satellite">ماهواره</string>
+    <string name="kind_streets">خیابان‌ها</string>
+    <string name="needs">نیاز به %1$s</string>
+    <string name="option_set">%1$s تنظیم شد</string>
+    <string-array name="compass_points">
+        <item>ش</item>
+        <item>شش</item>
+        <item>خ</item>
+        <item>جش</item>
+        <item>ج</item>
+        <item>جغ</item>
+        <item>غ</item>
+        <item>شغ</item>
+    </string-array>
+    <string name="area_name_default">ناحیهٔ %1$s</string>
+    <string name="save_offline_area">ذخیرهٔ ناحیهٔ آفلاین</string>
+    <string name="area_name">نام ناحیه</string>
+    <string name="area_trail_detail">%1$s، تا جزئیات مسیرهای پیاده · %2$s</string>
+    <string name="area_too_large">برای %1$s خیلی بزرگ است (حداکثر %2$s کاشی با جزئیات مسیر): ناحیهٔ کوچک‌تری بکشید.</string>
+    <string name="download">بارگیری</string>
+    <string name="nearby_within">نزدیک ≤%1$d متر</string>
+    <string name="no_network_running">هیچ شبکه‌ای در حال اجرا نیست</string>
+    <string name="others_heard">دیگران شنیده‌شده: %1$d</string>
+    <string name="map_chip">نقشه: %1$s ▾</string>
+    <string name="offline">آفلاین</string>
+    <string name="offline_hint">ناحیه‌های ذخیره‌شده و جاهای دیده‌شده از %1$s — بدون اینترنت</string>
+    <string name="provider_options_menu">گزینه‌های %1$s…</string>
+    <string name="provider_needs">%1$s به %2$s نیاز دارد</string>
+    <string name="set_it">تنظیم</string>
+    <string name="finding">یافتن %1$s</string>
+    <string name="too_rough_direction">مکان‌ها برای جهت خیلی نادقیق‌اند</string>
+    <string name="relayed">بازپخش‌شده</string>
+    <string name="waiting_first_fix">در انتظار اولین مکان…</string>
+    <string name="save_area_offline">ذخیرهٔ آفلاین این ناحیه</string>
+    <string name="drag_rectangle">مستطیلی روی نقشه بکشید</string>
+    <string name="drag_larger">مستطیل بزرگ‌تری بکشید</string>
+    <string name="too_large_draw_smaller">برای %1$s خیلی بزرگ است: کوچک‌تر بکشید</string>
+    <string name="cancel">لغو</string>
+    <string name="use_this_area">استفاده از این ناحیه</string>
+    <string name="parts_done">%1$s / %2$s بخش</string>
+    <string name="preparing">در حال آماده‌سازی…</string>
+    <string name="errors_count">خطاها: %1$d</string>
+    <string name="done">تمام</string>
+    <string name="cancelling">در حال لغو…</string>
+    <string name="members">اعضا</string>
+    <string name="no_members_heard">هنوز صدای هیچ عضوی نیامده است.</string>
+    <string name="tap_find_hint">برای دیدن پیکان و فاصله تا کسی روی نقشه، «یافتن» را بزنید.</string>
+    <string name="member">عضو</string>
+    <string name="unlocated_seen">%1$s — بدون مکان، آخرین بار %2$s پیش شنیده شد</string>
+    <string name="bearing">جهت %1$s</string>
+    <string name="rename">تغییر نام</string>
+    <string name="stop">توقف</string>
+    <string name="find">یافتن</string>
+    <string name="rename_member">تغییر نام عضو</string>
+    <string name="rename_hint">فقط در این تلفن. خالی = نامی که خود او انتخاب کرده.</string>
+    <string name="save">ذخیره</string>
+    <string name="nearby_range">نزدیک (≤%1$d متر: برد %2$s)</string>
+    <string name="plus_minus_m">±%1$d متر</string>
+    <string name="them">طرف مقابل</string>
+    <string name="link_exchanging">پیوند: تبادل پیشنهادها… (شنیده‌شده از طریق %1$s)</string>
+    <string name="confirm_link">تأیید پیوند: %1$s</string>
+    <string name="link_waiting">پیوند: %1$s — در انتظار تأیید: %2$s</string>
+    <string name="link_chip">پیوند: %1$s ▾</string>
+    <string name="link_quiet">%1$s ساکت است — %2$s به کار رود؟</string>
+    <string name="not_offered_by">%1$s این را ارائه نمی‌کند</string>
+    <string name="fix_turn_on">روشن کردن</string>
+    <string name="fix_set_number">وارد کردن شماره</string>
+    <string name="fix_allow">اجازه</string>
+    <string name="via_others">از طریق دیگران</string>
+    <string name="via_bluetooth">بلوتوث</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">پیامک</string>
+    <string name="via_messenger">پیام‌رسان</string>
+    <string name="age_s">%1$d ثانیه</string>
+    <string name="age_min">%1$d دقیقه</string>
+    <string name="waiting_gps">در انتظار GPS</string>
+    <string name="gps_faked">GPS نزدیک جعلی است، از شبکه استفاده می‌شود ±%1$d متر</string>
+    <string name="fix_gps">GPS ±%1$d متر</string>
+    <string name="fix_network">شبکه ±%1$d متر</string>
+    <string name="provider_options">گزینه‌های %1$s</string>
+    <string name="optional">(اختیاری)</string>
+    <string name="option_sent_only">فقط به %1$s به‌صورت %2$s فرستاده می‌شود</string>
+    <string name="get_one_at">از %1$s بگیرید</string>
+    <string name="coverage">پوشش: %1$s</string>
+</resources>

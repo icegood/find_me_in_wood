@@ -25,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -257,12 +258,12 @@ class MainActivity : ComponentActivity() {
                         },
                     )
                 }
-                navItem("Map", tab == "map") { tab = "map" }
-                navItem("Networks", tab == "networks") { tab = "networks" }
-                navItem("Chat", tab == "chat") { tab = "chat" }
-                navItem("Peers", tab == "peers") { tab = "peers" }
-                navItem("Discover", tab == "discover") { tab = "discover" }
-                navItem("Settings", tab == "settings") { tab = "settings" }
+                navItem(stringResource(R.string.tab_map), tab == "map") { tab = "map" }
+                navItem(stringResource(R.string.tab_networks), tab == "networks") { tab = "networks" }
+                navItem(stringResource(R.string.tab_chat), tab == "chat") { tab = "chat" }
+                navItem(stringResource(R.string.tab_peers), tab == "peers") { tab = "peers" }
+                navItem(stringResource(R.string.tab_discover), tab == "discover") { tab = "discover" }
+                navItem(stringResource(R.string.tab_settings), tab == "settings") { tab = "settings" }
             }
         }) { pad ->
             Box(Modifier.padding(pad)) {
@@ -307,10 +308,9 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         emptyText = if (profile == null) {
-                            "No network running. Start one in Networks to see its members here."
+                            stringResource(R.string.peers_no_network)
                         } else {
-                            "No members heard yet. They need “${profile?.name}” started and to be " +
-                                "within Bluetooth / Wi-Fi range (or reachable through another member)."
+                            stringResource(R.string.peers_none_heard, profile?.name.orEmpty())
                         },
                         findTarget = findTarget,
                         onFind = { id ->
@@ -338,13 +338,12 @@ class MainActivity : ComponentActivity() {
     private fun ChatListPlaceholder() {
         val running by SessionBus.sessionRunning.collectAsState()
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Chat", style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.tab_chat), style = MaterialTheme.typography.headlineSmall)
             Text(
                 if (running && !SessionBus.listening.collectAsState().value) {
-                    "Opening chat…"
+                    stringResource(R.string.chat_opening)
                 } else {
-                    "Start a network in Networks to chat with its members. Messages hop " +
-                        "from phone to phone over Bluetooth and Wi-Fi Direct — no internet needed."
+                    stringResource(R.string.chat_placeholder)
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -381,7 +380,7 @@ class MainActivity : ComponentActivity() {
         }
 
         Scaffold(
-            topBar = { TopAppBar(title = { Text("find me in wood") }) },
+            topBar = { TopAppBar(title = { Text(stringResource(R.string.app_name)) }) },
             snackbarHost = { SnackbarHost(snackbar) },
         ) { pad ->
             Column(
@@ -391,15 +390,15 @@ class MainActivity : ComponentActivity() {
                 Button(
                     onClick = { showCreate = true; createError = null },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Create network") }
+                ) { Text(stringResource(R.string.create_network)) }
                 OutlinedButton(
                     onClick = { showJoin = true; createError = null },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Join by password") }
+                ) { Text(stringResource(R.string.join_by_password)) }
                 OutlinedButton(
                     onClick = onDiscover,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Find networks nearby") }
+                ) { Text(stringResource(R.string.find_networks_nearby)) }
                 createError?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
@@ -411,7 +410,7 @@ class MainActivity : ComponentActivity() {
                             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(p.name, style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    if (isRunning) "● active — members reach each other" else "not active",
+                                    stringResource(if (isRunning) R.string.net_active else R.string.net_not_active),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -419,34 +418,33 @@ class MainActivity : ComponentActivity() {
                                     val paused = pausedTick >= 0 && Prefs.sharingPaused(this@MainActivity, p.networkIdHex)
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
-                                            if (paused) "my position: paused — members see me as unlocated" else "my position: shared",
+                                            stringResource(if (paused) R.string.position_paused else R.string.position_shared),
                                             style = MaterialTheme.typography.bodySmall,
                                             modifier = Modifier.weight(1f),
                                         )
                                         TextButton(onClick = {
                                             SessionService.setSharingPaused(this@MainActivity, p.networkIdHex, !paused)
                                             pausedTick++
-                                        }) { Text(if (paused) "Share again" else "Pause") }
+                                        }) { Text(stringResource(if (paused) R.string.share_again else R.string.pause)) }
                                     }
                                 }
                                 // The master learns at once when radios stop new people from finding it.
                                 val blocked = isRunning && book?.iAmMaster == true &&
                                     nowMs >= 0 && DiscoveryBlockers(this@MainActivity, finding = false)
                                 if (isRunning && !blocked) Text(
-                                    if (book?.iAmMaster == true) UiText.findable(findableUntil, nowMs)
-                                    else "only the network's master can let new people in",
+                                    if (book?.iAmMaster == true) UiText.findable(this@MainActivity, findableUntil, nowMs)
+                                    else stringResource(R.string.only_master_lets_in),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                                 if (code != null) {
                                     Text(
-                                        "Joined without a password. The member who let you in must see " +
-                                            "the same code: $code",
+                                        stringResource(R.string.joined_without_password, code),
                                         style = MaterialTheme.typography.bodySmall,
                                     )
                                     TextButton(onClick = {
                                         Prefs.setUnverifiedCode(this@MainActivity, p.networkIdHex, null)
                                         verifyTick++
-                                    }) { Text("The codes matched") }
+                                    }) { Text(stringResource(R.string.codes_matched)) }
                                 }
                                 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
                                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -454,20 +452,20 @@ class MainActivity : ComponentActivity() {
                                         // Discovery only: the network keeps running for its members either way.
                                         if (book?.iAmMaster == true) {
                                             if (findableUntil > nowMs) {
-                                                OutlinedButton(onClick = { SessionBus.setFindable(false) }) { Text("Stop discovery") }
+                                                OutlinedButton(onClick = { SessionBus.setFindable(false) }) { Text(stringResource(R.string.stop_discovery)) }
                                             } else {
-                                                Button(onClick = { SessionBus.setFindable(true) }) { Text("Start discovery") }
+                                                Button(onClick = { SessionBus.setFindable(true) }) { Text(stringResource(R.string.start_discovery)) }
                                             }
-                                            OutlinedButton(onClick = { sharing = p; SessionBus.setFindable(true) }) { Text("Invite") }
+                                            OutlinedButton(onClick = { sharing = p; SessionBus.setFindable(true) }) { Text(stringResource(R.string.invite)) }
                                         }
-                                        OutlinedButton(onClick = onMembers) { Text("Members") }
+                                        OutlinedButton(onClick = onMembers) { Text(stringResource(R.string.members)) }
                                     } else {
                                         Button(onClick = {
                                             if (!granted()) { requestRadioPermissions(); return@Button }
                                             SessionService.start(this@MainActivity, p)
-                                        }) { Text("Use this network") }
+                                        }) { Text(stringResource(R.string.use_this_network)) }
                                     }
-                                    TextButton(onClick = { deleting = p }) { Text("Delete") }
+                                    TextButton(onClick = { deleting = p }) { Text(stringResource(R.string.delete)) }
                                 }
                             }
                         }
@@ -480,26 +478,26 @@ class MainActivity : ComponentActivity() {
                             val r = wire?.let { shareTransport.shareBeacon(it) }
                             snackbar.showSnackbar(
                                 when (r) {
-                                    is SendResult.HandedToUser -> "shared beacon file (.fmiw1)"
-                                    is SendResult.Sent -> "shared beacon file (.fmiw1)"
-                                    else -> "no beacon sent yet / no carrier"
+                                    is SendResult.HandedToUser -> getString(R.string.beacon_shared)
+                                    is SendResult.Sent -> getString(R.string.beacon_shared)
+                                    else -> getString(R.string.beacon_none)
                                 }
                             )
                         }
                     },
                     enabled = lastWire != null && runningId != null,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Send my position via messenger…") }
+                ) { Text(stringResource(R.string.send_position_messenger)) }
                 Text(
                     when {
-                        runningId != null -> "Radios"
-                        listening -> "Looking for networks to join (see Discover)"
-                        profiles.isEmpty() -> "No networks yet: create one, or find one nearby to join"
-                        else -> "No network active: tap “Use this network”"
+                        runningId != null -> stringResource(R.string.radios)
+                        listening -> stringResource(R.string.looking_see_discover)
+                        profiles.isEmpty() -> stringResource(R.string.no_networks_yet)
+                        else -> stringResource(R.string.no_network_active)
                     },
                     style = MaterialTheme.typography.labelMedium,
                 )
-                UiText.radios(radios).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                UiText.radios(this@MainActivity, radios).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
                 if (runningId != null || listening) RadioSwitches(radios)
             }
         }
@@ -521,14 +519,14 @@ class MainActivity : ComponentActivity() {
                             // as the invite says (a running network is never switched away).
                             if (runningId == null && granted()) SessionService.start(this, r.profile)
                         }
-                        is CreateResult.Error -> createError = r.message
+                        is CreateResult.Error -> createError = r.text(this)
                     }
                 },
             )
         }
         if (showJoin || pendingInvite != null) {
             PasswordDialog(
-                title = "Join by password",
+                title = stringResource(R.string.join_by_password),
                 askName = true,
                 initial = pendingInvite,
                 onDismiss = { showJoin = false; pendingInvite = null },
@@ -547,7 +545,7 @@ class MainActivity : ComponentActivity() {
                             createError = null
                             null
                         }
-                        is JoinResult.Error -> r.message
+                        is JoinResult.Error -> r.text(this)
                     }
                 },
             )
@@ -555,12 +553,9 @@ class MainActivity : ComponentActivity() {
         deleting?.let { p ->
             AlertDialog(
                 onDismissRequest = { deleting = null },
-                title = { Text("Delete “${p.name}”?") },
+                title = { Text(stringResource(R.string.delete_named, p.name)) },
                 text = {
-                    Text(
-                        "This phone leaves the network and forgets its password. To come back you " +
-                            "need the password again or a member to let you in.",
-                    )
+                    Text(stringResource(R.string.delete_explain))
                 },
                 confirmButton = {
                     TextButton(onClick = {
@@ -569,9 +564,9 @@ class MainActivity : ComponentActivity() {
                         Prefs.setSecretFor(this@MainActivity, p.networkIdHex, null)
                         profiles = ProfileStore.load(this@MainActivity)
                         deleting = null
-                    }) { Text("Delete") }
+                    }) { Text(stringResource(R.string.delete)) }
                 },
-                dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
+                dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } },
             )
         }
         sharing?.let { p ->
@@ -600,24 +595,23 @@ class MainActivity : ComponentActivity() {
         }.getOrDefault(false)
         if (locationOff) {
             Text(
-                "Location is off: Android then hides other phones from Bluetooth and Wi-Fi " +
-                    "Direct searches, so nobody can be found — and your own position is unknown.",
+                stringResource(R.string.location_off_explain),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
             Button(onClick = {
                 startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-            }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Location") }
+            }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.turn_on_location)) }
         }
         if (btOff) {
-            OutlinedButton(onClick = { turnOnBluetooth() }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Bluetooth") }
+            OutlinedButton(onClick = { turnOnBluetooth() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.turn_on_bluetooth)) }
         }
         if (wifiOff) {
             Text(
-                "Wi-Fi is off: Wi-Fi Direct (longer range, photos) cannot work. No Wi-Fi network is needed, only Wi-Fi on.",
+                stringResource(R.string.wifi_off_explain),
                 style = MaterialTheme.typography.bodySmall,
             )
-            OutlinedButton(onClick = { turnOnWifi() }, modifier = Modifier.fillMaxWidth()) { Text("Turn on Wi-Fi") }
+            OutlinedButton(onClick = { turnOnWifi() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.turn_on_wifi)) }
         }
     }
 
@@ -641,29 +635,25 @@ class MainActivity : ComponentActivity() {
     private fun InviteDialog(p: StoredProfile, password: String?, onDismiss: () -> Unit) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Invite to “${p.name}”") },
+            title = { Text(stringResource(R.string.invite_to, p.name)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (password == null) {
-                        Text("This phone does not have the password of this network.")
+                        Text(stringResource(R.string.no_password_here))
                     } else {
                         val qr = remember(p.name, password) {
                             qrBitmap(JoinInvite(p.name, password).toUri(), 600).asImageBitmap()
                         }
                         androidx.compose.foundation.Image(
-                            qr, contentDescription = "Invite QR code",
+                            qr, contentDescription = stringResource(R.string.invite_qr),
                             modifier = Modifier.size(220.dp).align(Alignment.CenterHorizontally),
                         )
-                        Text("Password", style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.password), style = MaterialTheme.typography.labelMedium)
                         androidx.compose.foundation.text.selection.SelectionContainer {
                             Text(password, style = MaterialTheme.typography.titleLarge)
                         }
                         Text(
-                            "The other phone scans this code: Scan QR when joining, or its camera app. " +
-                                "Or it opens Discover, taps Look for networks, picks " +
-                                "“${p.name}” and enters this password. This network must be started here " +
-                                "so it can be seen. Out of range: Networks → Join by password.\n\n" +
-                                "Or skip the password: they tap Ask a member and you tap Accept in Members.",
+                            stringResource(R.string.invite_explain, p.name),
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
@@ -672,7 +662,7 @@ class MainActivity : ComponentActivity() {
             confirmButton = {
                 if (password != null) Row {
                     TextButton(onClick = {
-                        val clip = android.content.ClipData.newPlainText("network password", password)
+                        val clip = android.content.ClipData.newPlainText(getString(R.string.password), password)
                         // Android 13+: keep the password out of the clipboard preview.
                         clip.description.extras = android.os.PersistableBundle().apply {
                             putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
@@ -680,23 +670,32 @@ class MainActivity : ComponentActivity() {
                         getSystemService(android.content.ClipboardManager::class.java)?.setPrimaryClip(clip)
                         // Android 13+ confirms a copy itself; older versions show nothing.
                         if (Build.VERSION.SDK_INT < 33) {
-                            android.widget.Toast.makeText(this@MainActivity, "Password copied", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(this@MainActivity, getString(R.string.password_copied), android.widget.Toast.LENGTH_SHORT).show()
                         }
-                    }) { Text("Copy") }
+                    }) { Text(stringResource(R.string.copy)) }
                     TextButton(onClick = {
                         val send = android.content.Intent(android.content.Intent.ACTION_SEND)
                             .setType("text/plain")
                             .putExtra(
                                 android.content.Intent.EXTRA_TEXT,
-                                "find me in wood — network “${p.name}”, password: $password",
+                                getString(R.string.share_password_text, p.name, password),
                             )
-                        startActivity(android.content.Intent.createChooser(send, "Send password with…"))
-                    }) { Text("Send via app…") }
+                        startActivity(android.content.Intent.createChooser(send, getString(R.string.send_password_with)))
+                    }) { Text(stringResource(R.string.send_via_app)) }
                 }
             },
-            dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+            dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
         )
     }
+
+    @Composable
+    private fun themeName(mode: ThemeMode) = stringResource(
+        when (mode) {
+            ThemeMode.SYSTEM -> R.string.theme_system
+            ThemeMode.LIGHT -> R.string.theme_light
+            ThemeMode.DARK -> R.string.theme_dark
+        },
+    )
 
     /** Dedicated settings screen: theme, offline maps and device/beacon options. */
     @OptIn(ExperimentalMaterial3Api::class)
@@ -715,7 +714,7 @@ class MainActivity : ComponentActivity() {
         val diag by SessionBus.diagnostics.collectAsState()
 
         Scaffold(
-            topBar = { TopAppBar(title = { Text("Settings") }) },
+            topBar = { TopAppBar(title = { Text(stringResource(R.string.tab_settings)) }) },
             snackbarHost = { SnackbarHost(snackbar) },
         ) { pad ->
             Column(
@@ -724,17 +723,17 @@ class MainActivity : ComponentActivity() {
             ) {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Theme", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.theme), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "explicit light / dark, or follow the system",
+                            stringResource(R.string.theme_hint),
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ThemeMode.entries.forEach { mode ->
                                 if (themeMode == mode) {
-                                    Button(onClick = { }) { Text(mode.name) }
+                                    Button(onClick = { }) { Text(themeName(mode)) }
                                 } else {
-                                    OutlinedButton(onClick = { onThemeModeChange(mode) }) { Text(mode.name) }
+                                    OutlinedButton(onClick = { onThemeModeChange(mode) }) { Text(themeName(mode)) }
                                 }
                             }
                         }
@@ -742,7 +741,7 @@ class MainActivity : ComponentActivity() {
                 }
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Offline maps", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.offline_maps), style = MaterialTheme.typography.titleSmall)
                         var regions by remember { mutableStateOf<List<OfflineRegion>>(emptyList()) }
                         var totalBytes by remember { mutableLongStateOf(0L) }
                         fun refreshRegions() {
@@ -753,13 +752,11 @@ class MainActivity : ComponentActivity() {
                         }
                         LaunchedEffect(Unit) { refreshRegions() }
                         Text(
-                            "saved areas: ${regions.size} · map data on phone ${"%.1f".format(totalBytes / (1024.0 * 1024.0))} MB",
+                            stringResource(R.string.saved_areas, regions.size, "%.1f".format(totalBytes / (1024.0 * 1024.0))),
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Text(
-                            "To save an area: on the map press ↓ and drag a rectangle. Places you " +
-                                "look at are kept too (up to 512 MB, oldest dropped first). Without " +
-                                "internet, choose Offline on the map.",
+                            stringResource(R.string.offline_maps_hint),
                             style = MaterialTheme.typography.bodySmall,
                         )
                         regions.forEach { r ->
@@ -771,8 +768,8 @@ class MainActivity : ComponentActivity() {
                                     Text(r.name, style = MaterialTheme.typography.bodyMedium)
                                     Text(
                                         "${TileProvider.byId(r.providerId)?.label ?: r.providerId} · " +
-                                            "${"%.1f".format(r.sizeBytes / (1024.0 * 1024.0))} MB" +
-                                            if (r.complete) "" else " · incomplete",
+                                            stringResource(R.string.size_mb, "%.1f".format(r.sizeBytes / (1024.0 * 1024.0))) +
+                                            if (r.complete) "" else " · " + stringResource(R.string.incomplete),
                                         style = MaterialTheme.typography.labelSmall,
                                         maxLines = 1,
                                         softWrap = false,
@@ -785,9 +782,9 @@ class MainActivity : ComponentActivity() {
                                 TextButton(onClick = {
                                     OfflineRegions.delete(this@MainActivity, r) {
                                         refreshRegions()
-                                        uiScope.launch { snackbar.showSnackbar("offline area deleted") }
+                                        uiScope.launch { snackbar.showSnackbar(getString(R.string.offline_area_deleted)) }
                                     }
-                                }) { Text("Delete", maxLines = 1, softWrap = false) }
+                                }) { Text(stringResource(R.string.delete), maxLines = 1, softWrap = false) }
                             }
                         }
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -799,58 +796,54 @@ class MainActivity : ComponentActivity() {
                                 onClick = {
                                     OfflineRegions.clear(this@MainActivity) {
                                         refreshRegions()
-                                        uiScope.launch { snackbar.showSnackbar("all offline maps cleared") }
+                                        uiScope.launch { snackbar.showSnackbar(getString(R.string.offline_cleared)) }
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
-                            ) { Text("Clear all", maxLines = 1, softWrap = false) }
+                            ) { Text(stringResource(R.string.clear_all), maxLines = 1, softWrap = false) }
                             Button(
                                 onClick = { refreshRegions() },
                                 modifier = Modifier.weight(1f),
-                            ) { Text("Refresh", maxLines = 1, softWrap = false) }
+                            ) { Text(stringResource(R.string.refresh), maxLines = 1, softWrap = false) }
                         }
                     }
                 }
                 SmsLinkCard(snackbar, uiScope)
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("LoRa node", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.lora_node), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            Prefs.loraNode(this@MainActivity) ?: "auto (scan by service UUID)",
+                            Prefs.loraNode(this@MainActivity) ?: stringResource(R.string.lora_auto),
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        TextButton(onClick = { showNodePicker = true }) { Text("Choose node…") }
+                        TextButton(onClick = { showNodePicker = true }) { Text(stringResource(R.string.choose_node)) }
                     }
                 }
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Wi-Fi Direct", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.transport_wifi_direct), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            if (p2pOwner) {
-                                "this phone hosts the group (server, 192.168.49.1)"
-                            } else {
-                                "role negotiated by the system"
-                            },
+                            stringResource(if (p2pOwner) R.string.p2p_host_hint else R.string.p2p_auto_hint),
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (p2pOwner) Button(onClick = { }) { Text("Host") }
+                            if (p2pOwner) Button(onClick = { }) { Text(stringResource(R.string.p2p_host)) }
                             else OutlinedButton(onClick = {
                                 p2pOwner = true
                                 SessionService.setP2pGroupOwner(this@MainActivity, true)
-                            }) { Text("Host") }
-                            if (!p2pOwner) Button(onClick = { }) { Text("Auto") }
+                            }) { Text(stringResource(R.string.p2p_host)) }
+                            if (!p2pOwner) Button(onClick = { }) { Text(stringResource(R.string.p2p_auto)) }
                             else OutlinedButton(onClick = {
                                 p2pOwner = false
                                 SessionService.setP2pGroupOwner(this@MainActivity, false)
-                            }) { Text("Auto") }
+                            }) { Text(stringResource(R.string.p2p_auto)) }
                         }
                     }
                 }
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Beacon interval", style = MaterialTheme.typography.titleSmall)
-                        Text("every ${intervalMs / 1000}s your position goes to members nearby; shorter = fresher, longer = less battery",
+                        Text(stringResource(R.string.beacon_interval), style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.beacon_interval_hint, (intervalMs / 1000).toInt()),
                             style = MaterialTheme.typography.bodySmall)
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -859,7 +852,7 @@ class MainActivity : ComponentActivity() {
                             OutlinedTextField(
                                 value = intervalInput,
                                 onValueChange = { intervalInput = it; intervalError = null },
-                                label = { Text("seconds") },
+                                label = { Text(stringResource(R.string.seconds)) },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.width(120.dp),
@@ -867,13 +860,13 @@ class MainActivity : ComponentActivity() {
                             Button(onClick = {
                                 val sec = intervalInput.trim().toLongOrNull()
                                 if (sec == null || sec * 1000 !in Prefs.MIN_INTERVAL_MS..Prefs.MAX_INTERVAL_MS) {
-                                    intervalError = "enter ${Prefs.MIN_INTERVAL_MS / 1000}–${Prefs.MAX_INTERVAL_MS / 1000} seconds"
+                                    intervalError = getString(R.string.interval_range, (Prefs.MIN_INTERVAL_MS / 1000).toInt(), (Prefs.MAX_INTERVAL_MS / 1000).toInt())
                                 } else {
                                     Prefs.setIntervalMs(this@MainActivity, sec * 1000L)
                                     intervalMs = sec * 1000L
                                     intervalError = null
                                 }
-                            }) { Text("Set") }
+                            }) { Text(stringResource(R.string.set)) }
                         }
                         intervalError?.let {
                             Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -882,19 +875,19 @@ class MainActivity : ComponentActivity() {
                 }
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Diagnostics", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.diagnostics), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "sent ${diag.sent} · rx ${diag.received} · relayed ${diag.relayed}",
+                            stringResource(R.string.diag_counts, diag.sent, diag.received, diag.relayed),
                             style = MaterialTheme.typography.bodySmall,
                         )
                         Text(
-                            "auth-failed ${diag.authFailed} · dropped ${diag.dropped}",
+                            stringResource(R.string.diag_failures, diag.authFailed, diag.dropped),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.tertiary,
                         )
                         if (BuildConfig.DEBUG) {
                             Text(
-                                "debug link log: " + (SessionService.linkLogFile ?: "starts with the session"),
+                                "debug link log: " + (SessionService.linkLogFile ?: "starts with the session"), // debug builds only
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -924,27 +917,25 @@ class MainActivity : ComponentActivity() {
         var myName by remember { mutableStateOf(Prefs.myName(this@MainActivity)) }
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Your name", style = MaterialTheme.typography.titleSmall)
-                Text("What members see on their map and member list.", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.your_name), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.your_name_hint), style = MaterialTheme.typography.bodySmall)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = myName, onValueChange = { myName = it },
-                        placeholder = { Text(Prefs.currentDisplayName(this@MainActivity) ?: "e.g. Ira") },
+                        placeholder = { Text(Prefs.currentDisplayName(this@MainActivity) ?: stringResource(R.string.name_example)) },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
                     Button(onClick = {
                         Prefs.setMyName(this@MainActivity, myName)
                         myName = Prefs.myName(this@MainActivity)
-                        uiScope.launch { snackbar.showSnackbar("Members will see “${Prefs.currentDisplayName(this@MainActivity)}”") }
-                    }) { Text("Save") }
+                        uiScope.launch { snackbar.showSnackbar(getString(R.string.members_will_see, Prefs.currentDisplayName(this@MainActivity).orEmpty())) }
+                    }) { Text(stringResource(R.string.save)) }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Text("This phone's number", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.phone_number), style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "Lets members reach you by SMS — also over satellite where the carrier " +
-                        "supports it — when Bluetooth and Wi-Fi Direct cannot. Phones agree on " +
-                        "it automatically; at most 10 SMS per hour, standard prices apply.",
+                    stringResource(R.string.phone_number_hint),
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -959,8 +950,8 @@ class MainActivity : ComponentActivity() {
                         Prefs.setMyPhoneNumber(this@MainActivity, number)
                         number = Prefs.myPhoneNumber(this@MainActivity)
                         if (number.isNotEmpty() && !smsPermitted()) smsPermissionLauncher.launch(smsPermissions)
-                        uiScope.launch { snackbar.showSnackbar(if (number.isEmpty()) "Number removed" else "Saved") }
-                    }) { Text("Save") }
+                        uiScope.launch { snackbar.showSnackbar(getString(if (number.isEmpty()) R.string.number_removed else R.string.saved)) }
+                    }) { Text(stringResource(R.string.save)) }
                 }
             }
         }
@@ -975,10 +966,10 @@ class MainActivity : ComponentActivity() {
         }
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Choose your LoRa node") },
+            title = { Text(stringResource(R.string.choose_lora_node)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (nodes.value.isEmpty()) Text("Scanning (Nordic-UART nodes)…")
+                    if (nodes.value.isEmpty()) Text(stringResource(R.string.scanning_nodes))
                     nodes.value.forEach { n ->
                         TextButton(onClick = { onPick(n.address) }) {
                             Text((n.name?.plus(" ") ?: "") + n.address, maxLines = 1)
@@ -987,7 +978,7 @@ class MainActivity : ComponentActivity() {
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+            dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
         )
     }
 
@@ -997,16 +988,16 @@ class MainActivity : ComponentActivity() {
         var pass by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Create network") },
+            title = { Text(stringResource(R.string.create_network)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = name, onValueChange = { name = it },
-                        label = { Text("Network name") }, singleLine = true,
+                        label = { Text(stringResource(R.string.network_name)) }, singleLine = true,
                     )
                     OutlinedTextField(
                         value = pass, onValueChange = { pass = it },
-                        label = { Text("Password (empty = generate one)") }, singleLine = true,
+                        label = { Text(stringResource(R.string.password_or_generate)) }, singleLine = true,
                         // No suggestions or autocorrect: keyboards otherwise mangle and remember passwords.
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(autoCorrectEnabled = false, keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
                     )
@@ -1018,9 +1009,9 @@ class MainActivity : ComponentActivity() {
                 TextButton(
                     enabled = name.length in 1..64,
                     onClick = { onCreate(name.trim(), pass) },
-                ) { Text("Create") }
+                ) { Text(stringResource(R.string.create)) }
             },
-            dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
         )
     }
 
@@ -1040,7 +1031,7 @@ class MainActivity : ComponentActivity() {
         if (!homeScreenNeedsOffer(launcher)) return
         if (!androidx.core.content.pm.ShortcutManagerCompat.isRequestPinShortcutSupported(this)) return
         val shortcut = androidx.core.content.pm.ShortcutInfoCompat.Builder(this, "home")
-            .setShortLabel("find me in wood")
+            .setShortLabel(getString(R.string.app_name))
             .setIcon(androidx.core.graphics.drawable.IconCompat.createWithResource(this, R.mipmap.ic_launcher))
             .setIntent(
                 android.content.Intent(android.content.Intent.ACTION_MAIN)

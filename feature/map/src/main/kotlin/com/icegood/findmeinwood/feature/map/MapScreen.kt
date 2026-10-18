@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -149,27 +150,26 @@ internal fun arrowEnd(
     )
 }
 
-internal fun formatDistance(meters: Double): String =
-    if (meters >= 1000) "%.1f km".format(meters / 1000) else "${meters.toInt()} m"
+internal fun formatDistance(ctx: Context, meters: Double): String =
+    if (meters >= 1000) ctx.getString(R.string.distance_km, "%.1f".format(meters / 1000))
+    else ctx.getString(R.string.distance_m, meters.toInt())
 
-internal fun layerLabel(l: MapLayer) =
-    if (l.offline) "Offline (${l.provider.label})" else l.provider.label
+internal fun layerLabel(ctx: Context, l: MapLayer) =
+    if (l.offline) ctx.getString(R.string.layer_offline, l.provider.label) else l.provider.label
 
 /** The chooser's second line for a provider: what it is, coverage, and what it still needs. */
-internal fun providerHint(p: TileProvider, values: Map<String, String>): String = buildList {
-    add(if (p.satellite) "satellite" else "streets")
-    p.coverage?.let(::add)
+internal fun providerHint(ctx: Context, p: TileProvider, values: Map<String, String>): String = buildList {
+    add(ctx.getString(if (p.satellite) R.string.kind_satellite else R.string.kind_streets))
+    p.coverage?.let { add(ctx.getString(it)) }
     val missing = p.missing(values)
     when {
-        missing.isNotEmpty() -> add("needs ${missing.joinToString { it.label }}")
-        p.options.any { !values[it.param].isNullOrBlank() } -> add("${p.options.first().label} set")
+        missing.isNotEmpty() -> add(ctx.getString(R.string.needs, missing.joinToString { ctx.getString(it.label) }))
+        p.options.any { !values[it.param].isNullOrBlank() } -> add(ctx.getString(R.string.option_set, ctx.getString(p.options.first().label)))
     }
 }.joinToString(" · ")
 
-private fun compass(bearing: Double): String {
-    val dirs = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
-    return dirs[((bearing + 22.5) / 45).toInt() % 8]
-}
+private fun compass(ctx: Context, bearing: Double): String =
+    ctx.resources.getStringArray(R.array.compass_points)[((bearing + 22.5) / 45).toInt() % 8]
 
 /**
  * Confirmation sheet for an offline area: name it and see what it costs. The zooms are
@@ -182,28 +182,28 @@ private fun OfflineAreaDialog(
     onDismiss: () -> Unit,
     onConfirm: (name: String) -> Unit,
 ) {
-    val initialName = remember(bbox) { "Area %.3f°, %.3f°".format(bbox.centerLatitude, bbox.centerLongitude) }
+    val ctx = LocalContext.current
+    val initialName = remember(bbox) { ctx.getString(R.string.area_name_default, "%.3f°, %.3f°".format(bbox.centerLatitude, bbox.centerLongitude)) }
     var name by remember(bbox) { mutableStateOf(initialName) }
     val tiles = remember(bbox, provider) { offlineTiles(bbox, provider) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Save offline area") },
+        title = { Text(stringResource(R.string.save_offline_area)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Area name") },
+                    label = { Text(stringResource(R.string.area_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
                     if (tiles != null) {
-                        "${provider.label}, down to trail detail · ${estimateLabel(tiles, provider.tileBytes())}"
+                        stringResource(R.string.area_trail_detail, provider.label, estimateLabel(ctx, tiles, provider.tileBytes()))
                     } else {
-                        "Too large for ${provider.label} (at most ${provider.downloadTiles} tiles " +
-                            "at trail detail): draw a smaller area."
+                        stringResource(R.string.area_too_large, provider.label, provider.downloadTiles.toString())
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (tiles != null) Color.Unspecified else MaterialTheme.colorScheme.error,
@@ -214,9 +214,9 @@ private fun OfflineAreaDialog(
             Button(
                 enabled = tiles != null,
                 onClick = { onConfirm(name.trim().ifBlank { initialName }) },
-            ) { Text("Download") }
+            ) { Text(stringResource(R.string.download)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -241,6 +241,7 @@ fun MapScreen(
     onFindTargetChange: (MemberId?) -> Unit = {},
 ) {
     val context = LocalContext.current
+    val memberWord = stringResource(R.string.member)
     val p by profile.collectAsState()
     val ps by peers.collectAsState()
     val fix = rememberDeviceFix(context)
@@ -384,7 +385,7 @@ fun MapScreen(
                     drawCircle(Color.White, 9.dp.toPx(), at)
                     drawCircle(if (greyed) Color.Gray else accent, 7.dp.toPx(), at)
                     label(
-                        (if (peer.memberId == follow) "→ " else "") + (peer.nickname ?: "member"),
+                        (if (peer.memberId == follow) "→ " else "") + (peer.nickname ?: memberWord),
                         at, if (greyed) greyBg else labelBg, if (greyed) greyFg else labelFg,
                     )
                 }
@@ -439,7 +440,7 @@ fun MapScreen(
                             val targetPeer = ps[follow]
                             val bound = targetPeer?.let { radioBoundM(meters, it.transport, heardRecently(it)) }
                             val layout = textMeasurer.measure(
-                                bound?.let { "nearby ≤$it m" } ?: formatDistance(meters),
+                                bound?.let { context.getString(R.string.nearby_within, it) } ?: formatDistance(context, meters),
                                 style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = labelFg),
                             )
                             val pad = 6.dp.toPx()
@@ -473,7 +474,7 @@ fun MapScreen(
                     drawLine(barColor, barLeft, Offset(barLeft.x, barLeft.y - tickH), strokeWidth = 3.dp.toPx())
                     drawLine(barColor, right, Offset(right.x, right.y - tickH), strokeWidth = 3.dp.toPx())
                     val layout = textMeasurer.measure(
-                        formatDistance(meters.toDouble()),
+                        formatDistance(context, meters.toDouble()),
                         style = TextStyle(fontSize = 13.sp, color = barColor),
                     )
                     drawText(layout, topLeft = Offset(barLeft.x, barLeft.y - tickH - layout.size.height))
@@ -550,8 +551,8 @@ fun MapScreen(
 
         Card(Modifier.padding(12.dp).align(Alignment.TopStart).fillMaxWidth()) {
             Text(
-                "${p?.name ?: "No network running"} · ${ps.size} other${if (ps.size == 1) "" else "s"} heard" +
-                    " · " + myFixText(fix),
+                (p?.name ?: stringResource(R.string.no_network_running)) + " · " +
+                    stringResource(R.string.others_heard, ps.size) + " · " + myFixText(context, fix),
                 Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.labelMedium,
             )
@@ -572,15 +573,15 @@ fun MapScreen(
         Box(Modifier.padding(top = 80.dp, end = 12.dp).align(Alignment.TopEnd)) {
             var open by remember { mutableStateOf(false) }
             androidx.compose.material3.FilledTonalButton(onClick = { open = true }) {
-                Text("Map: ${layerLabel(layer)} ▾", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.map_chip, layerLabel(context, layer)), style = MaterialTheme.typography.labelMedium)
             }
             androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                 androidx.compose.material3.DropdownMenuItem(
                     text = {
                         Column {
-                            Text((if (layer.offline) "✓ " else "") + "Offline")
+                            Text((if (layer.offline) "✓ " else "") + stringResource(R.string.offline))
                             Text(
-                                "saved areas and places viewed from ${provider.label} — no internet needed",
+                                stringResource(R.string.offline_hint, provider.label),
                                 style = MaterialTheme.typography.labelSmall,
                             )
                         }
@@ -594,7 +595,7 @@ fun MapScreen(
                         text = {
                             Column {
                                 Text((if (selected) "✓ " else "") + p.label)
-                                Text(providerHint(p, values), style = MaterialTheme.typography.labelSmall)
+                                Text(providerHint(context, p, values), style = MaterialTheme.typography.labelSmall)
                             }
                         },
                         onClick = {
@@ -607,7 +608,7 @@ fun MapScreen(
                     // The selected provider's own options: key, token… as that service names them.
                     if (p == provider && p.options.isNotEmpty()) {
                         androidx.compose.material3.DropdownMenuItem(
-                            text = { Text("    ${p.label} options…", style = MaterialTheme.typography.labelMedium) },
+                            text = { Text("    " + stringResource(R.string.provider_options_menu, p.label), style = MaterialTheme.typography.labelMedium) },
                             onClick = { open = false; optionsFor = p },
                         )
                     }
@@ -620,10 +621,10 @@ fun MapScreen(
             Card(Modifier.padding(16.dp).align(Alignment.Center)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        "${provider.label} needs ${provider.missing(providerValues).joinToString { it.label }}",
+                        stringResource(R.string.provider_needs, provider.label, provider.missing(providerValues).joinToString { context.getString(it.label) }),
                         style = MaterialTheme.typography.titleSmall,
                     )
-                    Button(onClick = { optionsFor = provider }) { Text("Set it") }
+                    Button(onClick = { optionsFor = provider }) { Text(stringResource(R.string.set_it)) }
                 }
             }
         }
@@ -642,7 +643,7 @@ fun MapScreen(
                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "Finding ${peer.nickname ?: "member"}",
+                            stringResource(R.string.finding, peer.nickname ?: memberWord),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.weight(1f),
                         )
@@ -652,15 +653,15 @@ fun MapScreen(
                     val fix0 = me
                     if (pos != null && fix0 != null) {
                         val (meters, bearing) = distanceBearing(fix0, pos.latE7, pos.lonE7)
-                        val dist = distanceText(meters, pos.accuracyCm / 100, fix0.accuracy.toInt(), peer.transport, heardRecently(peer))
+                        val dist = distanceText(context, meters, pos.accuracyCm / 100, fix0.accuracy.toInt(), peer.transport, heardRecently(peer))
                         val bound = radioBoundM(meters, peer.transport, heardRecently(peer))
                         Text(
-                            (if (bound == null) "$dist · ${bearing.toInt()}° ${compass(bearing)}" else "$dist · positions too rough for a direction") +
-                                if (peer.viaMemberId != null) " · relayed" else "",
+                            (if (bound == null) "$dist · ${bearing.toInt()}° ${compass(context, bearing)}" else "$dist · " + stringResource(R.string.too_rough_direction)) +
+                                if (peer.viaMemberId != null) " · " + stringResource(R.string.relayed) else "",
                             style = MaterialTheme.typography.labelLarge,
                         )
                     } else {
-                        Text("waiting for first fix…", style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.waiting_first_fix), style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
@@ -675,10 +676,10 @@ fun MapScreen(
                 Modifier.align(Alignment.BottomCenter).padding(16.dp),
             ) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Save this area offline", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.save_area_offline), style = MaterialTheme.typography.titleSmall)
                     Text(
-                        if (a == null) "drag a rectangle over the map" else
-                            if (area == null) "drag a larger rectangle" else
+                        if (a == null) stringResource(R.string.drag_rectangle) else
+                            if (area == null) stringResource(R.string.drag_larger) else
                                 "%.4f°, %.4f°".format(area.centerLatitude, area.centerLongitude),
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -686,17 +687,17 @@ fun MapScreen(
                         // Live while drawing, so the area is sized before anything is asked.
                         val tiles = offlineTiles(area, provider)
                         Text(
-                            tiles?.let { estimateLabel(it) } ?: "too large for ${provider.label}: draw smaller",
+                            tiles?.let { estimateLabel(context, it) } ?: stringResource(R.string.too_large_draw_smaller, provider.label),
                             style = MaterialTheme.typography.labelSmall,
                             color = if (tiles != null) Color.Unspecified else MaterialTheme.colorScheme.error,
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { exitSelection() }) { Text("Cancel") }
+                        TextButton(onClick = { exitSelection() }) { Text(stringResource(R.string.cancel)) }
                         Button(
                             onClick = { exitSelection() },
                             enabled = area != null,
-                        ) { Text("Use this area") }
+                        ) { Text(stringResource(R.string.use_this_area)) }
                     }
                 }
             }
@@ -736,20 +737,18 @@ fun MapScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Text(
-                        buildString {
-                            if (ui.total > 0) append("${ui.done} / ${ui.total} parts") else append("preparing…")
-                            if (ui.errors > 0) append(" · ${ui.errors} error(s)")
-                        },
+                        (if (ui.total > 0) stringResource(R.string.parts_done, ui.done.toString(), ui.total.toString()) else stringResource(R.string.preparing)) +
+                            if (ui.errors > 0) " · " + stringResource(R.string.errors_count, ui.errors) else "",
                         style = MaterialTheme.typography.labelSmall,
                     )
                     if (ui.finished) {
-                        Button(onClick = { downloadUi = null }) { Text("Done") }
+                        Button(onClick = { downloadUi = null }) { Text(stringResource(R.string.done)) }
                     } else {
                         TextButton(onClick = {
                             activeDownload.value?.cancel()
                             activeDownload.value = null
-                            downloadUi = ui.copy(title = "cancelling…", finished = true)
-                        }) { Text("Cancel") }
+                            downloadUi = ui.copy(title = context.getString(R.string.cancelling), finished = true)
+                        }) { Text(stringResource(R.string.cancel)) }
                     }
                 }
             }
@@ -785,6 +784,7 @@ private fun CompassHud(azimuth: Float?, isDarkTheme: Boolean, modifier: Modifier
     val tickColor = if (isDarkTheme) Color(0xFFBBBBBB) else Color(0xFF444444)
     val labelColor = if (isDarkTheme) Color(0xFFEEEEEE) else Color(0xFF222222)
     val textMeasurer = rememberTextMeasurer()
+    val points = androidx.compose.ui.res.stringArrayResource(R.array.compass_points)
     Card(modifier) {
         Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Canvas(Modifier.size(68.dp)) {
@@ -793,13 +793,13 @@ private fun CompassHud(azimuth: Float?, isDarkTheme: Boolean, modifier: Modifier
                 drawCircle(color = ringColor, radius = r, style = Stroke(2.dp.toPx()))
                 val labelHop = 22.dp.toPx()
                 val labelStyle = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = labelColor)
-                for ((idx, name) in listOf("N", "E", "S", "W").withIndex()) {
+                for ((idx, name) in listOf(points[0], points[2], points[4], points[6]).withIndex()) {
                     val ang = Math.toRadians(idx * 90.0)
                     val sx = (c.x + sin(ang) * (r - 6.dp.toPx())).toFloat()
                     val sy = (c.y - cos(ang) * (r - 6.dp.toPx())).toFloat()
                     val tx = (c.x + sin(ang) * (r - labelHop)).toFloat()
                     val ty = (c.y - cos(ang) * (r - labelHop)).toFloat()
-                    if (name == "N") {
+                    if (idx == 0) {
                         drawLine(errorColor, Offset(sx, sy), Offset(tx, ty), strokeWidth = 2.5.dp.toPx())
                     } else {
                         drawLine(tickColor, Offset(sx, sy), Offset(tx, ty), strokeWidth = 1.5.dp.toPx())
@@ -838,7 +838,7 @@ fun PeerList(
     modifier: Modifier = Modifier,
     findTarget: MemberId? = null,
     onFind: (MemberId?) -> Unit = {},
-    emptyText: String = "No members heard yet.",
+    emptyText: String? = null,
     onRename: ((MemberId, String?) -> Unit)? = null,
     onSelectLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)? = null,
     onConfirmLink: ((MemberId) -> Unit)? = null,
@@ -857,7 +857,8 @@ fun PeerList(
     modifier: Modifier = Modifier,
     findTarget: MemberId? = null,
     onFind: (MemberId?) -> Unit = {},
-    emptyText: String = "No members heard yet.",
+    /** Shown while nobody is heard; null = a plain "no members heard yet". */
+    emptyText: String? = null,
     /** Give a member a name on this phone (null/blank = back to their own name). */
     onRename: ((MemberId, String?) -> Unit)? = null,
     /** Switch the link to a transport of the agreed set (LNP/3, no further handshake). */
@@ -869,22 +870,23 @@ fun PeerList(
     onLinkFix: ((com.icegood.findmeinwood.core.model.LinkFix) -> Unit)? = null,
 ) {
     val ps by peers.collectAsState()
+    val ctx = LocalContext.current
     var renaming by remember { mutableStateOf<PeerState?>(null) }
     Column(modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Members", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.members), style = MaterialTheme.typography.titleMedium)
         if (ps.isEmpty()) {
-            Text(emptyText, style = MaterialTheme.typography.bodySmall)
+            Text(emptyText ?: stringResource(R.string.no_members_heard), style = MaterialTheme.typography.bodySmall)
         } else {
-            Text("Tap Find to get an arrow and distance to someone on the map.", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.tap_find_hint), style = MaterialTheme.typography.bodySmall)
         }
         ps.values.forEach { peer ->
             val pos = peer.lastPosition
             val isTarget = peer.memberId == findTarget
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                val name = (if (isTarget) "→ " else "") + (peer.nickname ?: "member")
+                val name = (if (isTarget) "→ " else "") + (peer.nickname ?: stringResource(R.string.member))
                 if (pos == null || me == null) {
                     Text(
-                        "$name — unlocated, last seen ${age(peer.lastSeenMs)} ago",
+                        stringResource(R.string.unlocated_seen, name, age(ctx, peer.lastSeenMs)),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray,
                         modifier = Modifier.weight(1f),
@@ -893,19 +895,19 @@ fun PeerList(
                     val (meters, bearing) = distanceBearing(me, pos.latE7, pos.lonE7)
                     val bound = radioBoundM(meters, peer.transport, heardRecently(peer))
                     Text(
-                        "$name — " + distanceText(meters, pos.accuracyCm / 100, me.accuracy.toInt(), peer.transport, heardRecently(peer)) +
+                        "$name — " + distanceText(ctx, meters, pos.accuracyCm / 100, me.accuracy.toInt(), peer.transport, heardRecently(peer)) +
                             // A bearing from positions that contradict the radio is meaningless too.
-                            (if (bound == null) ", bearing ${bearing.toInt()}° ${compass(bearing)}" else ""),
+                            (if (bound == null) ", " + stringResource(R.string.bearing, "${bearing.toInt()}° ${compass(ctx, bearing)}") else ""),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (findTarget != null && !isTarget) Color.Gray else Color.Unspecified,
                         modifier = Modifier.weight(1f),
                     )
                 }
-                if (onRename != null) TextButton(onClick = { renaming = peer }) { Text("Rename") }
+                if (onRename != null) TextButton(onClick = { renaming = peer }) { Text(stringResource(R.string.rename)) }
                 if (isTarget) {
-                    TextButton(onClick = { onFind(null) }) { Text("Stop") }
+                    TextButton(onClick = { onFind(null) }) { Text(stringResource(R.string.stop)) }
                 } else {
-                    TextButton(onClick = { onFind(peer.memberId) }) { Text("Find") }
+                    TextButton(onClick = { onFind(peer.memberId) }) { Text(stringResource(R.string.find)) }
                 }
             }
             LinkRow(peer, onSelectLink, onConfirmLink, linkStatuses)
@@ -916,17 +918,17 @@ fun PeerList(
         var text by remember(peer.memberId) { mutableStateOf(peer.nickname.orEmpty()) }
         AlertDialog(
             onDismissRequest = { renaming = null },
-            title = { Text("Rename member") },
+            title = { Text(stringResource(R.string.rename_member)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Only on this phone. Empty = the name they chose.", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.rename_hint), style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true)
                 }
             },
             confirmButton = {
-                TextButton(onClick = { onRename?.invoke(peer.memberId, text); renaming = null }) { Text("Save") }
+                TextButton(onClick = { onRename?.invoke(peer.memberId, text); renaming = null }) { Text(stringResource(R.string.save)) }
             },
-            dismissButton = { TextButton(onClick = { renaming = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { renaming = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
@@ -950,11 +952,11 @@ internal fun radioBoundM(meters: Double, directVia: com.icegood.findmeinwood.cor
 
 /** Distance as shown to the user: radio evidence beats positions that contradict it. */
 internal fun distanceText(
-    meters: Double, peerAccM: Int, myAccM: Int,
+    ctx: Context, meters: Double, peerAccM: Int, myAccM: Int,
     directVia: com.icegood.findmeinwood.core.model.TransportId?, heardRecently: Boolean,
 ): String = radioBoundM(meters, directVia, heardRecently)
-    ?.let { "nearby (≤$it m: ${viaLabel(directVia)} range)" }
-    ?: (formatDistance(meters) + uncertainty(peerAccM, myAccM))
+    ?.let { ctx.getString(R.string.nearby_range, it, viaLabel(ctx, directVia)) }
+    ?: (formatDistance(ctx, meters) + uncertainty(ctx, peerAccM, myAccM))
 
 private fun heardRecently(peer: PeerState) = System.currentTimeMillis() - peer.lastSeenMs < 3 * 60_000L
 
@@ -962,9 +964,9 @@ private fun heardRecently(peer: PeerState) = System.currentTimeMillis() - peer.l
  * " (±N m)" when the two positions together are too rough for the distance to mean much
  * (e.g. an indoor network fix of ±500 m), otherwise nothing.
  */
-internal fun uncertainty(peerAccM: Int, myAccM: Int): String {
+internal fun uncertainty(ctx: Context, peerAccM: Int, myAccM: Int): String {
     val total = peerAccM.coerceAtLeast(0) + myAccM.coerceAtLeast(0)
-    return if (total > 100) " (±${total} m)" else ""
+    return if (total > 100) " (" + ctx.getString(R.string.plus_minus_m, total) + ")" else ""
 }
 
 /**
@@ -985,19 +987,21 @@ private fun LinkRow(
         modifier = Modifier.fillMaxWidth().padding(start = 12.dp),
     ) {
         val link = peer.link
+        val ctx = LocalContext.current
+        val them = peer.nickname ?: stringResource(R.string.them)
         if (link == null) {
-            val common = peer.linkCommon.joinToString { viaLabel(it) }
+            val common = peer.linkCommon.joinToString { viaLabel(ctx, it) }
             when {
                 peer.linkCommon.isEmpty() -> Text(
-                    "link: exchanging offers… (heard ${viaLabel(peer.transport)})",
+                    stringResource(R.string.link_exchanging, viaLabel(ctx, peer.transport)),
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.Gray,
                 )
                 !peer.linkConfirmedByMe -> Button(onClick = { onConfirm?.invoke(peer.memberId) }, enabled = onConfirm != null) {
-                    Text("Confirm link: $common", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.confirm_link, common), style = MaterialTheme.typography.labelSmall)
                 }
                 else -> Text(
-                    "link: $common — waiting for ${peer.nickname ?: "them"} to confirm",
+                    stringResource(R.string.link_waiting, common, them),
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.Gray,
                 )
@@ -1007,16 +1011,16 @@ private fun LinkRow(
         var open by remember { mutableStateOf(false) }
         Box {
             OutlinedButton(onClick = { open = true }, enabled = onSelect != null) {
-                Text("link: ${viaLabel(link)} ▾", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.link_chip, viaLabel(ctx, link)), style = MaterialTheme.typography.labelSmall)
             }
             androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                 peer.linkOptions.forEach { t ->
                     androidx.compose.material3.DropdownMenuItem(
-                        text = { Text((if (t == link) "✓ " else "") + viaLabel(t)) },
+                        text = { Text((if (t == link) "✓ " else "") + viaLabel(ctx, t)) },
                         onClick = { open = false; onSelect?.invoke(peer.memberId, t) },
                     )
                 }
-                unavailableLinks(peer, statuses).forEach { (label, why) ->
+                unavailableLinks(ctx, peer, statuses).forEach { (label, why) ->
                     androidx.compose.material3.DropdownMenuItem(
                         text = { Text("$label — $why", color = Color.Gray) },
                         onClick = {},
@@ -1027,7 +1031,7 @@ private fun LinkRow(
         }
         peer.linkSuggestion?.let { t ->
             TextButton(onClick = { onSelect?.invoke(peer.memberId, t) }) {
-                Text("${viaLabel(link)} quiet — use ${viaLabel(t)}?", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.link_quiet, viaLabel(ctx, link), viaLabel(ctx, t)), style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -1038,6 +1042,7 @@ private fun LinkRow(
  * this phone, or not offered by them. Notes such as satellite (carried by SMS) come last.
  */
 internal fun unavailableLinks(
+    ctx: Context,
     peer: PeerState,
     statuses: List<com.icegood.findmeinwood.core.model.LinkStatus>,
 ): List<Pair<String, String>> {
@@ -1047,7 +1052,7 @@ internal fun unavailableLinks(
         when {
             s.reason != null -> s.label to s.reason!!
             s.transport in usable || !offersKnown -> null
-            else -> s.label to "not offered by ${peer.nickname ?: "them"}"
+            else -> s.label to ctx.getString(R.string.not_offered_by, peer.nickname ?: ctx.getString(R.string.them))
         }
     }
     val notes = statuses.filter { it.transport == null && it.reason != null }.map { it.label to it.reason!! }
@@ -1061,7 +1066,8 @@ private fun UnavailableLinks(
     statuses: List<com.icegood.findmeinwood.core.model.LinkStatus>,
     onFix: ((com.icegood.findmeinwood.core.model.LinkFix) -> Unit)?,
 ) {
-    val lines = unavailableLinks(peer, statuses)
+    val ctx = LocalContext.current
+    val lines = unavailableLinks(ctx, peer, statuses)
     if (lines.isEmpty()) return
     Column(Modifier.fillMaxWidth().padding(start = 12.dp)) {
         lines.forEach { (label, why) ->
@@ -1074,33 +1080,37 @@ private fun UnavailableLinks(
                     modifier = Modifier.weight(1f),
                 )
                 if (fix != null && onFix != null) {
-                    TextButton(onClick = { onFix(fix) }) { Text(fixLabel(fix), style = MaterialTheme.typography.labelSmall) }
+                    TextButton(onClick = { onFix(fix) }) { Text(fixLabel(ctx, fix), style = MaterialTheme.typography.labelSmall) }
                 }
             }
         }
     }
 }
 
-internal fun fixLabel(f: com.icegood.findmeinwood.core.model.LinkFix) = when (f) {
-    com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_BLUETOOTH -> "Turn on"
-    com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_WIFI -> "Turn on"
-    com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER -> "Set number"
-    com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS -> "Allow"
-}
+internal fun fixLabel(ctx: Context, f: com.icegood.findmeinwood.core.model.LinkFix): String = ctx.getString(
+    when (f) {
+        com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_BLUETOOTH -> R.string.fix_turn_on
+        com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_WIFI -> R.string.fix_turn_on
+        com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER -> R.string.fix_set_number
+        com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS -> R.string.fix_allow
+    },
+)
 
 /** How the member is reached now (LNP/3 link, or relays). */
-internal fun viaLabel(t: com.icegood.findmeinwood.core.model.TransportId?): String = when (t) {
-    null -> "via others"
-    com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH -> "Bluetooth"
-    com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT -> "Wi-Fi Direct"
-    com.icegood.findmeinwood.core.model.TransportId.LORA -> "LoRa"
-    com.icegood.findmeinwood.core.model.TransportId.SMS -> "SMS"
-    com.icegood.findmeinwood.core.model.TransportId.INTERNET -> "messenger"
-}
+internal fun viaLabel(ctx: Context, t: com.icegood.findmeinwood.core.model.TransportId?): String = ctx.getString(
+    when (t) {
+        null -> R.string.via_others
+        com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH -> R.string.via_bluetooth
+        com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT -> R.string.via_wifi_direct
+        com.icegood.findmeinwood.core.model.TransportId.LORA -> R.string.via_lora
+        com.icegood.findmeinwood.core.model.TransportId.SMS -> R.string.via_sms
+        com.icegood.findmeinwood.core.model.TransportId.INTERNET -> R.string.via_messenger
+    },
+)
 
-private fun age(lastSeenMs: Long): String {
+private fun age(ctx: Context, lastSeenMs: Long): String {
     val s = (System.currentTimeMillis() - lastSeenMs).coerceAtLeast(0) / 1000
-    return if (s < 60) "${s}s" else "${s / 60}m"
+    return if (s < 60) ctx.getString(R.string.age_s, s.toInt()) else ctx.getString(R.string.age_min, (s / 60).toInt())
 }
 
 private data class LastView(val lat: Double, val lon: Double, val zoom: Double)
@@ -1198,11 +1208,11 @@ internal fun scaleBar(metersPerPx: Double, maxPx: Float): Pair<Int, Float>? {
 }
 
 /** The status-line words for my own position. */
-internal fun myFixText(fix: DeviceFix?): String = when {
-    fix == null -> "waiting for GPS"
-    fix.gpsSpoofed -> "GPS faked nearby, using network ±${fix.location.accuracy.toInt()} m"
-    fix.location.provider == LocationManager.GPS_PROVIDER -> "GPS ±${fix.location.accuracy.toInt()} m"
-    else -> "network ±${fix.location.accuracy.toInt()} m"
+internal fun myFixText(ctx: Context, fix: DeviceFix?): String = when {
+    fix == null -> ctx.getString(R.string.waiting_gps)
+    fix.gpsSpoofed -> ctx.getString(R.string.gps_faked, fix.location.accuracy.toInt())
+    fix.location.provider == LocationManager.GPS_PROVIDER -> ctx.getString(R.string.fix_gps, fix.location.accuracy.toInt())
+    else -> ctx.getString(R.string.fix_network, fix.location.accuracy.toInt())
 }
 
 /**
@@ -1316,27 +1326,27 @@ private fun ProviderOptionsDialog(
     var edited by remember(provider) { mutableStateOf(values) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("${provider.label} options") },
+        title = { Text(stringResource(R.string.provider_options, provider.label)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 provider.options.forEach { o ->
                     androidx.compose.material3.OutlinedTextField(
                         value = edited[o.param].orEmpty(),
                         onValueChange = { edited = edited + (o.param to it) },
-                        label = { Text(o.label + if (o.required) "" else " (optional)") },
-                        supportingText = { Text("sent only to ${provider.label} as ?${o.param}=…") },
+                        label = { Text(stringResource(o.label) + if (o.required) "" else " " + stringResource(R.string.optional)) },
+                        supportingText = { Text(stringResource(R.string.option_sent_only, provider.label, "?${o.param}=…")) },
                         singleLine = true,
                     )
                 }
-                provider.signUp?.let { Text("Get one at $it", style = MaterialTheme.typography.bodySmall) }
-                provider.coverage?.let { Text("Coverage: $it", style = MaterialTheme.typography.bodySmall) }
+                provider.signUp?.let { Text(stringResource(R.string.get_one_at, it), style = MaterialTheme.typography.bodySmall) }
+                provider.coverage?.let { Text(stringResource(R.string.coverage, stringResource(it)), style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = {
             Button(onClick = {
                 onSave(edited.mapValues { it.value.trim() }.filterValues { it.isNotEmpty() })
-            }) { Text("Save") }
+            }) { Text(stringResource(R.string.save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

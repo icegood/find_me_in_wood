@@ -27,6 +27,7 @@ import com.icegood.findmeinwood.core.storage.SealedFiles
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -42,7 +43,7 @@ fun ChatListScreen(
     val channels by channelsFlow.collectAsState(initial = emptyList())
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Chats") }) },
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.chats)) }) },
     ) { pad ->
         if (channels.isEmpty()) {
             Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -50,9 +51,9 @@ fun ChatListScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("No conversations yet", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.no_conversations), style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Messages with your group appear here.\nShare your network code with peers to start.",
+                        stringResource(R.string.no_conversations_hint),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -69,13 +70,13 @@ fun ChatListScreen(
                             Modifier.fillMaxWidth().padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            val label = if (channelId == "group") "Group" else channelId
+                            val label = if (channelId == "group") stringResource(R.string.chat_group) else channelId
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(label, style = MaterialTheme.typography.titleMedium)
                                 latest?.let {
                                     val preview = when {
-                                        it.photoRef != null -> "📷 Photo"
-                                        it.text.isBlank() -> "(empty)"
+                                        it.photoRef != null -> stringResource(R.string.chat_photo)
+                                        it.text.isBlank() -> stringResource(R.string.chat_empty)
                                         else -> it.text
                                     }
                                     Text(
@@ -143,7 +144,7 @@ fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (channelId == "group") "Group" else channelId) },
+                title = { Text(if (channelId == "group") stringResource(R.string.chat_group) else channelId) },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
@@ -177,7 +178,7 @@ fun ChatScreen(
                 OutlinedTextField(
                     value = inputText, onValueChange = { inputText = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Message…") },
+                    placeholder = { Text(stringResource(R.string.chat_message_hint)) },
                     singleLine = true,
                 )
                 Spacer(Modifier.width(8.dp))
@@ -191,7 +192,7 @@ fun ChatScreen(
                         }
                     },
                     enabled = inputText.isNotBlank(),
-                ) { Text("Send") }
+                ) { Text(stringResource(R.string.send)) }
             }
         }
     }
@@ -254,7 +255,7 @@ private fun PhotoPreview(photoRef: String) {
         )
     } else {
         Text(
-            "📷 [photo]",
+            stringResource(R.string.chat_photo_missing),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

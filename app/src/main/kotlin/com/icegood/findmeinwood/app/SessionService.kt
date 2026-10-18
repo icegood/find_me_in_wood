@@ -193,14 +193,12 @@ class SessionService : Service() {
         DiscoveryBridge.onApprove = { joiner ->
             val wire = discovery.approve(joiner)
             if (wire == null) {
-                SessionBus.publishOwnerNote(
-                    "cannot approve: this device does not hold the network secret",
-                )
+                SessionBus.publishOwnerNote(getString(R.string.cannot_approve))
             } else {
                 scope.launch { manager.sendMgmt(wire) }
                 SessionBus.setFindable(true) // others may be waiting to join too
                 val sas = discovery.ownerSas.value ?: "------"
-                SessionBus.publishOwnerNote("approved — compare SAS $sas")
+                SessionBus.publishOwnerNote(getString(R.string.approved_compare, sas))
             }
         }
         DiscoveryBridge.onReject = { joiner ->
@@ -359,6 +357,7 @@ class SessionService : Service() {
             getSystemService(android.net.wifi.WifiManager::class.java)?.isWifiEnabled == true
         }.getOrDefault(false)
         return LinkAvailability.statuses(
+            this@SessionService,
             LinkAvailability.Inputs(
                 bluetoothOn = btOn,
                 wifiOn = wifiOn,
@@ -468,7 +467,7 @@ class SessionService : Service() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= 26) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL, "Active network", NotificationManager.IMPORTANCE_LOW),
+                NotificationChannel(CHANNEL, getString(R.string.channel_active_network), NotificationManager.IMPORTANCE_LOW),
             )
         }
         val builder = if (Build.VERSION.SDK_INT >= 26) {
@@ -478,8 +477,8 @@ class SessionService : Service() {
         }
         return builder
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
-            .setContentTitle("find me in wood")
-            .setContentText(if (listen) "Looking for networks to join" else "Network session active")
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(getString(if (listen) R.string.notif_listening else R.string.notif_active))
             .setOngoing(true)
             .build()
     }

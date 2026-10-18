@@ -105,7 +105,7 @@ object OfflineRegions {
         val statuses = HashMap<Long, OfflineRegionStatus>()
         var errors = 0
         var finished = false
-        val title = "Downloading \"$name\""
+        val title = ctx.getString(R.string.downloading, name)
         onProgress(DownloadUi(title))
 
         fun report() {
@@ -114,7 +114,7 @@ object OfflineRegions {
             val total = statuses.values.sumOf { it.requiredResourceCount }
             if (statuses.size == urls.size && statuses.values.all { it.isComplete }) {
                 finished = true
-                onDone(DownloadUi("Saved \"$name\" for offline use", done, total, errors, finished = true))
+                onDone(DownloadUi(ctx.getString(R.string.saved_offline, name), done, total, errors, finished = true))
             } else {
                 onProgress(DownloadUi(title, done, total, errors))
             }
@@ -153,7 +153,7 @@ object OfflineRegions {
                     override fun onError(error: String) {
                         if (finished) return
                         finished = true
-                        onDone(DownloadUi("Download error: $error", errors = errors + 1, finished = true))
+                        onDone(DownloadUi(ctx.getString(R.string.download_error, error), errors = errors + 1, finished = true))
                     }
                 },
             )

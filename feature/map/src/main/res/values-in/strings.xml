@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">hanya AS</string>
+    <string name="option_api_key">Kunci API</string>
+    <string name="option_arcgis_token">Token ArcGIS</string>
+    <string name="option_access_token">Token akses</string>
+    <string name="estimate_k_tiles">%1$s ribu ubin · ~%2$s MB</string>
+    <string name="estimate_tiles">ubin: %1$s · ~%2$s MB</string>
+    <string name="downloading">Mengunduh “%1$s”</string>
+    <string name="saved_offline">“%1$s” disimpan untuk penggunaan offline</string>
+    <string name="download_error">Kesalahan unduhan: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Offline (%1$s)</string>
+    <string name="kind_satellite">satelit</string>
+    <string name="kind_streets">jalan</string>
+    <string name="needs">perlu %1$s</string>
+    <string name="option_set">%1$s sudah diatur</string>
+    <string-array name="compass_points">
+        <item>U</item>
+        <item>TL</item>
+        <item>T</item>
+        <item>TG</item>
+        <item>S</item>
+        <item>BD</item>
+        <item>B</item>
+        <item>BL</item>
+    </string-array>
+    <string name="area_name_default">Area %1$s</string>
+    <string name="save_offline_area">Simpan area offline</string>
+    <string name="area_name">Nama area</string>
+    <string name="area_trail_detail">%1$s, hingga detail jalan setapak · %2$s</string>
+    <string name="area_too_large">Terlalu besar untuk %1$s (paling banyak %2$s ubin pada detail jalan setapak): gambar area lebih kecil.</string>
+    <string name="download">Unduh</string>
+    <string name="nearby_within">dekat ≤%1$d m</string>
+    <string name="no_network_running">Tidak ada jaringan yang berjalan</string>
+    <string name="others_heard">lainnya terdengar: %1$d</string>
+    <string name="map_chip">Peta: %1$s ▾</string>
+    <string name="offline">Offline</string>
+    <string name="offline_hint">area tersimpan dan tempat yang dilihat dari %1$s — tanpa internet</string>
+    <string name="provider_options_menu">Opsi %1$s…</string>
+    <string name="provider_needs">%1$s perlu %2$s</string>
+    <string name="set_it">Atur</string>
+    <string name="finding">Mencari %1$s</string>
+    <string name="too_rough_direction">posisi terlalu kasar untuk arah</string>
+    <string name="relayed">diteruskan</string>
+    <string name="waiting_first_fix">menunggu posisi pertama…</string>
+    <string name="save_area_offline">Simpan area ini offline</string>
+    <string name="drag_rectangle">tarik persegi panjang di peta</string>
+    <string name="drag_larger">tarik persegi panjang yang lebih besar</string>
+    <string name="too_large_draw_smaller">terlalu besar untuk %1$s: gambar lebih kecil</string>
+    <string name="cancel">Batal</string>
+    <string name="use_this_area">Pakai area ini</string>
+    <string name="parts_done">%1$s / %2$s bagian</string>
+    <string name="preparing">menyiapkan…</string>
+    <string name="errors_count">kesalahan: %1$d</string>
+    <string name="done">Selesai</string>
+    <string name="cancelling">membatalkan…</string>
+    <string name="members">Anggota</string>
+    <string name="no_members_heard">Belum ada anggota terdengar.</string>
+    <string name="tap_find_hint">Ketuk Temukan untuk melihat panah dan jarak ke seseorang di peta.</string>
+    <string name="member">anggota</string>
+    <string name="unlocated_seen">%1$s — tanpa lokasi, terakhir terdengar %2$s lalu</string>
+    <string name="bearing">arah %1$s</string>
+    <string name="rename">Ganti nama</string>
+    <string name="stop">Berhenti</string>
+    <string name="find">Temukan</string>
+    <string name="rename_member">Ganti nama anggota</string>
+    <string name="rename_hint">Hanya di ponsel ini. Kosong = nama pilihan orang itu.</string>
+    <string name="save">Simpan</string>
+    <string name="nearby_range">dekat (≤%1$d m: jangkauan %2$s)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">pihak lain</string>
+    <string name="link_exchanging">tautan: bertukar tawaran… (terdengar lewat %1$s)</string>
+    <string name="confirm_link">Konfirmasi tautan: %1$s</string>
+    <string name="link_waiting">tautan: %1$s — menunggu konfirmasi: %2$s</string>
+    <string name="link_chip">tautan: %1$s ▾</string>
+    <string name="link_quiet">%1$s diam — pakai %2$s?</string>
+    <string name="not_offered_by">%1$s tidak menawarkan ini</string>
+    <string name="fix_turn_on">Nyalakan</string>
+    <string name="fix_set_number">Masukkan nomor</string>
+    <string name="fix_allow">Izinkan</string>
+    <string name="via_others">lewat yang lain</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">aplikasi pesan</string>
+    <string name="age_s">%1$d dtk</string>
+    <string name="age_min">%1$d mnt</string>
+    <string name="waiting_gps">menunggu GPS</string>
+    <string name="gps_faked">GPS di sekitar dipalsukan, memakai jaringan ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">jaringan ±%1$d m</string>
+    <string name="provider_options">Opsi %1$s</string>
+    <string name="optional">(opsional)</string>
+    <string name="option_sent_only">hanya dikirim ke %1$s sebagai %2$s</string>
+    <string name="get_one_at">Dapatkan di %1$s</string>
+    <string name="coverage">Cakupan: %1$s</string>
+</resources>

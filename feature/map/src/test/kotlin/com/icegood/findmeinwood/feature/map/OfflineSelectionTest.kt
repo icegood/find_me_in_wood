@@ -12,6 +12,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [29])
 class OfflineSelectionTest {
+    private val ctx: android.content.Context = org.robolectric.RuntimeEnvironment.getApplication()
     private fun p(lat: Double, lon: Double) = GeoPoint(lat, lon)
 
     @Test
@@ -104,8 +105,8 @@ class OfflineSelectionTest {
 
     @Test
     fun `estimate label gives tiles and size`() {
-        assertTrue(estimateLabel(500L).contains("500 tiles"), estimateLabel(500L))
-        assertTrue(estimateLabel(2500L).contains("2.5 k tiles"), estimateLabel(2500L))
+        assertTrue(estimateLabel(ctx, 500L).contains("500 tiles"), estimateLabel(ctx, 500L))
+        assertTrue(estimateLabel(ctx, 2500L).contains("2.5 k tiles"), estimateLabel(ctx, 2500L))
     }
 
     @Test

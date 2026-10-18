@@ -31,12 +31,17 @@ const val MASTER_ME = "me"
 
 sealed interface CreateResult {
     data class Ok(val profile: StoredProfile, val password: String) : CreateResult
-    data class Error(val message: String) : CreateResult
+    /** [message] is a string resource; [arg] fills its placeholder. */
+    data class Error(@androidx.annotation.StringRes val message: Int, val arg: String? = null) : CreateResult {
+        fun text(ctx: android.content.Context): String = ctx.getString(message, arg)
+    }
 }
 
 sealed interface JoinResult {
     data class Ok(val profile: StoredProfile) : JoinResult
-    data class Error(val message: String) : JoinResult
+    data class Error(@androidx.annotation.StringRes val message: Int, val arg: String? = null) : JoinResult {
+        fun text(ctx: android.content.Context): String = ctx.getString(message, arg)
+    }
 }
 
 /**
@@ -93,12 +98,12 @@ object ProfileStore {
     /** FR-1.1: derive keys from the password, generate a per-network identity. */
     fun create(name: String, password: String?): CreateResult {
         if (name.length !in 1..64) {
-            return CreateResult.Error("Name must be 1–64 characters")
+            return CreateResult.Error(R.string.err_name_length)
         }
         val supplied = password?.trim()?.takeIf { it.isNotEmpty() }
         // FR-2.3: user passwords must be strong; generated ones are >=128-bit.
         if (supplied != null && !strongEnough(supplied)) {
-            return CreateResult.Error("Password too weak: use 16+ characters or 6+ words")
+            return CreateResult.Error(R.string.err_password_weak)
         }
         val secret = supplied ?: generateSecret()
         return CreateResult.Ok(storedFor(name, secret).copy(masterIdHex = MASTER_ME), secret)
@@ -110,10 +115,10 @@ object ProfileStore {
      * is caught right here, before any traffic; [name] is only a local label.
      */
     fun join(name: String, password: String, expected: NetworkId? = null): JoinResult {
-        if (name.length !in 1..64) return JoinResult.Error("Name must be 1–64 characters")
-        if (password.isEmpty()) return JoinResult.Error("Enter the network password")
+        if (name.length !in 1..64) return JoinResult.Error(R.string.err_name_length)
+        if (password.isEmpty()) return JoinResult.Error(R.string.err_enter_password)
         if (expected != null && networkIdOf(password) != expected) {
-            return JoinResult.Error("Wrong password for “$name”")
+            return JoinResult.Error(R.string.err_wrong_password, name)
         }
         return JoinResult.Ok(storedFor(name, password))
     }

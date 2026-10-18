@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">μόνο ΗΠΑ</string>
+    <string name="option_api_key">Κλειδί API</string>
+    <string name="option_arcgis_token">Token ArcGIS</string>
+    <string name="option_access_token">Token πρόσβασης</string>
+    <string name="estimate_k_tiles">%1$s χιλ. πλακίδια · ~%2$s MB</string>
+    <string name="estimate_tiles">πλακίδια: %1$s · ~%2$s MB</string>
+    <string name="downloading">Λήψη «%1$s»</string>
+    <string name="saved_offline">Το «%1$s» αποθηκεύτηκε για χρήση εκτός σύνδεσης</string>
+    <string name="download_error">Σφάλμα λήψης: %1$s</string>
+    <string name="distance_km">%1$s χλμ.</string>
+    <string name="distance_m">%1$d μ.</string>
+    <string name="layer_offline">Εκτός σύνδεσης (%1$s)</string>
+    <string name="kind_satellite">δορυφόρος</string>
+    <string name="kind_streets">δρόμοι</string>
+    <string name="needs">χρειάζεται %1$s</string>
+    <string name="option_set">%1$s ορίστηκε</string>
+    <string-array name="compass_points">
+        <item>Β</item>
+        <item>ΒΑ</item>
+        <item>Α</item>
+        <item>ΝΑ</item>
+        <item>Ν</item>
+        <item>ΝΔ</item>
+        <item>Δ</item>
+        <item>ΒΔ</item>
+    </string-array>
+    <string name="area_name_default">Περιοχή %1$s</string>
+    <string name="save_offline_area">Αποθήκευση περιοχής εκτός σύνδεσης</string>
+    <string name="area_name">Όνομα περιοχής</string>
+    <string name="area_trail_detail">%1$s, έως τη λεπτομέρεια μονοπατιών · %2$s</string>
+    <string name="area_too_large">Πολύ μεγάλη για %1$s (έως %2$s πλακίδια σε λεπτομέρεια μονοπατιών): σχεδιάστε μικρότερη περιοχή.</string>
+    <string name="download">Λήψη</string>
+    <string name="nearby_within">κοντά ≤%1$d μ.</string>
+    <string name="no_network_running">Κανένα δίκτυο ενεργό</string>
+    <string name="others_heard">ακούγονται άλλοι: %1$d</string>
+    <string name="map_chip">Χάρτης: %1$s ▾</string>
+    <string name="offline">Εκτός σύνδεσης</string>
+    <string name="offline_hint">αποθηκευμένες περιοχές και μέρη που είδατε από %1$s — χωρίς internet</string>
+    <string name="provider_options_menu">Επιλογές %1$s…</string>
+    <string name="provider_needs">Το %1$s χρειάζεται %2$s</string>
+    <string name="set_it">Ορισμός</string>
+    <string name="finding">Εύρεση: %1$s</string>
+    <string name="too_rough_direction">οι θέσεις είναι πολύ ανακριβείς για κατεύθυνση</string>
+    <string name="relayed">αναμεταδόθηκε</string>
+    <string name="waiting_first_fix">αναμονή πρώτης θέσης…</string>
+    <string name="save_area_offline">Αποθήκευση αυτής της περιοχής εκτός σύνδεσης</string>
+    <string name="drag_rectangle">σύρετε ένα ορθογώνιο στον χάρτη</string>
+    <string name="drag_larger">σύρετε μεγαλύτερο ορθογώνιο</string>
+    <string name="too_large_draw_smaller">πολύ μεγάλη για %1$s: σχεδιάστε μικρότερη</string>
+    <string name="cancel">Ακύρωση</string>
+    <string name="use_this_area">Χρήση αυτής της περιοχής</string>
+    <string name="parts_done">%1$s / %2$s τμήματα</string>
+    <string name="preparing">προετοιμασία…</string>
+    <string name="errors_count">σφάλματα: %1$d</string>
+    <string name="done">Τέλος</string>
+    <string name="cancelling">ακύρωση…</string>
+    <string name="members">Μέλη</string>
+    <string name="no_members_heard">Δεν ακούγεται ακόμη κανένα μέλος.</string>
+    <string name="tap_find_hint">Πατήστε Εύρεση για βέλος και απόσταση προς κάποιον στον χάρτη.</string>
+    <string name="member">μέλος</string>
+    <string name="unlocated_seen">%1$s — χωρίς τοποθεσία, ακούστηκε τελευταία πριν από %2$s</string>
+    <string name="bearing">κατεύθυνση %1$s</string>
+    <string name="rename">Μετονομασία</string>
+    <string name="stop">Διακοπή</string>
+    <string name="find">Εύρεση</string>
+    <string name="rename_member">Μετονομασία μέλους</string>
+    <string name="rename_hint">Μόνο σε αυτό το τηλέφωνο. Κενό = το όνομα που επέλεξε το άτομο.</string>
+    <string name="save">Αποθήκευση</string>
+    <string name="nearby_range">κοντά (≤%1$d μ.: εμβέλεια %2$s)</string>
+    <string name="plus_minus_m">±%1$d μ.</string>
+    <string name="them">η άλλη πλευρά</string>
+    <string name="link_exchanging">σύνδεση: ανταλλαγή προσφορών… (ακούστηκε μέσω %1$s)</string>
+    <string name="confirm_link">Επιβεβαίωση σύνδεσης: %1$s</string>
+    <string name="link_waiting">σύνδεση: %1$s — αναμονή επιβεβαίωσης: %2$s</string>
+    <string name="link_chip">σύνδεση: %1$s ▾</string>
+    <string name="link_quiet">Το %1$s σιωπά — χρήση %2$s;</string>
+    <string name="not_offered_by">%1$s: δεν το προσφέρει</string>
+    <string name="fix_turn_on">Ενεργοποίηση</string>
+    <string name="fix_set_number">Ορισμός αριθμού</string>
+    <string name="fix_allow">Να επιτρέπεται</string>
+    <string name="via_others">μέσω άλλων</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">εφαρμογή μηνυμάτων</string>
+    <string name="age_s">%1$d δευτ.</string>
+    <string name="age_min">%1$d λεπ.</string>
+    <string name="waiting_gps">αναμονή GPS</string>
+    <string name="gps_faked">πλαστό GPS κοντά, χρήση δικτύου ±%1$d μ.</string>
+    <string name="fix_gps">GPS ±%1$d μ.</string>
+    <string name="fix_network">δίκτυο ±%1$d μ.</string>
+    <string name="provider_options">Επιλογές %1$s</string>
+    <string name="optional">(προαιρετικό)</string>
+    <string name="option_sent_only">στέλνεται μόνο στο %1$s ως %2$s</string>
+    <string name="get_one_at">Αποκτήστε το στο %1$s</string>
+    <string name="coverage">Κάλυψη: %1$s</string>
+</resources>

@@ -1,5 +1,6 @@
 package com.icegood.findmeinwood.app
 
+import android.content.Context
 import com.icegood.findmeinwood.core.model.LinkFix
 import com.icegood.findmeinwood.core.model.LinkOffer
 import com.icegood.findmeinwood.core.model.LinkStatus
@@ -7,7 +8,7 @@ import com.icegood.findmeinwood.core.model.TransportId
 import com.icegood.findmeinwood.transport.api.RadioState
 
 /**
- * Every supported link on this phone, usable or greyed with the reason; pure, JVM-tested.
+ * Every supported link on this phone, usable or greyed with the reason.
  * The usable ones are exactly what this phone offers in the LNP/3 handshake.
  */
 internal object LinkAvailability {
@@ -22,28 +23,33 @@ internal object LinkAvailability {
         val onSatellite: Boolean?,
     )
 
-    fun statuses(i: Inputs): List<LinkStatus> {
+    fun statuses(ctx: Context, i: Inputs): List<LinkStatus> {
+        fun s(id: Int) = ctx.getString(id)
+        val smsLabel = s(R.string.transport_sms)
         val sms = when {
-            i.phoneNumber.isBlank() -> LinkStatus("SMS", TransportId.SMS, "set this phone's number", LinkFix.SET_PHONE_NUMBER)
-            !i.smsPermitted -> LinkStatus("SMS", TransportId.SMS, "allow the app to send and receive texts", LinkFix.ALLOW_SMS)
-            else -> LinkStatus("SMS", TransportId.SMS, addr = i.phoneNumber.trim())
+            i.phoneNumber.isBlank() -> LinkStatus(smsLabel, TransportId.SMS, s(R.string.link_set_number), LinkFix.SET_PHONE_NUMBER)
+            !i.smsPermitted -> LinkStatus(smsLabel, TransportId.SMS, s(R.string.link_allow_sms), LinkFix.ALLOW_SMS)
+            else -> LinkStatus(smsLabel, TransportId.SMS, addr = i.phoneNumber.trim())
         }
         val satellite = when {
-            i.sdk < 35 -> "not supported before Android 15"
-            sms.reason != null -> "goes by SMS: set SMS up first"
-            i.onSatellite == true -> "on satellite now: SMS goes through it"
-            else -> "used by SMS by itself when the carrier switches to satellite (not now)"
+            i.sdk < 35 -> s(R.string.satellite_unsupported)
+            sms.reason != null -> s(R.string.satellite_needs_sms)
+            i.onSatellite == true -> s(R.string.satellite_now)
+            else -> s(R.string.satellite_not_now)
         }
+        val bt = s(R.string.transport_bluetooth)
+        val wd = s(R.string.transport_wifi_direct)
+        val lora = s(R.string.transport_lora)
         return listOf(
-            if (i.bluetoothOn) LinkStatus("Bluetooth", TransportId.BLUETOOTH)
-            else LinkStatus("Bluetooth", TransportId.BLUETOOTH, "Bluetooth is off", LinkFix.TURN_ON_BLUETOOTH),
-            if (i.wifiOn) LinkStatus("Wi-Fi Direct", TransportId.WIFI_DIRECT)
-            else LinkStatus("Wi-Fi Direct", TransportId.WIFI_DIRECT, "Wi-Fi is off", LinkFix.TURN_ON_WIFI),
-            if (i.lora == RadioState.READY) LinkStatus("LoRa", TransportId.LORA)
-            else LinkStatus("LoRa", TransportId.LORA, "no LoRa node connected"),
+            if (i.bluetoothOn) LinkStatus(bt, TransportId.BLUETOOTH)
+            else LinkStatus(bt, TransportId.BLUETOOTH, s(R.string.bluetooth_is_off), LinkFix.TURN_ON_BLUETOOTH),
+            if (i.wifiOn) LinkStatus(wd, TransportId.WIFI_DIRECT)
+            else LinkStatus(wd, TransportId.WIFI_DIRECT, s(R.string.wifi_is_off), LinkFix.TURN_ON_WIFI),
+            if (i.lora == RadioState.READY) LinkStatus(lora, TransportId.LORA)
+            else LinkStatus(lora, TransportId.LORA, s(R.string.no_lora_node)),
             sms,
             LinkStatus(
-                "Satellite", null,
+                s(R.string.satellite), null,
                 // Satellite is never a link of its own: the note just says how it is used.
                 satellite,
                 if (i.sdk >= 35) sms.fix else null,

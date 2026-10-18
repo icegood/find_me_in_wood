@@ -28,9 +28,10 @@
 
     <application
         android:name=".FmiwApp"
-        android:label="find me in wood"
+        android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
         android:theme="@style/Theme.FindMeInWood">
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask">
             <intent-filter>

@@ -207,6 +207,10 @@ frame is encrypted and authenticated with the network's key.
 - NFR-4 Core modules build and test on the JVM; ≥95 % line coverage on the gated scope.
 - NFR-5 Diagnostics are debug-level logs under one tag `icegood.fmiw`, silent in release.
 - NFR-6 Background: a foreground service with a notification runs radios and GNSS.
+- NFR-7 Every visible text is a string resource, in English and 40 translations kept in
+  `scripts/l10n` (`gen.py` builds `res/values-*` and checks keys and placeholders); the
+  phone's language decides, and Android 13+ offers a per-app language. Right-to-left
+  languages lay out mirrored. The app name stays "find me in wood" in every language.
 
 ## 5. Out of scope (v1)
 

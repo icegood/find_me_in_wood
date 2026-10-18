@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from scripts/l10n sources; edit those. -->
+<resources>
+    <string name="coverage_usa">ainult USA</string>
+    <string name="option_api_key">API-võti</string>
+    <string name="option_arcgis_token">ArcGIS-i märk</string>
+    <string name="option_access_token">Juurdepääsumärk</string>
+    <string name="estimate_k_tiles">%1$s tuh paani · ~%2$s MB</string>
+    <string name="estimate_tiles">paane: %1$s · ~%2$s MB</string>
+    <string name="downloading">Laaditakse „%1$s“</string>
+    <string name="saved_offline">„%1$s“ salvestatud võrguühenduseta kasutuseks</string>
+    <string name="download_error">Allalaadimise viga: %1$s</string>
+    <string name="distance_km">%1$s km</string>
+    <string name="distance_m">%1$d m</string>
+    <string name="layer_offline">Võrguühenduseta (%1$s)</string>
+    <string name="kind_satellite">satelliit</string>
+    <string name="kind_streets">tänavad</string>
+    <string name="needs">vajab: %1$s</string>
+    <string name="option_set">%1$s määratud</string>
+    <string-array name="compass_points">
+        <item>P</item>
+        <item>KI</item>
+        <item>I</item>
+        <item>KA</item>
+        <item>L</item>
+        <item>EL</item>
+        <item>E</item>
+        <item>LO</item>
+    </string-array>
+    <string name="area_name_default">Ala %1$s</string>
+    <string name="save_offline_area">Salvesta võrguühenduseta ala</string>
+    <string name="area_name">Ala nimi</string>
+    <string name="area_trail_detail">%1$s, kuni radade detailini · %2$s</string>
+    <string name="area_too_large">Liiga suur teenusele %1$s (kuni %2$s paani radade detailiga): joonistage väiksem ala.</string>
+    <string name="download">Laadi alla</string>
+    <string name="nearby_within">lähedal ≤%1$d m</string>
+    <string name="no_network_running">Ükski võrk ei tööta</string>
+    <string name="others_heard">teisi kuulda: %1$d</string>
+    <string name="map_chip">Kaart: %1$s ▾</string>
+    <string name="offline">Võrguühenduseta</string>
+    <string name="offline_hint">salvestatud alad ja vaadatud kohad teenusest %1$s — internetti pole vaja</string>
+    <string name="provider_options_menu">%1$s seaded…</string>
+    <string name="provider_needs">%1$s vajab: %2$s</string>
+    <string name="set_it">Määra</string>
+    <string name="finding">Otsitakse: %1$s</string>
+    <string name="too_rough_direction">asukohad on suuna jaoks liiga ebatäpsed</string>
+    <string name="relayed">edastatud</string>
+    <string name="waiting_first_fix">ootab esimest asukohta…</string>
+    <string name="save_area_offline">Salvesta see ala võrguühenduseta</string>
+    <string name="drag_rectangle">lohistage kaardile ristkülik</string>
+    <string name="drag_larger">lohistage suurem ristkülik</string>
+    <string name="too_large_draw_smaller">liiga suur teenusele %1$s: joonistage väiksem</string>
+    <string name="cancel">Tühista</string>
+    <string name="use_this_area">Kasuta seda ala</string>
+    <string name="parts_done">%1$s / %2$s osa</string>
+    <string name="preparing">ettevalmistus…</string>
+    <string name="errors_count">vigu: %1$d</string>
+    <string name="done">Valmis</string>
+    <string name="cancelling">tühistamine…</string>
+    <string name="members">Liikmed</string>
+    <string name="no_members_heard">Liikmeid pole veel kuulda.</string>
+    <string name="tap_find_hint">Puudutage Leia, et saada nool ja kaugus kellegini kaardil.</string>
+    <string name="member">liige</string>
+    <string name="unlocated_seen">%1$s — asukohata, viimati kuuldud %2$s tagasi</string>
+    <string name="bearing">suund %1$s</string>
+    <string name="rename">Nimeta ümber</string>
+    <string name="stop">Peata</string>
+    <string name="find">Leia</string>
+    <string name="rename_member">Nimeta liige ümber</string>
+    <string name="rename_hint">Ainult selles telefonis. Tühi = inimese enda valitud nimi.</string>
+    <string name="save">Salvesta</string>
+    <string name="nearby_range">lähedal (≤%1$d m: ühenduse %2$s levi)</string>
+    <string name="plus_minus_m">±%1$d m</string>
+    <string name="them">teine pool</string>
+    <string name="link_exchanging">ühendus: pakkumiste vahetus… (kuulda: %1$s)</string>
+    <string name="confirm_link">Kinnita ühendus: %1$s</string>
+    <string name="link_waiting">ühendus: %1$s — ootab kinnitust: %2$s</string>
+    <string name="link_chip">ühendus: %1$s ▾</string>
+    <string name="link_quiet">%1$s vaikib — kasutada %2$s?</string>
+    <string name="not_offered_by">%1$s seda ei paku</string>
+    <string name="fix_turn_on">Lülita sisse</string>
+    <string name="fix_set_number">Sisesta number</string>
+    <string name="fix_allow">Luba</string>
+    <string name="via_others">teiste kaudu</string>
+    <string name="via_bluetooth">Bluetooth</string>
+    <string name="via_wifi_direct">Wi-Fi Direct</string>
+    <string name="via_lora">LoRa</string>
+    <string name="via_sms">SMS</string>
+    <string name="via_messenger">sõnumirakendus</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_min">%1$d min</string>
+    <string name="waiting_gps">ootab GPS-i</string>
+    <string name="gps_faked">lähedal olev GPS on võltsitud, kasutatakse võrku ±%1$d m</string>
+    <string name="fix_gps">GPS ±%1$d m</string>
+    <string name="fix_network">võrk ±%1$d m</string>
+    <string name="provider_options">%1$s seaded</string>
+    <string name="optional">(valikuline)</string>
+    <string name="option_sent_only">saadetakse ainult teenusele %1$s kujul %2$s</string>
+    <string name="get_one_at">Hankige aadressilt %1$s</string>
+    <string name="coverage">Katvus: %1$s</string>
+</resources>

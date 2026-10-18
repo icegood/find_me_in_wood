@@ -106,8 +106,8 @@ fun offlineTiles(bbox: GeoBox, provider: TileProvider): Long? {
 }
 
 /** Human-readable estimate for the confirmation dialog. */
-fun estimateLabel(tiles: Long, tileBytes: Long = ESTIMATED_TILE_BYTES): String = when {
-    tiles >= 1000 -> "%.1f k tiles · ~%.0f MB".format(tiles / 1000.0, tiles * tileBytes / 1048576.0)
-    else -> "$tiles tiles · ~%.1f MB".format(tiles * tileBytes / 1048576.0)
+fun estimateLabel(ctx: android.content.Context, tiles: Long, tileBytes: Long = ESTIMATED_TILE_BYTES): String = when {
+    tiles >= 1000 -> ctx.getString(R.string.estimate_k_tiles, "%.1f".format(tiles / 1000.0), "%.0f".format(tiles * tileBytes / 1048576.0))
+    else -> ctx.getString(R.string.estimate_tiles, tiles.toString(), "%.1f".format(tiles * tileBytes / 1048576.0))
 }
 
