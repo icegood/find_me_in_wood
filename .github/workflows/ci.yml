@@ -60,6 +60,21 @@ jobs:
           name: app-debug-apk
           path: app/build/outputs/apk/debug/*.apk
 
+      # The release job only signs and publishes these: no second build.
+      - name: Build release bundle
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: ./gradlew bundleRelease --stacktrace
+
+      - name: Upload unsigned release outputs
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-unsigned
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/bundle/release/*.aab
+
       - name: Upload coverage site (artifact)
         uses: actions/upload-artifact@v4
         with:
@@ -96,7 +111,8 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-  # Every push to main that builds and passes tests becomes a release with its APKs.
+  # Every push to main that builds and passes tests becomes a release with its APKs,
+  # signed here from the build job's outputs.
   release:
     name: Publish release
     needs: build
@@ -109,18 +125,15 @@ jobs:
         with:
           fetch-depth: 0  # the version is the commit count
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
+      - name: Download unsigned outputs
+        uses: actions/download-artifact@v4
         with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+          name: release-unsigned
+          path: out
 
       # Same signing key as icegood/home_media_library (CN=find me in wood,
       # SHA-256 f5ca39b5...). PKCS12, so the key password defaults to the store one.
-      - name: Decode release keystore
+      - name: Sign APKs & bundle
         env:
           KEYSTORE_JKS_BASE64: ${{ secrets.ANDROID_KEYSTORE_JKS_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -132,27 +145,31 @@ jobs:
           : "${KEYSTORE_JKS_BASE64:?ANDROID_KEYSTORE_JKS_BASE64 secret is not set}"
           : "${KEYSTORE_PASSWORD:?ANDROID_KEYSTORE_PASSWORD secret is not set}"
           : "${KEYSTORE_KEY_ALIAS:?ANDROID_KEYSTORE_KEY_ALIAS secret is not set}"
-          mkdir -p "$RUNNER_TEMP/keystore"
-          printf '%s' "$KEYSTORE_JKS_BASE64" | base64 -d > "$RUNNER_TEMP/keystore/release.jks"
-          chmod 600 "$RUNNER_TEMP/keystore/release.jks"
-          # Same mechanism as home_media_library: gradle reads a gitignored
-          # keystore.properties at the repo root.
-          umask 077
-          {
-            printf 'storeFile=%s\n' "$RUNNER_TEMP/keystore/release.jks"
-            printf 'storePassword=%s\n' "$KEYSTORE_PASSWORD"
-            printf 'keyAlias=%s\n' "$KEYSTORE_KEY_ALIAS"
-            printf 'keyPassword=%s\n' "${KEYSTORE_KEY_PASSWORD:-}"
-          } > keystore.properties
-
-      - name: Build APKs & bundle
-        run: ./gradlew assembleDebug bundleRelease assembleRelease --stacktrace
+          export KEY_PASS="${KEYSTORE_KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+          ks="$RUNNER_TEMP/release.jks"
+          printf '%s' "$KEYSTORE_JKS_BASE64" | base64 -d > "$ks"
+          chmod 600 "$ks"
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          mkdir -p dist
+          sign() {
+            "$apksigner" sign --ks "$ks" --ks-pass env:KEYSTORE_PASSWORD \
+              --ks-key-alias "$KEYSTORE_KEY_ALIAS" --key-pass env:KEY_PASS --out "$2" "$1"
+          }
+          # The debug APK carries the runner's throwaway key: re-signed with the real one.
+          sign out/apk/release/app-release*.apk dist/app-release.apk
+          sign out/apk/debug/app-debug.apk dist/app-debug.apk
+          cp out/bundle/release/app-release.aab dist/app-release.aab
+          jarsigner -keystore "$ks" -storepass:env KEYSTORE_PASSWORD -keypass:env KEY_PASS \
+            dist/app-release.aab "$KEYSTORE_KEY_ALIAS"
+          rm -f "$ks"
 
       - name: Verify release signer
         run: |
           apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          "$apksigner" verify --print-certs app/build/outputs/apk/release/*.apk \
-            | grep -qi 'SHA-256 digest: f5ca39b5fa78523bde89375cd9c3676c9c2ac2b872198369779b473c49df34ad'
+          for a in dist/*.apk; do
+            "$apksigner" verify --print-certs "$a" \
+              | grep -qi 'SHA-256 digest: f5ca39b5fa78523bde89375cd9c3676c9c2ac2b872198369779b473c49df34ad'
+          done
 
       - name: Version
         id: version
@@ -167,6 +184,6 @@ jobs:
           generate_release_notes: true
           make_latest: true
           files: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/bundle/release/*.aab
+            dist/app-release.apk
+            dist/app-debug.apk
+            dist/app-release.aab
