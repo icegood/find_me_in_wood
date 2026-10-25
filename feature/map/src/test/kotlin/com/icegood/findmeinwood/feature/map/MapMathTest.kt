@@ -108,4 +108,24 @@ class MapMathTest {
         )
         kotlin.test.assertEquals("Set number", fixLabel(ctx, com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER))
     }
+
+    @Test
+    fun `the link verdict says what the pair still lacks`() {
+        val bt = com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH
+        val wd = com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT
+        val base = com.icegood.findmeinwood.core.session.PeerState(
+            com.icegood.findmeinwood.core.model.MemberId(ByteArray(32)), lastSeenMs = 1_000_000, lastSeq = 0u,
+        )
+        val now = 1_000_000L
+        kotlin.test.assertNull(linkVerdict(base, now), "offers not exchanged yet")
+        val common = base.copy(linkCommon = listOf(bt, wd))
+        kotlin.test.assertEquals(LinkVerdict(LinkVerdict.Kind.DECIDE, listOf(wd, bt)), linkVerdict(common.copy(linkAllowedByPeer = listOf(wd)), now))
+        kotlin.test.assertTrue(needsLinkDecision(listOf(common)))
+        kotlin.test.assertEquals(LinkVerdict(LinkVerdict.Kind.WAIT_PEER, listOf(wd)), linkVerdict(common.copy(linkAllowedByMe = listOf(wd), linkDeniedByMe = listOf(bt)), now))
+        kotlin.test.assertEquals(LinkVerdict.Kind.ALL_OFF, linkVerdict(common.copy(linkDeniedByMe = listOf(bt, wd), linkAllowedByPeer = listOf(wd)), now)?.kind)
+        val agreed = common.copy(link = wd, linkAllowedByMe = listOf(wd), linkAllowedByPeer = listOf(wd), linkDeniedByMe = listOf(bt))
+        kotlin.test.assertEquals(LinkVerdict(LinkVerdict.Kind.CONNECTED, listOf(wd)), linkVerdict(agreed, now))
+        kotlin.test.assertEquals(LinkVerdict.Kind.SILENT, linkVerdict(agreed, now + 4 * 60_000)?.kind)
+        kotlin.test.assertFalse(needsLinkDecision(listOf(agreed)))
+    }
 }

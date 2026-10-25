@@ -103,4 +103,9 @@
     <string name="option_sent_only">सिर्फ़ %1$s को %2$s के रूप में भेजा जाता है</string>
     <string name="get_one_at">%1$s पर पाएँ</string>
     <string name="coverage">कवरेज: %1$s</string>
+    <string name="link_state_ok">%1$s से जुड़ा</string>
+    <string name="link_state_decide">जुड़ा नहीं: नीचे %1$s की अनुमति दें</string>
+    <string name="link_state_wait">जुड़ा नहीं: %2$s को अपने फ़ोन पर %1$s की अनुमति देनी होगी</string>
+    <string name="link_state_off">जुड़ा नहीं: आपने %1$s के साथ हर लिंक मना कर दिया</string>
+    <string name="link_state_silent">%1$s से नहीं सुना: फ़ोन सो रहा है, रेडियो बंद है या दायरे से बाहर</string>
 </resources>

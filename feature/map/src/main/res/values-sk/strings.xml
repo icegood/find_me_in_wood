@@ -103,4 +103,9 @@
     <string name="option_sent_only">posiela sa len do %1$s ako %2$s</string>
     <string name="get_one_at">Získate na %1$s</string>
     <string name="coverage">Pokrytie: %1$s</string>
+    <string name="link_state_ok">Spojené cez %1$s</string>
+    <string name="link_state_decide">Nespojené: povoľte %1$s nižšie</string>
+    <string name="link_state_wait">Nespojené: %2$s musí povoliť %1$s na svojom telefóne</string>
+    <string name="link_state_off">Nespojené: odmietli ste všetky spojenia s %1$s</string>
+    <string name="link_state_silent">Nepočuť %1$s: telefón spí, rádio vypnuté alebo mimo dosahu</string>
 </resources>

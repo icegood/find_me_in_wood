@@ -993,6 +993,20 @@ private fun LinkRow(
                 color = Color.Gray,
             )
         }
+        linkVerdict(peer, System.currentTimeMillis())?.let { v ->
+            val radios = v.radios.joinToString(", ") { viaLabel(ctx, it) }
+            Text(
+                when (v.kind) {
+                    LinkVerdict.Kind.CONNECTED -> stringResource(R.string.link_state_ok, radios)
+                    LinkVerdict.Kind.DECIDE -> stringResource(R.string.link_state_decide, radios)
+                    LinkVerdict.Kind.WAIT_PEER -> stringResource(R.string.link_state_wait, radios, them)
+                    LinkVerdict.Kind.ALL_OFF -> stringResource(R.string.link_state_off, them)
+                    LinkVerdict.Kind.SILENT -> stringResource(R.string.link_state_silent, age(ctx, peer.lastSeenMs))
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = if (v.kind == LinkVerdict.Kind.CONNECTED) Color.Unspecified else MaterialTheme.colorScheme.error,
+            )
+        }
         peer.linkCommon.forEach { t -> TransportDecision(peer, t, them, onAllow) }
         val link = peer.link ?: return@Column
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1025,6 +1039,37 @@ private fun LinkRow(
         }
     }
 }
+
+/**
+ * The pair's link in one line, so the user sees what is missing: connected, a decision
+ * of theirs or of this user, every link turned down, or the member not heard although a
+ * link is agreed. Null while the offers are still being exchanged.
+ */
+internal data class LinkVerdict(val kind: Kind, val radios: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList()) {
+    enum class Kind { CONNECTED, DECIDE, WAIT_PEER, ALL_OFF, SILENT }
+}
+
+internal fun linkVerdict(peer: PeerState, nowMs: Long): LinkVerdict? {
+    if (peer.linkCommon.isEmpty()) return null
+    // What the peer allowed first: allowing that one connects at once.
+    val open = peer.linkCommon.filter { it !in peer.linkAllowedByMe && it !in peer.linkDeniedByMe }
+        .sortedBy { it !in peer.linkAllowedByPeer }
+    val waiting = peer.linkCommon.filter { linkDecision(peer, it) == LinkDecision.WAITING }
+    return when {
+        peer.link != null && nowMs - peer.lastSeenMs > SILENT_AFTER_MS -> LinkVerdict(LinkVerdict.Kind.SILENT)
+        peer.link != null -> LinkVerdict(LinkVerdict.Kind.CONNECTED, listOfNotNull(peer.link))
+        open.isNotEmpty() -> LinkVerdict(LinkVerdict.Kind.DECIDE, open)
+        waiting.isNotEmpty() -> LinkVerdict(LinkVerdict.Kind.WAIT_PEER, waiting)
+        else -> LinkVerdict(LinkVerdict.Kind.ALL_OFF)
+    }
+}
+
+/** Some member waits for this user to allow or turn down a link (marks the Members tab). */
+fun needsLinkDecision(peers: Collection<PeerState>): Boolean =
+    peers.any { linkVerdict(it, 0L)?.kind == LinkVerdict.Kind.DECIDE }
+
+/** No beacon for three intervals (60 s each): the member is called silent. */
+private const val SILENT_AFTER_MS = 3 * 60_000L
 
 /** What one transport both offer means for the pair, as shown next to its control. */
 internal enum class LinkDecision { CONNECTED, WAITING, OFF, PEER_WANTS, UNDECIDED }

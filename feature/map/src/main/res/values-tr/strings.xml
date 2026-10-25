@@ -103,4 +103,9 @@
     <string name="option_sent_only">yalnızca %1$s adresine %2$s olarak gönderilir</string>
     <string name="get_one_at">Şuradan alın: %1$s</string>
     <string name="coverage">Kapsam: %1$s</string>
+    <string name="link_state_ok">%1$s ile bağlı</string>
+    <string name="link_state_decide">Bağlı değil: aşağıda %1$s izni verin</string>
+    <string name="link_state_wait">Bağlı değil: %2$s kendi telefonunda %1$s izni vermeli</string>
+    <string name="link_state_off">Bağlı değil: %1$s ile tüm bağlantıları reddettiniz</string>
+    <string name="link_state_silent">%1$s süredir duyulmuyor: telefon uykuda, radyo kapalı veya menzil dışı</string>
 </resources>

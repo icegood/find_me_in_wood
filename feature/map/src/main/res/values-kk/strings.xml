@@ -103,4 +103,9 @@
     <string name="option_sent_only">тек %1$s қызметіне %2$s ретінде жіберіледі</string>
     <string name="get_one_at">Мына жерден алыңыз: %1$s</string>
     <string name="coverage">Қамту: %1$s</string>
+    <string name="link_state_ok">%1$s арқылы қосылды</string>
+    <string name="link_state_decide">Байланыс жоқ: төменде %1$s рұқсат етіңіз</string>
+    <string name="link_state_wait">Байланыс жоқ: %2$s өз телефонында %1$s рұқсат етуі керек</string>
+    <string name="link_state_off">Байланыс жоқ: %1$s бойынша барлық байланыстан бас тарттыңыз</string>
+    <string name="link_state_silent">%1$s бойы естілмейді: телефон ұйқыда, радио өшірулі немесе аймақтан тыс</string>
 </resources>

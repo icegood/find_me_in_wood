@@ -103,4 +103,9 @@
     <string name="option_sent_only">dihantar hanya kepada %1$s sebagai %2$s</string>
     <string name="get_one_at">Dapatkan di %1$s</string>
     <string name="coverage">Liputan: %1$s</string>
+    <string name="link_state_ok">Disambung melalui %1$s</string>
+    <string name="link_state_decide">Tidak disambung: benarkan %1$s di bawah</string>
+    <string name="link_state_wait">Tidak disambung: %2$s perlu membenarkan %1$s pada telefonnya</string>
+    <string name="link_state_off">Tidak disambung: anda menolak semua pautan dengan %1$s</string>
+    <string name="link_state_silent">Tidak kedengaran selama %1$s: telefon tidur, radio dimatikan atau di luar jangkauan</string>
 </resources>

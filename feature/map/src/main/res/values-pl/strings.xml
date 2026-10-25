@@ -103,4 +103,9 @@
     <string name="option_sent_only">wysyłane tylko do %1$s jako %2$s</string>
     <string name="get_one_at">Uzyskaj na %1$s</string>
     <string name="coverage">Zasięg: %1$s</string>
+    <string name="link_state_ok">Połączono przez %1$s</string>
+    <string name="link_state_decide">Brak połączenia: zezwól na %1$s poniżej</string>
+    <string name="link_state_wait">Brak połączenia: %2$s musi zezwolić na %1$s na swoim telefonie</string>
+    <string name="link_state_off">Brak połączenia: odrzucono wszystkie łącza z %1$s</string>
+    <string name="link_state_silent">Brak sygnału od %1$s: telefon uśpiony, radio wyłączone lub poza zasięgiem</string>
 </resources>

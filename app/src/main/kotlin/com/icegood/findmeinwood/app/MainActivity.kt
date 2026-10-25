@@ -265,7 +265,9 @@ class MainActivity : ComponentActivity() {
                 navItem(stringResource(R.string.tab_map), tab == "map") { tab = "map" }
                 navItem(stringResource(R.string.tab_networks), tab == "networks") { tab = "networks" }
                 navItem(stringResource(R.string.tab_chat), tab == "chat") { tab = "chat" }
-                navItem(stringResource(R.string.tab_peers), tab == "peers") { tab = "peers" }
+                // "!" while a member waits for this user to allow a link: nothing connects before.
+                val decide = com.icegood.findmeinwood.feature.map.needsLinkDecision(namedPeers.collectAsState().value.values)
+                navItem((if (decide) "! " else "") + stringResource(R.string.tab_peers), tab == "peers") { tab = "peers" }
                 navItem(stringResource(R.string.tab_discover), tab == "discover") { tab = "discover" }
                 navItem(stringResource(R.string.tab_settings), tab == "settings") { tab = "settings" }
             }

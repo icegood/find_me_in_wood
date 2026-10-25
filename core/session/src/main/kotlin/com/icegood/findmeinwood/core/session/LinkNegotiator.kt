@@ -250,10 +250,12 @@ class LinkNegotiator(
     fun tick(): List<Switch> = peers.mapNotNull { (id, p) -> changed(id, p) }
 
     /**
-     * Radios frames go out on: those this user allowed for any peer, or every radio (null)
-     * while nobody was met yet or a peer heard lately waits for this user's decision (its
-     * offers and the handshake must get through). Radios outside [RUNGS] are not
-     * negotiated and never limited.
+     * Radios frames go out on: those this user allowed or has not decided on yet for any
+     * peer, or every radio (null) while nobody was met yet or a peer heard lately waits for
+     * this user's decision (its offers and the handshake must get through). Only a radio
+     * turned down for every peer goes quiet: an undecided one keeps carrying frames even
+     * when the peer fell silent, else two undecided phones would never hear each other
+     * again. Radios outside [RUNGS] are not negotiated and never limited.
      */
     @Synchronized
     fun radios(): Set<TransportId>? {
@@ -261,7 +263,7 @@ class LinkNegotiator(
         val now = nowMs()
         val pending = peers.any { (id, p) -> heardLately(p, now) && (p.offers == null || undecided(id, p).isNotEmpty()) }
         if (pending) return null
-        return peers.flatMap { (id, p) -> allowedByMe(id, p) }.toSet()
+        return peers.flatMap { (id, p) -> allowedByMe(id, p) + undecided(id, p) }.toSet()
     }
 
     /**

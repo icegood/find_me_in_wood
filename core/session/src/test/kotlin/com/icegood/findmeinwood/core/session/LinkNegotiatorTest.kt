@@ -193,6 +193,18 @@ class LinkNegotiatorTest {
     }
 
     @Test
+    fun `undecided radios keep carrying frames when the peer falls silent`() {
+        a.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT)))
+        b.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT)))
+        exchange()
+        a.allow(idB, BLUETOOTH, false)
+        exchange()
+        now += beacon * 4
+        assertEquals(setOf(WIFI_DIRECT), a.radios(), "quiet peer: the turned-down radio rests, the undecided one goes on")
+        assertEquals(setOf(BLUETOOTH, WIFI_DIRECT), b.radios(), "nothing decided: both go on, so the pair can meet again")
+    }
+
+    @Test
     fun `the lower member id hosts the Wi-Fi Direct group while the pair hears each other`() {
         assertNull(a.wifiDirectRole())
         handshake()

@@ -103,4 +103,9 @@
     <string name="option_sent_only">siunčiama tik į %1$s kaip %2$s</string>
     <string name="get_one_at">Gaukite adresu %1$s</string>
     <string name="coverage">Aprėptis: %1$s</string>
+    <string name="link_state_ok">Prijungta per %1$s</string>
+    <string name="link_state_decide">Neprijungta: leiskite %1$s žemiau</string>
+    <string name="link_state_wait">Neprijungta: %2$s turi leisti %1$s savo telefone</string>
+    <string name="link_state_off">Neprijungta: atmetėte visus ryšius su %1$s</string>
+    <string name="link_state_silent">Negirdėti jau %1$s: telefonas miega, radijas išjungtas arba už ribų</string>
 </resources>

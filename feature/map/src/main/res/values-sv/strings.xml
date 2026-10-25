@@ -103,4 +103,9 @@
     <string name="option_sent_only">skickas bara till %1$s som %2$s</string>
     <string name="get_one_at">Skaffa på %1$s</string>
     <string name="coverage">Täckning: %1$s</string>
+    <string name="link_state_ok">Ansluten via %1$s</string>
+    <string name="link_state_decide">Inte ansluten: tillåt %1$s nedan</string>
+    <string name="link_state_wait">Inte ansluten: %2$s måste tillåta %1$s på sin telefon</string>
+    <string name="link_state_off">Inte ansluten: du har avböjt alla länkar med %1$s</string>
+    <string name="link_state_silent">Inte hörd på %1$s: telefonen sover, radion av eller utom räckvidd</string>
 </resources>

@@ -103,4 +103,9 @@
     <string name="option_sent_only">%1$s にのみ %2$s として送信されます</string>
     <string name="get_one_at">%1$s で取得</string>
     <string name="coverage">対象範囲: %1$s</string>
+    <string name="link_state_ok">%1$s で接続中</string>
+    <string name="link_state_decide">未接続: 下で %1$s を許可してください</string>
+    <string name="link_state_wait">未接続: %2$s が自分の電話で %1$s を許可する必要があります</string>
+    <string name="link_state_off">未接続: %1$s とのリンクをすべて拒否しました</string>
+    <string name="link_state_silent">%1$s 応答なし: 電話がスリープ中、無線がオフ、または圏外です</string>
 </resources>

@@ -103,4 +103,9 @@
     <string name="option_sent_only">στέλνεται μόνο στο %1$s ως %2$s</string>
     <string name="get_one_at">Αποκτήστε το στο %1$s</string>
     <string name="coverage">Κάλυψη: %1$s</string>
+    <string name="link_state_ok">Συνδέθηκε μέσω %1$s</string>
+    <string name="link_state_decide">Χωρίς σύνδεση: επιτρέψτε το %1$s παρακάτω</string>
+    <string name="link_state_wait">Χωρίς σύνδεση: ο/η %2$s πρέπει να επιτρέψει το %1$s στο τηλέφωνό του</string>
+    <string name="link_state_off">Χωρίς σύνδεση: απορρίψατε κάθε σύνδεση με %1$s</string>
+    <string name="link_state_silent">Δεν ακούγεται για %1$s: τηλέφωνο σε αδράνεια, ράδιο κλειστό ή εκτός εμβέλειας</string>
 </resources>

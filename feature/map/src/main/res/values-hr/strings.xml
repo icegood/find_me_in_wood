@@ -103,4 +103,9 @@
     <string name="option_sent_only">šalje se samo na %1$s kao %2$s</string>
     <string name="get_one_at">Nabavite na %1$s</string>
     <string name="coverage">Pokrivenost: %1$s</string>
+    <string name="link_state_ok">Povezano putem %1$s</string>
+    <string name="link_state_decide">Nije povezano: dopustite %1$s ispod</string>
+    <string name="link_state_wait">Nije povezano: %2$s mora dopustiti %1$s na svom telefonu</string>
+    <string name="link_state_off">Nije povezano: odbili ste sve veze s %1$s</string>
+    <string name="link_state_silent">Ne čuje se već %1$s: telefon spava, radio isključen ili izvan dometa</string>
 </resources>

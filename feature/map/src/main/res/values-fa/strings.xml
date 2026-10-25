@@ -103,4 +103,9 @@
     <string name="option_sent_only">فقط به %1$s به‌صورت %2$s فرستاده می‌شود</string>
     <string name="get_one_at">از %1$s بگیرید</string>
     <string name="coverage">پوشش: %1$s</string>
+    <string name="link_state_ok">متصل از طریق %1$s</string>
+    <string name="link_state_decide">متصل نیست: %1$s را در پایین مجاز کنید</string>
+    <string name="link_state_wait">متصل نیست: %2$s باید %1$s را در گوشی خود مجاز کند</string>
+    <string name="link_state_off">متصل نیست: همه پیوندها با %1$s را رد کرده‌اید</string>
+    <string name="link_state_silent">%1$s است که شنیده نشده: گوشی در خواب، رادیو خاموش یا خارج از برد</string>
 </resources>

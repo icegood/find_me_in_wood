@@ -103,4 +103,9 @@
     <string name="option_sent_only">csak ide küldve: %1$s, így: %2$s</string>
     <string name="get_one_at">Beszerezhető: %1$s</string>
     <string name="coverage">Lefedettség: %1$s</string>
+    <string name="link_state_ok">Kapcsolódva: %1$s</string>
+    <string name="link_state_decide">Nincs kapcsolat: engedélyezze lent: %1$s</string>
+    <string name="link_state_wait">Nincs kapcsolat: %2$s engedélyezze a(z) %1$s kapcsolatot a telefonján</string>
+    <string name="link_state_off">Nincs kapcsolat: minden kapcsolatot elutasított vele: %1$s</string>
+    <string name="link_state_silent">%1$s óta nem hallható: a telefon alszik, a rádió ki van kapcsolva vagy hatótávon kívül</string>
 </resources>
