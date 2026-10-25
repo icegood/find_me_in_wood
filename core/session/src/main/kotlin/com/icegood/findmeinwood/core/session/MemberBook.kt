@@ -134,12 +134,13 @@ class MemberBook(
         var changed = false
         sync.roster?.let { r ->
             if (validRoster(r) && r.version > (roster?.version ?: 0)) {
-                roster = r
-                r.members.filter { it.removed }.forEach { cards.remove(MemberId(it.id)) }
-                changed = true
+                // The master first: a reader that sees the list must see who signed it.
                 if (masterId == null) {
                     masterId = MemberId(idOf(r.masterPub)).also { onMasterLearned?.invoke(it) }
                 }
+                roster = r
+                r.members.filter { it.removed }.forEach { cards.remove(MemberId(it.id)) }
+                changed = true
             }
         }
         sync.cards.forEach { c ->
