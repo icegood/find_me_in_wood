@@ -38,7 +38,7 @@ class MemberBook(
 
     val isMaster: Boolean get() = masterId == myId
 
-    var roster: Roster? = null
+    @Volatile var roster: Roster? = null
         private set
     private val cards = LinkedHashMap<MemberId, MemberCard>()
 
