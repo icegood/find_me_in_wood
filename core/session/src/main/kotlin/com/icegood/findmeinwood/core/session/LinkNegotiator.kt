@@ -315,7 +315,13 @@ class LinkNegotiator(
     fun wifiDirectHost(): MemberId? {
         val now = nowMs()
         val agreed = peers.filter { (id, p) -> TransportId.WIFI_DIRECT in agreedSet(id, p) }
-        if (agreed.isEmpty()) return null
+        if (agreed.isEmpty()) {
+            // Just restarted: before any member is heard, the members this user allowed
+            // Wi-Fi Direct for decide, so the pair's group forms at once, not by guessing.
+            val kept = restored.filter { (id, d) -> id !in peers && d.any { (k, v) -> v && k.startsWith("${TransportId.WIFI_DIRECT.name}:") } }
+            if (kept.isEmpty()) return null
+            return (kept.keys + self).minBy { hex(it) }
+        }
         val wd = agreed.filter { (_, p) -> heardLately(p, now) }.ifEmpty { agreed }
         return (wd.keys + self).minBy { hex(it) }
     }

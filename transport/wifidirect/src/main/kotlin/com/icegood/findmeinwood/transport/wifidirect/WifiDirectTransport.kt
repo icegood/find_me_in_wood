@@ -73,6 +73,10 @@ class WifiDirectTransport(
     @Volatile private var creds: GroupCredentials? = null
     /** Until then try joining a member's group; afterwards host one. */
     private var hostAfterMs = 0L
+    /** Since when a create/join is under way with no group yet (0 = none). */
+    private var formingSinceMs = 0L
+    /** That attempt hosts (a create forms at once when it works) rather than joins (scans first). */
+    private var formingCreate = false
     /** Since when this phone hosts a group nobody joined. */
     private var hostingAloneSinceMs = 0L
 
@@ -168,22 +172,25 @@ class WifiDirectTransport(
         val targets = sockets.filterKeys { it != except }
         if (targets.isEmpty()) return SendResult.Failed("no p2p peer")
         targets.values.forEach { s ->
-            runCatching {
-                // Beacons, chat and relays send concurrently: without the lock two frames'
-                // length prefixes and bodies interleave and the peer's stream desyncs.
-                synchronized(s) {
-                    val out = DataOutputStream(s.getOutputStream())
-                    out.writeInt(wireFrame.size)
-                    out.write(wireFrame)
-                    out.flush()
-                }
-            }.onFailure {
+            if (!writeFrame(s, wireFrame)) {
                 runCatching { s.close() }
                 sockets.remove(s.remoteSocketAddress.toString(), s)
             }
         }
         return SendResult.Sent
     }
+
+    /** One length-prefixed frame (empty = heartbeat); false when the socket is dead. */
+    private fun writeFrame(s: Socket, frame: ByteArray): Boolean = runCatching {
+        // Beacons, chat, relays and heartbeats send concurrently: without the lock two
+        // frames' length prefixes and bodies interleave and the peer's stream desyncs.
+        synchronized(s) {
+            val out = DataOutputStream(s.getOutputStream())
+            out.writeInt(frame.size)
+            out.write(frame)
+            out.flush()
+        }
+    }.isSuccess
 
     private fun emit(state: RadioState) = events.tryEmit(TransportEvent.StateChanged(state))
 
@@ -313,6 +320,7 @@ class WifiDirectTransport(
         if (joinPending && System.currentTimeMillis() - joinRequestedAtMs < PENDING_TIMEOUT_MS) return
         joinPending = true
         joinRequestedAtMs = System.currentTimeMillis()
+        if (formingSinceMs == 0L) { formingSinceMs = joinRequestedAtMs; formingCreate = false }
         wiring.join(channel, c) { result ->
             if (result != P2pResult.OK) joinPending = false
             requestConnectionInfo()
@@ -324,6 +332,7 @@ class WifiDirectTransport(
         if (createPending && System.currentTimeMillis() - createRequestedAtMs < PENDING_TIMEOUT_MS) return
         createPending = true
         createRequestedAtMs = System.currentTimeMillis()
+        if (formingSinceMs == 0L) { formingSinceMs = createRequestedAtMs; formingCreate = true }
         wiring.createGroup(channel, c) {
             createPending = false
             requestConnectionInfo()
@@ -376,6 +385,7 @@ class WifiDirectTransport(
             }
             groupFormed = true
             joinPending = false
+            formingSinceMs = 0L
             isOwnerNow = info.isOwner
             startAcceptLoop()
             if (!ready) { ready = true; emit(RadioState.READY) }
@@ -407,6 +417,16 @@ class WifiDirectTransport(
             if (dead) connecting.remove(key)
             dead
         }
+        // A negotiation the P2P service sits on (seen for 30 s right after Wi-Fi came back)
+        // blocks every new request: abort it and let the next poll ask again.
+        val limit = if (formingCreate) CREATE_TIMEOUT_MS else FORM_TIMEOUT_MS
+        if (!groupFormed && formingSinceMs != 0L && now - formingSinceMs > limit) {
+            wiring.cancelConnect(channel)
+            formingSinceMs = 0L
+            createPending = false
+            joinPending = false
+            if (p2pOn) formGroup() // ask again at once, not a poll later
+        }
         if (createPending && now - createRequestedAtMs > PENDING_TIMEOUT_MS) createPending = false
         if (joinPending && now - joinRequestedAtMs > PENDING_TIMEOUT_MS) joinPending = false
     }
@@ -418,11 +438,24 @@ class WifiDirectTransport(
         if (!ready) { ready = true; emit(RadioState.READY) }
         events.tryEmit(TransportEvent.PeerRadioVisible(key, id))
         events.tryEmit(TransportEvent.LinkUp(key, id))
+        // A peer gone without a FIN (Wi-Fi off, group dropped) leaves a socket that only
+        // its silence reveals: the read times out and the socket is closed.
+        runCatching { s.soTimeout = SILENT_SOCKET_MS.toInt() }
+        scope.launch {
+            while (running && !s.isClosed) {
+                delay(HEARTBEAT_MS)
+                if (!writeFrame(s, ByteArray(0))) {
+                    runCatching { s.close() }
+                    sockets.remove(key, s)
+                }
+            }
+        }
         scope.launch {
             try {
                 val input = DataInputStream(s.getInputStream())
                 while (running && !s.isClosed) {
                     val len = input.readInt()
+                    if (len == 0) continue // heartbeat
                     require(len in 1..MAX_FRAME) { "bad frame len" }
                     val buf = ByteArray(len)
                     input.readFully(buf)
@@ -440,12 +473,27 @@ class WifiDirectTransport(
         const val PORT = 8765
         const val MAX_FRAME = 65_507
         internal const val DISCOVER_INTERVAL_MS = 60_000L
-        internal const val PENDING_TIMEOUT_MS = 30_000L
-        private const val POLL_MS = 10_000L
+        // FR-3.5c: a pair reconnects within 20 s whatever dropped it — a retry every poll,
+        // a stuck create aborted after 3 s and a join after 5 s, a dead socket noticed
+        // after 15 s.
+        internal const val PENDING_TIMEOUT_MS = 15_000L
+        private const val POLL_MS = 2_000L
         /** Base time a phone tries to join before hosting itself (randomised up to 2x). */
-        internal var JOIN_WINDOW_MS = 20_000L
+        internal var JOIN_WINDOW_MS = 5_000L
         /** Base time a host stays alone before giving the group up (randomised up to 2x). */
-        internal var HOST_IDLE_MS = 60_000L
+        internal var HOST_IDLE_MS = 10_000L
+        /** Every socket carries an empty frame this often, so the other side sees it alive. */
+        internal var HEARTBEAT_MS = 5_000L
+        /** A socket silent this long is dead (the peer left the group without closing it). */
+        internal var SILENT_SOCKET_MS = 15_000L
+        /**
+         * A join that formed no group by then is aborted and asked again: a scan and an
+         * association take 2-3 s, while a join started before the host was back keeps
+         * blacklisting it with growing back-off; a fresh request starts clean.
+         */
+        internal var FORM_TIMEOUT_MS = 5_000L
+        /** A create forms its group in well under a second; one still pending is stuck. */
+        internal var CREATE_TIMEOUT_MS = 3_000L
         private const val CONNECT_TIMEOUT_MS = 5_000
     }
 }

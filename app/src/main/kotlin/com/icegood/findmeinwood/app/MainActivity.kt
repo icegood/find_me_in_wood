@@ -67,7 +67,10 @@ class MainActivity : ComponentActivity() {
         }
     }
     private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { offerHomeScreenIcon() }
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            if (granted()) SessionService.resume(this)
+            offerHomeScreenIcon()
+        }
     /** SMS rung (LNP/3): send + receive, and phone state for the satellite note in the log. */
     private val smsPermissions = arrayOf(
         Manifest.permission.SEND_SMS,
@@ -98,7 +101,13 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) takeInvite(intent)
         // Only when something is missing: an (even instantly answered) permission request
         // puts a transparent screen on top that swallowed the first tap after every launch.
-        if (!granted()) permissionLauncher.launch(permissions.toTypedArray()) else offerHomeScreenIcon()
+        if (!granted()) {
+            permissionLauncher.launch(permissions.toTypedArray())
+        } else {
+            // The network left active before an update or a force stop runs again by itself.
+            SessionService.resume(this)
+            offerHomeScreenIcon()
+        }
         MemberNames.load(this)
         setContent {
             var themeMode by remember { mutableStateOf(Prefs.themeMode(this@MainActivity)) }

@@ -677,8 +677,19 @@ class LinkDecisionsPrefsTest {
         assertEquals(d, Prefs.linkDecisions(ctx, "aa"))
         assertEquals(emptyMap(), Prefs.linkDecisions(ctx, "bb"), "other networks keep their own")
         val raw = ctx.getSharedPreferences("prefs", android.content.Context.MODE_PRIVATE).all.values.joinToString()
-        assertTrue("+1" !in raw, "addresses are stored only sealed")
+        assertTrue("SMS:+1:+2" !in raw && "WIFI_DIRECT::" !in raw, "decisions are stored only sealed")
         Prefs.setLinkDecisions(ctx, "aa", emptyMap())
         assertEquals(emptyMap(), Prefs.linkDecisions(ctx, "aa"))
+    }
+
+    @Test
+    fun `the active network is remembered until the user stops it`() {
+        assertEquals(null, Prefs.activeNetwork(ctx))
+        assertEquals(false, SessionService.resume(ctx), "nothing was active")
+        Prefs.setActiveNetwork(ctx, "aa")
+        assertEquals("aa", Prefs.activeNetwork(ctx))
+        assertEquals(false, SessionService.resume(ctx), "its profile is gone: nothing to start")
+        Prefs.setActiveNetwork(ctx, null)
+        assertEquals(null, Prefs.activeNetwork(ctx))
     }
 }

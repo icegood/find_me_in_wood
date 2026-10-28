@@ -124,6 +124,13 @@ open class WifiDirectWiring(private val context: Context) {
         }.onFailure { done(P2pResult.FAILED) }
     }
 
+    /** Aborts a group negotiation that hangs (the P2P service then refuses every new request). */
+    open fun cancelConnect(channel: WifiP2pManager.Channel?) {
+        val m = manager ?: return
+        val ch = channel ?: return
+        runCatching { m.cancelConnect(ch, null) }
+    }
+
     open fun removeGroup(channel: WifiP2pManager.Channel?) {
         val m = manager ?: return
         val ch = channel ?: return

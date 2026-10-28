@@ -206,6 +206,8 @@ class LinkNegotiatorTest {
         val a2 = LinkNegotiator(idA, { now }, beacon, sms).apply { restore(keptA) }
         val b2 = LinkNegotiator(idB, { now }, beacon, sms).apply { restore(keptB) }
         assertEquals(keptA, a2.decisions(), "kept before the peer is heard again")
+        assertEquals(GroupRole.HOST, a2.wifiDirectRole(), "the kept Wi-Fi Direct decision sets the role before anyone is heard")
+        assertEquals(GroupRole.JOIN, b2.wifiDirectRole())
         a2.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT), LinkOffer(SMS, "+380001")))
         b2.setOffers(listOf(LinkOffer(SMS, "+380002"), LinkOffer(WIFI_DIRECT), LinkOffer(BLUETOOTH)))
         repeat(3) {

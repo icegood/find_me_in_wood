@@ -82,8 +82,12 @@ frame is encrypted and authenticated with the network's key.
 - FR-3.5c Two phones that both allowed Wi-Fi Direct connect over it with only Wi-Fi on
   (Bluetooth off), and on Android 13+ with Location off (the app asserts it never locates
   by Wi-Fi). Up to Android 12 Location is required: Wi-Fi Direct is then shown unavailable
-  with a "Turn on" fix. The pair reconnects by itself after Wi-Fi was off and with a screen
-  off. A member's row says "Connected via X" only while frames really come in over X;
+  with a "Turn on" fix. The pair reconnects by itself within 20 s of whatever dropped it
+  (Wi-Fi off and on, a group lost, an app restart), also with a screen off: requests are
+  retried every 5 s and given up after 15 s, and every socket carries a heartbeat every 5 s,
+  so one silent for 15 s is closed instead of being counted as a link. The network the user
+  left active comes back by itself after an app update, a force stop or a process death;
+  only the user's stop ends it. A member's row says "Connected via X" only while frames really come in over X;
   otherwise it names the radio that carries them, or that the member is heard only through
   others.
 - FR-3.6 Offers: each member lists its usable transports in its signed, encrypted beacon

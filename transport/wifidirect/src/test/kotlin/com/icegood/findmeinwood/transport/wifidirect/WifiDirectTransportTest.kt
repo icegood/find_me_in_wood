@@ -158,10 +158,50 @@ class WifiDirectTransportTest {
     }
 }
 
+class WifiDirectHeartbeatTest {
+    private val freePort = java.net.ServerSocket(0).use { it.localPort }
+    private val cfg = SessionConfig(NetworkId(ByteArray(8)), setOf(TransportId.WIFI_DIRECT))
+
+    @Test
+    fun `heartbeats keep a socket alive, a silent one is closed`() = runBlocking<Unit> {
+        val beat = WifiDirectTransport.HEARTBEAT_MS
+        val silent = WifiDirectTransport.SILENT_SOCKET_MS
+        WifiDirectTransport.HEARTBEAT_MS = 100
+        WifiDirectTransport.SILENT_SOCKET_MS = 600
+        val t = WifiDirectTransport(dummyContext(), port = freePort)
+        try {
+            t.start(cfg)
+            val alive = Socket()
+            withTimeout(5_000) {
+                while (true) {
+                    try { alive.connect(InetSocketAddress("127.0.0.1", freePort), 500); break } catch (_: Exception) { delay(50) }
+                }
+            }
+            withTimeout(5_000) { while (t.peerLinkCount() < 1) delay(20) }
+            // The transport beats on its own; the peer answers with empty frames too.
+            val din = DataInputStream(alive.getInputStream())
+            assertEquals(0, withTimeout(5_000) { din.readInt() }, "an empty frame is a heartbeat")
+            val out = DataOutputStream(alive.getOutputStream())
+            repeat(10) { out.writeInt(0); out.flush(); delay(100) }
+            assertEquals(1, t.peerLinkCount(), "beating peer stays")
+            // Gone without a FIN: nothing comes any more, the socket is dropped.
+            withTimeout(5_000) { while (t.peerLinkCount() > 0) delay(50) }
+            alive.close()
+        } finally {
+            t.stop()
+            WifiDirectTransport.HEARTBEAT_MS = beat
+            WifiDirectTransport.SILENT_SOCKET_MS = silent
+        }
+    }
+}
+
 class WifiDirectConstantsTest {
     @Test
     fun `frame cap matches protocol`() {
         assertEquals(65_507, WifiDirectTransport.MAX_FRAME)
         assertTrue(WifiDirectTransport.PORT in 1024..65535)
+        // FR-3.5c: whatever dropped the link, the pair is back within 20 s.
+        assertTrue(WifiDirectTransport.PENDING_TIMEOUT_MS + 5_000 <= 20_000)
+        assertTrue(WifiDirectTransport.SILENT_SOCKET_MS + 5_000 <= 20_000)
     }
 }

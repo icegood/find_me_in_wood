@@ -24,6 +24,16 @@ object Prefs {
     private const val KEY_MY_PHONE = "my_phone_number"
     private const val KEY_HOME_ICON_OFFERED = "home_icon_offered"
     private const val KEY_LINK_DECISIONS_PREFIX = "link_decisions_"
+    private const val KEY_ACTIVE_NETWORK = "active_network"
+
+    /** The network this user made active and has not stopped: it comes back after a restart. */
+    fun activeNetwork(ctx: Context): String? =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_ACTIVE_NETWORK, null)
+
+    fun setActiveNetwork(ctx: Context, networkIdHex: String?) =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().apply {
+            if (networkIdHex == null) remove(KEY_ACTIVE_NETWORK) else putString(KEY_ACTIVE_NETWORK, networkIdHex)
+        }.apply()
 
     private val decisionsSerializer = kotlinx.serialization.serializer<Map<String, Map<String, Boolean>>>()
 

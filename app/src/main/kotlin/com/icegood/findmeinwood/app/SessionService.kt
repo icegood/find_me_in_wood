@@ -90,10 +90,11 @@ class SessionService : Service() {
     }
 
     private fun startSession(intent: Intent?) {
-        // START_STICKY: after a process death Android restarts us with a null intent.
-        // Without profile extras there is nothing to run, so stop instead of crashing.
+        // START_STICKY: after a process death Android restarts us with a null intent: the
+        // network the user left active comes back; with none there is nothing to run.
         if (intent?.getStringExtra(EXTRA_NETWORK_ID) == null) {
-            stopSelf()
+            val active = activeStored(this)
+            if (active == null) stopSelf() else startSession(intentFor(this, active))
             return
         }
         val name = intent.getStringExtra(EXTRA_NAME) ?: "network"
@@ -602,8 +603,25 @@ class SessionService : Service() {
         }
 
         fun start(context: Context, p: StoredProfile) {
+            Prefs.setActiveNetwork(context, p.networkIdHex)
             val i = intentFor(context, p)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(i) else context.startService(i)
+        }
+
+        /**
+         * The network the user left active, after an app update, a force stop or a process
+         * death (FR-2.x): started again unless a session already runs. False = nothing to do.
+         */
+        fun resume(context: Context): Boolean {
+            if (activeManager != null) return false
+            val p = activeStored(context) ?: return false
+            start(context, p)
+            return true
+        }
+
+        private fun activeStored(context: Context): StoredProfile? {
+            val hex = Prefs.activeNetwork(context) ?: return null
+            return ProfileStore.load(ProfileStore.dir(context)).firstOrNull { it.networkIdHex == hex }
         }
 
         private fun intentFor(context: Context, p: StoredProfile) =
@@ -621,6 +639,7 @@ class SessionService : Service() {
         }
 
         fun stop(context: Context) {
+            Prefs.setActiveNetwork(context, null)
             context.startService(Intent(context, SessionService::class.java).setAction(ACTION_STOP))
         }
 

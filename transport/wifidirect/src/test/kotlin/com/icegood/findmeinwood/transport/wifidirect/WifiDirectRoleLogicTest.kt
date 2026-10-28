@@ -45,6 +45,29 @@ class WifiDirectRoleLogicTest {
         (withTimeout(5_000) { t.start(cfg).first() } as? TransportEvent.StateChanged)?.state
 
     @Test
+    fun `a negotiation that forms no group is aborted and asked again`() = runBlocking<Unit> {
+        val limit = WifiDirectTransport.CREATE_TIMEOUT_MS
+        WifiDirectTransport.CREATE_TIMEOUT_MS = 50
+        try {
+            val w = FakeWiring()
+            val t = transport(w, pollMs = 20)
+            t.setGroupRole(GroupRole.HOST)
+            t.start(cfg)
+            withTimeout(5_000) { while (w.cancelCalls == 0) delay(10) }
+            val before = w.createGroupCalls
+            withTimeout(5_000) { while (w.createGroupCalls == before) delay(10) }
+            w.answerInfo(formed = true, owner = true, host = null)
+            delay(100)
+            val cancels = w.cancelCalls
+            delay(200)
+            assertEquals(cancels, w.cancelCalls, "a formed group is never aborted")
+            t.stop()
+        } finally {
+            WifiDirectTransport.CREATE_TIMEOUT_MS = limit
+        }
+    }
+
+    @Test
     fun `host role is a preference reported to the app`() = runBlocking<Unit> {
         val t = transport(FakeWiring())
         assertTrue(!t.isGroupOwner())

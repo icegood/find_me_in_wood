@@ -55,6 +55,12 @@ internal open class FakeWiring : WifiDirectWiring(
         done(P2pResult.OK)
     }
 
+    var cancelCalls = 0
+
+    override fun cancelConnect(channel: WifiP2pManager.Channel?) {
+        cancelCalls++
+    }
+
     override fun removeGroup(channel: WifiP2pManager.Channel?) {
         removeGroupCalls++
     }

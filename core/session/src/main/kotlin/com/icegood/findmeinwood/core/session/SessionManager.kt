@@ -349,7 +349,8 @@ class SessionManager(
                 delay(keepAliveMs)
                 housekeeping()
             }
-        }
+        }        // Decisions kept from the last run may already fix the Wi-Fi Direct role.
+        applyGroupRole()
     }
 
     /** The radios' members-only secret (Bluetooth members code, Wi-Fi Direct group) of a key. */
@@ -478,6 +479,9 @@ class SessionManager(
             // radio reaches the peer — without this the slower radio never counts as heard.
             if (f.ttl == INITIAL_TTL) links?.let { announce(it.onFrame(f.senderId, ev.source, direct = true, ctl = null)) }
             return
+        }
+        com.icegood.findmeinwood.transport.api.DebugLog.d {
+            "rx ${ev.source} from ${f.senderId.bytes.take(4).joinToString("") { "%02x".format(it) }} ttl ${f.ttl}"
         }
         // A member the master dropped is out: nothing it sends counts, nothing is relayed.
         if (book?.isRemoved(f.senderId) == true) {
