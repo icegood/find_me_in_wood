@@ -193,6 +193,32 @@ class LinkNegotiatorTest {
     }
 
     @Test
+    fun `decisions survive a restart and reconnect the pair without asking again`() {
+        var saved = 0
+        a.onDecided = { saved++ }
+        b.onDecided = { saved++ }
+        handshake()
+        assertTrue(saved > 0, "every decision is handed out to be kept")
+        val keptA = a.decisions()
+        val keptB = b.decisions()
+        assertTrue(keptA.getValue(idB).values.all { it })
+        // Both apps restart: fresh negotiators with what was kept.
+        val a2 = LinkNegotiator(idA, { now }, beacon, sms).apply { restore(keptA) }
+        val b2 = LinkNegotiator(idB, { now }, beacon, sms).apply { restore(keptB) }
+        assertEquals(keptA, a2.decisions(), "kept before the peer is heard again")
+        a2.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT), LinkOffer(SMS, "+380001")))
+        b2.setOffers(listOf(LinkOffer(SMS, "+380002"), LinkOffer(WIFI_DIRECT), LinkOffer(BLUETOOTH)))
+        repeat(3) {
+            b2.onFrame(idA, BLUETOOTH, true, a2.outgoing())
+            a2.onFrame(idB, BLUETOOTH, true, b2.outgoing())
+        }
+        assertEquals(BLUETOOTH, a2.link(idB), "agreed again with nobody tapping")
+        assertTrue(a2.agreed(idB))
+        assertEquals(GroupRole.HOST, a2.wifiDirectRole())
+        assertEquals(GroupRole.JOIN, b2.wifiDirectRole())
+    }
+
+    @Test
     fun `undecided radios keep carrying frames when the peer falls silent`() {
         a.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT)))
         b.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT)))

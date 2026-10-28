@@ -662,3 +662,23 @@ class TranslationTest {
         assertEquals("Неправильний пароль для «ліс»", JoinResult.Error(R.string.err_wrong_password, "ліс").text(ctx))
     }
 }
+
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [29])
+class LinkDecisionsPrefsTest {
+    private val ctx: android.content.Context = androidx.test.core.app.ApplicationProvider.getApplicationContext()
+    init { SecureStorage.box = TestBox }
+
+    @Test
+    fun `link decisions are kept per network, sealed`() {
+        val d = mapOf("0a0b" to mapOf("WIFI_DIRECT::" to true, "SMS:+1:+2" to false))
+        assertEquals(emptyMap(), Prefs.linkDecisions(ctx, "aa"))
+        Prefs.setLinkDecisions(ctx, "aa", d)
+        assertEquals(d, Prefs.linkDecisions(ctx, "aa"))
+        assertEquals(emptyMap(), Prefs.linkDecisions(ctx, "bb"), "other networks keep their own")
+        val raw = ctx.getSharedPreferences("prefs", android.content.Context.MODE_PRIVATE).all.values.joinToString()
+        assertTrue("+1" !in raw, "addresses are stored only sealed")
+        Prefs.setLinkDecisions(ctx, "aa", emptyMap())
+        assertEquals(emptyMap(), Prefs.linkDecisions(ctx, "aa"))
+    }
+}

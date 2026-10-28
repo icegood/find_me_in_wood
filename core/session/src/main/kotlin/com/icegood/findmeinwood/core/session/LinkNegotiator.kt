@@ -181,7 +181,7 @@ class LinkNegotiator(
     @Synchronized
     fun onFrame(peer: MemberId, source: TransportId, direct: Boolean, ctl: LinkCtl?): List<Switch> {
         if (peer == self) return emptyList()
-        val p = peers.getOrPut(peer) { Peer() }
+        val p = peers.getOrPut(peer) { Peer().also { seed(peer, it) } }
         if (direct && source in RUNGS) {
             val now = nowMs()
             p.heard[source] = now
@@ -225,7 +225,37 @@ class LinkNegotiator(
         p.acking = true
         dirty = true
         urgent = true
-        return listOfNotNull(changed(peer, p))
+        val switched = listOfNotNull(changed(peer, p))
+        onDecided?.invoke()
+        return switched
+    }
+
+    /** Decisions kept from an earlier run, applied once each peer is heard again. */
+    private val restored = HashMap<MemberId, Map<String, Boolean>>()
+
+    /** This user decided something; [decisions] then has it (to keep across restarts). */
+    var onDecided: (() -> Unit)? = null
+
+    /**
+     * Brings back what this user decided in an earlier run (FR-3.7: a decision holds until
+     * the user changes it, also across app restarts). A peer is acknowledged as soon as it
+     * is heard, so a known pair reconnects without asking anyone again.
+     */
+    @Synchronized
+    fun restore(saved: Map<MemberId, Map<String, Boolean>>) {
+        restored.putAll(saved)
+        saved.keys.forEach { id -> peers[id]?.let { seed(id, it) } }
+    }
+
+    /** Every decision this user made, per peer: decision key (transport and both addresses) -> allowed. */
+    @Synchronized
+    fun decisions(): Map<MemberId, Map<String, Boolean>> =
+        restored + peers.filterValues { it.decisions.isNotEmpty() }.mapValues { (_, p) -> HashMap(p.decisions) }
+
+    private fun seed(id: MemberId, p: Peer) {
+        val saved = restored[id] ?: return
+        saved.forEach { (k, v) -> p.decisions.putIfAbsent(k, v) }
+        if (saved.isNotEmpty()) { p.acking = true; dirty = true }
     }
 
     /** This phone's user allows every transport currently common with [peer]. */

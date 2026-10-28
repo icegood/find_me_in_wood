@@ -165,7 +165,15 @@ class SessionService : Service() {
             links = if (listen) null else LinkNegotiator(
                 profile.myMemberId, clock, beaconIntervalMs = deltaMs,
                 smsIntervalMs = SMS_INTERVAL_MS,
-            ),
+            ).also { links ->
+                // Allow / No hold across restarts: a known pair reconnects without asking again.
+                links.restore(
+                    Prefs.linkDecisions(this, netHex).mapKeys { (hex, _) -> MemberId(hex.hex()) },
+                )
+                links.onDecided = {
+                    Prefs.setLinkDecisions(this, netHex, links.decisions().mapKeys { (id, _) -> id.bytes.joinToString("") { "%02x".format(it) } })
+                }
+            },
             signer = identityPair,
             beaconsEnabled = !listen,
             book = book,

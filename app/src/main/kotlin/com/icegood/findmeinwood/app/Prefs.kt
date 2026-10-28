@@ -23,6 +23,24 @@ object Prefs {
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_MY_PHONE = "my_phone_number"
     private const val KEY_HOME_ICON_OFFERED = "home_icon_offered"
+    private const val KEY_LINK_DECISIONS_PREFIX = "link_decisions_"
+
+    private val decisionsSerializer = kotlinx.serialization.serializer<Map<String, Map<String, Boolean>>>()
+
+    /**
+     * FR-3.7: this user's Allow / No per member and transport in a network (member id hex ->
+     * decision key -> allowed). Sealed: the keys carry the members' addresses (SMS numbers).
+     */
+    fun linkDecisions(ctx: Context, networkIdHex: String): Map<String, Map<String, Boolean>> =
+        sealedString(ctx, KEY_LINK_DECISIONS_PREFIX + networkIdHex)
+            ?.let { runCatching { kotlinx.serialization.json.Json.decodeFromString(decisionsSerializer, it) }.getOrNull() }
+            .orEmpty()
+
+    fun setLinkDecisions(ctx: Context, networkIdHex: String, decisions: Map<String, Map<String, Boolean>>) =
+        putSealedString(
+            ctx, KEY_LINK_DECISIONS_PREFIX + networkIdHex,
+            decisions.takeIf { it.isNotEmpty() }?.let { kotlinx.serialization.json.Json.encodeToString(decisionsSerializer, it) },
+        )
 
     /** The one-time "Add to Home screen" offer was made (FR-12.3). */
     fun homeIconOffered(ctx: Context): Boolean =

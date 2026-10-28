@@ -73,10 +73,19 @@ frame is encrypted and authenticated with the network's key.
   any of its agreed radios does. While a peer heard lately waits for this user's decision
   (offers unknown, or a common transport not yet decided) frames go on every radio.
   Management frames (discovery, joining) are not limited.
-- FR-3.5b Wi-Fi Direct roles follow the agreement: of the members in reach (heard within
-  3 beacon intervals) agreed on Wi-Fi Direct, the lowest member id hosts the group and the
-  others only join; the host never gives up its group. A working group is never torn down
-  for a role change. With no such member in reach the radio finds a group by itself.
+- FR-3.5b Wi-Fi Direct roles follow the agreement: of the members agreed on Wi-Fi Direct —
+  those in reach (heard within 3 beacon intervals), or all of them while none is — the
+  lowest member id hosts the group and the others only join; the host never gives up its
+  group, so a pair out of touch rejoins the same group. A working group is never torn down
+  for a role change. With nobody agreed on Wi-Fi Direct the radio finds a group by itself.
+  Each member's row names the host ("this phone hosts the group, X joins it").
+- FR-3.5c Two phones that both allowed Wi-Fi Direct connect over it with only Wi-Fi on
+  (Bluetooth off), and on Android 13+ with Location off (the app asserts it never locates
+  by Wi-Fi). Up to Android 12 Location is required: Wi-Fi Direct is then shown unavailable
+  with a "Turn on" fix. The pair reconnects by itself after Wi-Fi was off and with a screen
+  off. A member's row says "Connected via X" only while frames really come in over X;
+  otherwise it names the radio that carries them, or that the member is heard only through
+  others.
 - FR-3.6 Offers: each member lists its usable transports in its signed, encrypted beacon
   (`link.offers`: BLUETOOTH | WIFI_DIRECT | LORA | SMS + address, e.g. SMS number). An
   offer exists only while usable (radio on, node ready, SMS allowed + own number set).
@@ -89,7 +98,8 @@ frame is encrypted and authenticated with the network's key.
 - FR-3.7 Handshake, per transport: for each transport both offer (order BLUETOOTH,
   WIFI_DIRECT, LORA, SMS) each user decides on their own phone — Allow / No, then a switch
   to connect or disconnect it at any time. A transport is agreed only while **both** users
-  allow it. Each phone acks the list it allows, bound to both addresses by hash, and echoes
+  allow it. Decisions are kept per network across app restarts and updates, so a known pair
+  reconnects without anyone tapping again. Each phone acks the list it allows, bound to both addresses by hash, and echoes
   the peer's ack so both know the step is done. A decision holds while the radio is off; a
   new transport or address needs a new one. Nobody is texted without having agreed.
 - FR-3.7a No waiting: offers go out as soon as a radio link comes up; every handshake step
