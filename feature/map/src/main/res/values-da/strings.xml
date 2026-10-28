@@ -108,4 +108,8 @@
     <string name="link_state_wait">Ikke forbundet: %2$s skal tillade %1$s på sin telefon</string>
     <string name="link_state_off">Ikke forbundet: du har afvist alle forbindelser med %1$s</string>
     <string name="link_state_silent">Ikke hørt i %1$s: telefonen sover, radioen er slukket eller uden for rækkevidde</string>
+    <string name="link_state_other">Endnu ikke forbundet via %1$s: rammer kommer stadig over %2$s</string>
+    <string name="link_state_relayed">Ikke direkte forbundet: høres kun gennem andre medlemmer</string>
+    <string name="wd_host_me">Wi-Fi Direct: denne telefon er vært for gruppen, %1$s deltager</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s er vært for gruppen, denne telefon deltager</string>
 </resources>

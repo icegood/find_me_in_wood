@@ -35,7 +35,7 @@ class LinkCtlTest {
         assertEquals(null, ok.fix)
         val off = ok.copy(reason = "set this phone's number", fix = LinkFix.SET_PHONE_NUMBER, addr = null)
         kotlin.test.assertNotEquals(ok, off)
-        assertEquals(4, LinkFix.entries.size)
+        assertEquals(5, LinkFix.entries.size)
         assertEquals(LinkFix.ALLOW_SMS, LinkFix.valueOf("ALLOW_SMS"))
     }
 }

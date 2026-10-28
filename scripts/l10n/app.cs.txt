@@ -32,6 +32,7 @@ satellite_now=teď přes satelit: SMS jde přes něj
 satellite_not_now=SMS ho použije sama, když operátor přepne na satelit (teď ne)
 bluetooth_is_off=Bluetooth je vypnutý
 wifi_is_off=Wi-Fi je vypnutá
+wifi_direct_needs_location=Poloha je vypnutá: Wi-Fi Direct ji na tomto telefonu potřebuje
 no_lora_node=není připojen uzel LoRa
 cannot_approve=nelze přijmout: toto zařízení nemá tajemství sítě
 approved_compare=přijato — porovnejte kód %1$s

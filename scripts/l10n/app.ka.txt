@@ -32,6 +32,7 @@ satellite_now=ახლა თანამგზავრზე: SMS მას�
 satellite_not_now=SMS თავად იყენებს მას, როცა ოპერატორი თანამგზავრზე გადადის (ახლა არა)
 bluetooth_is_off=Bluetooth გამორთულია
 wifi_is_off=Wi-Fi გამორთულია
+wifi_direct_needs_location=მდებარეობა გამორთულია: Wi-Fi Direct-ს ის ამ ტელეფონზე სჭირდება
 no_lora_node=LoRa კვანძი არ არის დაკავშირებული
 cannot_approve=მიღება შეუძლებელია: ამ მოწყობილობას არ აქვს ქსელის საიდუმლო
 approved_compare=მიღებულია — შეადარეთ კოდი %1$s

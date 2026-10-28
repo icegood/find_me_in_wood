@@ -108,4 +108,8 @@
     <string name="link_state_wait">Brak połączenia: %2$s musi zezwolić na %1$s na swoim telefonie</string>
     <string name="link_state_off">Brak połączenia: odrzucono wszystkie łącza z %1$s</string>
     <string name="link_state_silent">Brak sygnału od %1$s: telefon uśpiony, radio wyłączone lub poza zasięgiem</string>
+    <string name="link_state_other">Jeszcze brak połączenia przez %1$s: ramki wciąż przychodzą przez %2$s</string>
+    <string name="link_state_relayed">Brak połączenia bezpośredniego: słychać tylko przez innych członków</string>
+    <string name="wd_host_me">Wi-Fi Direct: ten telefon prowadzi grupę, %1$s dołącza</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s prowadzi grupę, ten telefon dołącza</string>
 </resources>

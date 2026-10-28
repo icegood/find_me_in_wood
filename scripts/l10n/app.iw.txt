@@ -32,6 +32,7 @@ satellite_now=בלוויין עכשיו: ה-SMS עובר דרכו
 satellite_not_now=ה-SMS משתמש בו לבד כשהספק עובר ללוויין (לא עכשיו)
 bluetooth_is_off=Bluetooth כבוי
 wifi_is_off=Wi-Fi כבוי
+wifi_direct_needs_location=המיקום כבוי: Wi-Fi Direct צריך אותו בטלפון הזה
 no_lora_node=אין צומת LoRa מחובר
 cannot_approve=לא ניתן לאשר: למכשיר הזה אין את הסוד של הרשת
 approved_compare=אושר — השוו את הקוד %1$s

@@ -35,6 +35,7 @@
     <string name="satellite_not_now">통신사가 위성으로 전환하면 SMS가 자동으로 사용합니다(지금은 아님)</string>
     <string name="bluetooth_is_off">블루투스가 꺼져 있음</string>
     <string name="wifi_is_off">Wi-Fi가 꺼져 있음</string>
+    <string name="wifi_direct_needs_location">위치가 꺼져 있음: 이 휴대폰에서 Wi-Fi Direct를 쓰려면 위치가 필요합니다</string>
     <string name="no_lora_node">연결된 LoRa 노드 없음</string>
     <string name="cannot_approve">수락할 수 없음: 이 기기에 네트워크 비밀이 없습니다</string>
     <string name="approved_compare">수락됨 — 코드 %1$s를 비교하세요</string>

@@ -32,6 +32,7 @@ satellite_now=сада преко сателита: SMS иде кроз њега
 satellite_not_now=SMS га сам користи када оператер пређе на сателит (не сада)
 bluetooth_is_off=Bluetooth је искључен
 wifi_is_off=Wi-Fi је искључен
+wifi_direct_needs_location=Локација је искључена: Wi-Fi Direct је треба на овом телефону
 no_lora_node=није повезан LoRa чвор
 cannot_approve=не може да се прихвати: овај уређај нема тајну мреже
 approved_compare=прихваћено — упоредите код %1$s

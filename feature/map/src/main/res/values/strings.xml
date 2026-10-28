@@ -108,4 +108,8 @@
     <string name="link_state_wait">Not connected: %2$s has to allow %1$s on their phone</string>
     <string name="link_state_off">Not connected: you turned down every link with %1$s</string>
     <string name="link_state_silent">Not heard for %1$s: phone asleep, radio off or out of range</string>
+    <string name="link_state_other">Not connected via %1$s yet: frames still come over %2$s</string>
+    <string name="link_state_relayed">Not connected directly: heard only through other members</string>
+    <string name="wd_host_me">Wi-Fi Direct: this phone hosts the group, %1$s joins it</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s hosts the group, this phone joins it</string>
 </resources>

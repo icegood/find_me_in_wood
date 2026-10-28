@@ -591,6 +591,14 @@ class LinkAvailabilityTest {
         assertEquals("goes by SMS: set SMS up first", noPerm[4].reason)
         assertEquals(com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS, noPerm[4].fix)
     }
+
+    @Test
+    fun `Wi-Fi Direct needs Location on up to Android 12 only`() {
+        val old = LinkAvailability.statuses(ctx, all.copy(locationOn = false, sdk = 29))[1]
+        assertEquals("Location is off: Wi-Fi Direct needs it on this phone", old.reason)
+        assertEquals(com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_LOCATION, old.fix)
+        assertEquals(null, LinkAvailability.statuses(ctx, all.copy(locationOn = false, sdk = 33))[1].reason)
+    }
 }
 
 class MemberBookStoreTest {

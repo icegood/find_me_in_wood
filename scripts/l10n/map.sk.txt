@@ -96,3 +96,7 @@ link_state_decide=Nespojené: povoľte %1$s nižšie
 link_state_wait=Nespojené: %2$s musí povoliť %1$s na svojom telefóne
 link_state_off=Nespojené: odmietli ste všetky spojenia s %1$s
 link_state_silent=Nepočuť %1$s: telefón spí, rádio vypnuté alebo mimo dosahu
+link_state_other=Zatiaľ nepripojené cez %1$s: rámce stále chodia cez %2$s
+link_state_relayed=Nepripojené priamo: počuť len cez iných členov
+wd_host_me=Wi-Fi Direct: tento telefón hostí skupinu, %1$s sa pripája
+wd_host_them=Wi-Fi Direct: %1$s hostí skupinu, tento telefón sa pripája

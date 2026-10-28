@@ -32,6 +32,7 @@ satellite_now=via satellitt nå: SMS går den veien
 satellite_not_now=SMS bruker den selv når operatøren bytter til satellitt (ikke nå)
 bluetooth_is_off=Bluetooth er av
 wifi_is_off=Wi-Fi er av
+wifi_direct_needs_location=Posisjon er av: Wi-Fi Direct trenger den på denne telefonen
 no_lora_node=ingen LoRa-node tilkoblet
 cannot_approve=kan ikke godta: enheten har ikke nettverkets hemmelighet
 approved_compare=godtatt — sammenlign koden %1$s

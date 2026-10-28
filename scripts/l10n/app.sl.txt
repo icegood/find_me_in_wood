@@ -32,6 +32,7 @@ satellite_now=zdaj prek satelita: SMS gre skozenj
 satellite_not_now=SMS ga uporabi sam, ko operater preklopi na satelit (ne zdaj)
 bluetooth_is_off=Bluetooth je izklopljen
 wifi_is_off=Wi-Fi je izklopljen
+wifi_direct_needs_location=Lokacija je izklopljena: Wi-Fi Direct jo na tem telefonu potrebuje
 no_lora_node=ni povezanega vozlišča LoRa
 cannot_approve=ni mogoče sprejeti: ta naprava nima skrivnosti omrežja
 approved_compare=sprejeto — primerjajte kodo %1$s

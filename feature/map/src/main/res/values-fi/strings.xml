@@ -108,4 +108,8 @@
     <string name="link_state_wait">Ei yhteyttä: %2$s:n on sallittava %1$s puhelimessaan</string>
     <string name="link_state_off">Ei yhteyttä: hylkäsit kaikki yhteydet: %1$s</string>
     <string name="link_state_silent">Ei kuultu %1$s: puhelin lepotilassa, radio pois tai kantaman ulkopuolella</string>
+    <string name="link_state_other">Ei vielä yhteyttä %1$s-yhteydellä: kehykset tulevat yhä %2$s-yhteydellä</string>
+    <string name="link_state_relayed">Ei suoraa yhteyttä: kuuluu vain muiden jäsenten kautta</string>
+    <string name="wd_host_me">Wi-Fi Direct: tämä puhelin isännöi ryhmää, %1$s liittyy</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s isännöi ryhmää, tämä puhelin liittyy</string>
 </resources>

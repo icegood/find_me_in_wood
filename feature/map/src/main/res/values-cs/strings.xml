@@ -108,4 +108,8 @@
     <string name="link_state_wait">Nespojeno: %2$s musí povolit %1$s na svém telefonu</string>
     <string name="link_state_off">Nespojeno: odmítli jste všechna spojení s %1$s</string>
     <string name="link_state_silent">Neslyšeno %1$s: telefon spí, rádio vypnuto nebo mimo dosah</string>
+    <string name="link_state_other">Zatím nepřipojeno přes %1$s: rámce stále chodí přes %2$s</string>
+    <string name="link_state_relayed">Nepřipojeno přímo: slyšet jen přes jiné členy</string>
+    <string name="wd_host_me">Wi-Fi Direct: tento telefon hostí skupinu, %1$s se připojuje</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s hostí skupinu, tento telefon se připojuje</string>
 </resources>

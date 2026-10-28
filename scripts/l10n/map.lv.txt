@@ -96,3 +96,7 @@ link_state_decide=Nav savienots: atļaujiet %1$s zemāk
 link_state_wait=Nav savienots: %2$s jāatļauj %1$s savā tālrunī
 link_state_off=Nav savienots: jūs noraidījāt visus savienojumus ar %1$s
 link_state_silent=Nav dzirdēts %1$s: tālrunis guļ, radio izslēgts vai ārpus zonas
+link_state_other=Vēl nav savienots caur %1$s: kadri joprojām nāk caur %2$s
+link_state_relayed=Nav tiešā savienojuma: dzirdams tikai caur citiem dalībniekiem
+wd_host_me=Wi-Fi Direct: šis tālrunis vada grupu, %1$s pievienojas
+wd_host_them=Wi-Fi Direct: %1$s vada grupu, šis tālrunis pievienojas

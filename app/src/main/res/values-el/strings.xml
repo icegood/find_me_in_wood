@@ -35,6 +35,7 @@
     <string name="satellite_not_now">τα SMS τον χρησιμοποιούν μόνα τους όταν η εταιρεία περάσει σε δορυφόρο (όχι τώρα)</string>
     <string name="bluetooth_is_off">Το Bluetooth είναι απενεργοποιημένο</string>
     <string name="wifi_is_off">Το Wi-Fi είναι απενεργοποιημένο</string>
+    <string name="wifi_direct_needs_location">Η τοποθεσία είναι απενεργοποιημένη: το Wi-Fi Direct τη χρειάζεται σε αυτό το τηλέφωνο</string>
     <string name="no_lora_node">δεν υπάρχει συνδεδεμένος κόμβος LoRa</string>
     <string name="cannot_approve">δεν γίνεται αποδοχή: η συσκευή δεν έχει το μυστικό του δικτύου</string>
     <string name="approved_compare">έγινε αποδοχή — συγκρίνετε τον κωδικό %1$s</string>

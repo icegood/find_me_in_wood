@@ -32,6 +32,7 @@ satellite_now=sedang di satelit: SMS lewat satelit
 satellite_not_now=SMS memakainya sendiri saat operator beralih ke satelit (tidak sekarang)
 bluetooth_is_off=Bluetooth mati
 wifi_is_off=Wi-Fi mati
+wifi_direct_needs_location=Lokasi nonaktif: Wi-Fi Direct memerlukannya di ponsel ini
 no_lora_node=tidak ada node LoRa yang terhubung
 cannot_approve=tidak bisa menerima: perangkat ini tidak punya rahasia jaringan
 approved_compare=diterima — cocokkan kode %1$s

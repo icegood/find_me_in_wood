@@ -96,3 +96,7 @@ link_state_decide=未连接：请在下方允许 %1$s
 link_state_wait=未连接：%2$s 需要在其手机上允许 %1$s
 link_state_off=未连接：您拒绝了与 %1$s 的所有连接
 link_state_silent=已 %1$s 未收到：手机休眠、无线电关闭或超出范围
+link_state_other=尚未通过 %1$s 连接：帧仍经由 %2$s 传来
+link_state_relayed=未直接连接：只能通过其他成员收到
+wd_host_me=Wi-Fi Direct：本机创建群组，%1$s 加入
+wd_host_them=Wi-Fi Direct：%1$s 创建群组，本机加入

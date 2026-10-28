@@ -108,4 +108,8 @@
     <string name="link_state_wait">Non connesso: %2$s deve consentire %1$s sul suo telefono</string>
     <string name="link_state_off">Non connesso: hai rifiutato ogni collegamento con %1$s</string>
     <string name="link_state_silent">Non sentito da %1$s: telefono in standby, radio spenta o fuori portata</string>
+    <string name="link_state_other">Non ancora connesso via %1$s: i frame arrivano ancora via %2$s</string>
+    <string name="link_state_relayed">Nessuna connessione diretta: sentito solo tramite altri membri</string>
+    <string name="wd_host_me">Wi-Fi Direct: questo telefono ospita il gruppo, %1$s si unisce</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s ospita il gruppo, questo telefono si unisce</string>
 </resources>

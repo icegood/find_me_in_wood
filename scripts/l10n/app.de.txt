@@ -32,6 +32,7 @@ satellite_now=jetzt über Satellit: SMS geht darüber
 satellite_not_now=SMS nutzt den Satelliten von selbst, wenn der Anbieter darauf umschaltet (nicht jetzt)
 bluetooth_is_off=Bluetooth ist aus
 wifi_is_off=WLAN ist aus
+wifi_direct_needs_location=Standort ist aus: Wi-Fi Direct braucht ihn auf diesem Telefon
 no_lora_node=kein LoRa-Knoten verbunden
 cannot_approve=Annahme nicht möglich: dieses Gerät hat das Netzwerkgeheimnis nicht
 approved_compare=angenommen — Code %1$s vergleichen

@@ -32,6 +32,7 @@ satellite_now=現在衛星経由: SMS は衛星を通ります
 satellite_not_now=通信事業者が衛星に切り替えると SMS が自動で使います（現在は未使用）
 bluetooth_is_off=Bluetooth がオフです
 wifi_is_off=Wi-Fi がオフです
+wifi_direct_needs_location=位置情報がオフです: この端末の Wi-Fi Direct には位置情報が必要です
 no_lora_node=LoRa ノードが接続されていません
 cannot_approve=承認できません: この端末にはネットワークの秘密鍵がありません
 approved_compare=承認しました — コード %1$s を照合してください

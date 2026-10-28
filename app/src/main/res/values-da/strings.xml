@@ -35,6 +35,7 @@
     <string name="satellite_not_now">sms bruger den selv, når operatøren skifter til satellit (ikke nu)</string>
     <string name="bluetooth_is_off">Bluetooth er slået fra</string>
     <string name="wifi_is_off">Wi-Fi er slået fra</string>
+    <string name="wifi_direct_needs_location">Placering er slået fra: Wi-Fi Direct kræver den på denne telefon</string>
     <string name="no_lora_node">ingen LoRa-node forbundet</string>
     <string name="cannot_approve">kan ikke godkende: enheden har ikke netværkets hemmelighed</string>
     <string name="approved_compare">godkendt — sammenlign koden %1$s</string>

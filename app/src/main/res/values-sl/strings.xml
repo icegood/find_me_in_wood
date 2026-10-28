@@ -35,6 +35,7 @@
     <string name="satellite_not_now">SMS ga uporabi sam, ko operater preklopi na satelit (ne zdaj)</string>
     <string name="bluetooth_is_off">Bluetooth je izklopljen</string>
     <string name="wifi_is_off">Wi-Fi je izklopljen</string>
+    <string name="wifi_direct_needs_location">Lokacija je izklopljena: Wi-Fi Direct jo na tem telefonu potrebuje</string>
     <string name="no_lora_node">ni povezanega vozlišča LoRa</string>
     <string name="cannot_approve">ni mogoče sprejeti: ta naprava nima skrivnosti omrežja</string>
     <string name="approved_compare">sprejeto — primerjajte kodo %1$s</string>

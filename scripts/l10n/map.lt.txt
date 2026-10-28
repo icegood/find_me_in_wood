@@ -96,3 +96,7 @@ link_state_decide=Neprijungta: leiskite %1$s žemiau
 link_state_wait=Neprijungta: %2$s turi leisti %1$s savo telefone
 link_state_off=Neprijungta: atmetėte visus ryšius su %1$s
 link_state_silent=Negirdėti jau %1$s: telefonas miega, radijas išjungtas arba už ribų
+link_state_other=Dar neprisijungta per %1$s: kadrai vis dar ateina per %2$s
+link_state_relayed=Nėra tiesioginio ryšio: girdima tik per kitus narius
+wd_host_me=Wi-Fi Direct: šis telefonas yra grupės šeimininkas, %1$s prisijungia
+wd_host_them=Wi-Fi Direct: %1$s yra grupės šeimininkas, šis telefonas prisijungia

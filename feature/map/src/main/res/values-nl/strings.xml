@@ -108,4 +108,8 @@
     <string name="link_state_wait">Niet verbonden: %2$s moet %1$s op de eigen telefoon toestaan</string>
     <string name="link_state_off">Niet verbonden: je hebt elke verbinding met %1$s geweigerd</string>
     <string name="link_state_silent">Al %1$s niet gehoord: telefoon slaapt, radio uit of buiten bereik</string>
+    <string name="link_state_other">Nog niet verbonden via %1$s: frames komen nog via %2$s</string>
+    <string name="link_state_relayed">Niet direct verbonden: alleen gehoord via andere leden</string>
+    <string name="wd_host_me">Wi-Fi Direct: deze telefoon host de groep, %1$s doet mee</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s host de groep, deze telefoon doet mee</string>
 </resources>

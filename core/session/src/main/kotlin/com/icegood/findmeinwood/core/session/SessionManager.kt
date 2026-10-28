@@ -173,10 +173,12 @@ class SessionManager(
         switches.forEach { onLinkSwitch?.invoke(it) }
         applyGroupRole()
         // Agreed set, selection and suggestion feed the member list.
+        val host = links?.wifiDirectHost()?.let { WifiDirectHost(it.takeIf { m -> m != profile.myMemberId }) }
         links?.all()?.forEach { v ->
             tracker.setLinkInfo(
                 v.peer, v.link, v.agreed, v.suggestion,
                 common = v.common, allowedByMe = v.allowedByMe, deniedByMe = v.deniedByMe, allowedByPeer = v.allowedByPeer,
+                wifiDirectHost = host,
             )
         }
         // Answer handshake steps / announce selections at once instead of with the next

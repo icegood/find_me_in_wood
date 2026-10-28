@@ -96,3 +96,7 @@ link_state_decide=Sin conexión: permite %1$s abajo
 link_state_wait=Sin conexión: %2$s debe permitir %1$s en su teléfono
 link_state_off=Sin conexión: rechazaste todos los enlaces con %1$s
 link_state_silent=Sin noticias desde hace %1$s: teléfono en reposo, radio apagada o fuera de alcance
+link_state_other=Aún sin conexión por %1$s: las tramas siguen llegando por %2$s
+link_state_relayed=Sin conexión directa: solo se oye a través de otros miembros
+wd_host_me=Wi-Fi Direct: este teléfono aloja el grupo, %1$s se une
+wd_host_them=Wi-Fi Direct: %1$s aloja el grupo, este teléfono se une

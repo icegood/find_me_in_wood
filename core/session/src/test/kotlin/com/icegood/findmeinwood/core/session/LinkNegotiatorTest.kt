@@ -205,14 +205,16 @@ class LinkNegotiatorTest {
     }
 
     @Test
-    fun `the lower member id hosts the Wi-Fi Direct group while the pair hears each other`() {
+    fun `the lower member id hosts the Wi-Fi Direct group, also while the pair is out of touch`() {
         assertNull(a.wifiDirectRole())
+        assertNull(a.wifiDirectHost())
         handshake()
         assertEquals(GroupRole.HOST, a.wifiDirectRole())
         assertEquals(GroupRole.JOIN, b.wifiDirectRole())
+        assertEquals(idA, b.wifiDirectHost())
         now += beacon * 4
-        assertNull(a.wifiDirectRole(), "nobody agreed in reach: the radio finds a group itself")
-        assertNull(b.wifiDirectRole())
+        assertEquals(GroupRole.HOST, a.wifiDirectRole(), "out of touch: the agreed host keeps hosting")
+        assertEquals(GroupRole.JOIN, b.wifiDirectRole(), "and the other keeps joining its group")
         exchange()
         assertEquals(GroupRole.HOST, a.wifiDirectRole())
         b.setOffers(listOf(LinkOffer(BLUETOOTH))) // B switched Wi-Fi off

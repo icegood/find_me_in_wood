@@ -96,3 +96,7 @@ link_state_decide=Non connecté : autorisez %1$s ci-dessous
 link_state_wait=Non connecté : %2$s doit autoriser %1$s sur son téléphone
 link_state_off=Non connecté : vous avez refusé toutes les liaisons avec %1$s
 link_state_silent=Pas entendu depuis %1$s : téléphone en veille, radio coupée ou hors de portée
+link_state_other=Pas encore connecté via %1$s : les trames arrivent toujours par %2$s
+link_state_relayed=Pas de connexion directe : entendu seulement via d’autres membres
+wd_host_me=Wi-Fi Direct : ce téléphone héberge le groupe, %1$s le rejoint
+wd_host_them=Wi-Fi Direct : %1$s héberge le groupe, ce téléphone le rejoint

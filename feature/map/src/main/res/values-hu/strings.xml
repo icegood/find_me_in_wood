@@ -108,4 +108,8 @@
     <string name="link_state_wait">Nincs kapcsolat: %2$s engedélyezze a(z) %1$s kapcsolatot a telefonján</string>
     <string name="link_state_off">Nincs kapcsolat: minden kapcsolatot elutasított vele: %1$s</string>
     <string name="link_state_silent">%1$s óta nem hallható: a telefon alszik, a rádió ki van kapcsolva vagy hatótávon kívül</string>
+    <string name="link_state_other">Még nincs kapcsolat ezen: %1$s; a keretek még ezen jönnek: %2$s</string>
+    <string name="link_state_relayed">Nincs közvetlen kapcsolat: csak más tagokon keresztül hallható</string>
+    <string name="wd_host_me">Wi-Fi Direct: ez a telefon a csoport gazdája, %1$s csatlakozik</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s a csoport gazdája, ez a telefon csatlakozik</string>
 </resources>

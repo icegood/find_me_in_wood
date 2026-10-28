@@ -96,3 +96,7 @@ link_state_decide=未接続: 下で %1$s を許可してください
 link_state_wait=未接続: %2$s が自分の電話で %1$s を許可する必要があります
 link_state_off=未接続: %1$s とのリンクをすべて拒否しました
 link_state_silent=%1$s 応答なし: 電話がスリープ中、無線がオフ、または圏外です
+link_state_other=%1$s ではまだ接続されていません: フレームは今も %2$s 経由で届いています
+link_state_relayed=直接接続なし: 他のメンバー経由でのみ受信
+wd_host_me=Wi-Fi Direct: この端末がグループをホストし、%1$s が参加します
+wd_host_them=Wi-Fi Direct: %1$s がグループをホストし、この端末が参加します

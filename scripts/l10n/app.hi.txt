@@ -32,6 +32,7 @@ satellite_now=अभी सैटेलाइट पर: SMS उसी से �
 satellite_not_now=ऑपरेटर के सैटेलाइट पर जाने पर SMS अपने-आप उसका इस्तेमाल करता है (अभी नहीं)
 bluetooth_is_off=ब्लूटूथ बंद है
 wifi_is_off=Wi-Fi बंद है
+wifi_direct_needs_location=लोकेशन बंद है: इस फ़ोन पर Wi-Fi Direct को इसकी ज़रूरत है
 no_lora_node=कोई LoRa नोड जुड़ा नहीं
 cannot_approve=स्वीकार नहीं कर सकते: इस डिवाइस के पास नेटवर्क का सीक्रेट नहीं है
 approved_compare=स्वीकार किया — कोड %1$s मिलाएँ

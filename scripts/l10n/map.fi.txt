@@ -96,3 +96,7 @@ link_state_decide=Ei yhteyttä: salli %1$s alla
 link_state_wait=Ei yhteyttä: %2$s:n on sallittava %1$s puhelimessaan
 link_state_off=Ei yhteyttä: hylkäsit kaikki yhteydet: %1$s
 link_state_silent=Ei kuultu %1$s: puhelin lepotilassa, radio pois tai kantaman ulkopuolella
+link_state_other=Ei vielä yhteyttä %1$s-yhteydellä: kehykset tulevat yhä %2$s-yhteydellä
+link_state_relayed=Ei suoraa yhteyttä: kuuluu vain muiden jäsenten kautta
+wd_host_me=Wi-Fi Direct: tämä puhelin isännöi ryhmää, %1$s liittyy
+wd_host_them=Wi-Fi Direct: %1$s isännöi ryhmää, tämä puhelin liittyy

@@ -32,6 +32,7 @@ satellite_now=nu via satelliet: sms gaat erlangs
 satellite_not_now=sms gebruikt het vanzelf als de provider naar satelliet overschakelt (nu niet)
 bluetooth_is_off=Bluetooth staat uit
 wifi_is_off=Wifi staat uit
+wifi_direct_needs_location=Locatie staat uit: Wi-Fi Direct heeft die nodig op deze telefoon
 no_lora_node=geen LoRa-knooppunt verbonden
 cannot_approve=kan niet toelaten: dit apparaat heeft het netwerkgeheim niet
 approved_compare=toegelaten — vergelijk code %1$s

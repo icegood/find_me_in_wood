@@ -32,6 +32,7 @@ satellite_now=目前使用衛星：簡訊經由衛星傳送
 satellite_not_now=電信業者切換到衛星時，簡訊會自動使用（目前未使用）
 bluetooth_is_off=藍牙已關閉
 wifi_is_off=Wi-Fi 已關閉
+wifi_direct_needs_location=定位已關閉：本機的 Wi-Fi Direct 需要開啟定位
 no_lora_node=未連接 LoRa 節點
 cannot_approve=無法核准：這部裝置沒有網路密鑰
 approved_compare=已核准 — 請核對代碼 %1$s

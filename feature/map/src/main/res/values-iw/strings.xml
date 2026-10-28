@@ -108,4 +108,8 @@
     <string name="link_state_wait">לא מחובר: %2$s צריך לאשר את %1$s בטלפון שלו</string>
     <string name="link_state_off">לא מחובר: דחיתם כל קישור עם %1$s</string>
     <string name="link_state_silent">לא נשמע כבר %1$s: הטלפון רדום, הרדיו כבוי או מחוץ לטווח</string>
+    <string name="link_state_other">עדיין אין חיבור דרך %1$s: המסגרות עדיין מגיעות דרך %2$s</string>
+    <string name="link_state_relayed">אין חיבור ישיר: נשמע רק דרך חברים אחרים</string>
+    <string name="wd_host_me">Wi-Fi Direct: הטלפון הזה מארח את הקבוצה, %1$s מצטרף</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s מארח את הקבוצה, הטלפון הזה מצטרף</string>
 </resources>

@@ -29,7 +29,8 @@ import java.util.zip.CRC32
  * - Routing: frames go out only on radios this user allowed for some peer ([radios]), so
  *   a pair stays in touch while any of its agreed radios reaches.
  * - Wi-Fi Direct roles follow from the agreement ([wifiDirectRole]): the lowest member id
- *   hosts the group — computed the same on every phone, so nothing needs to be sent.
+ *   hosts the group — computed the same on every phone, so nothing needs to be sent — and
+ *   keeps hosting while the members are out of touch.
  */
 class LinkNegotiator(
     private val self: MemberId,
@@ -267,16 +268,26 @@ class LinkNegotiator(
     }
 
     /**
-     * This phone's Wi-Fi Direct role: of the members heard lately that agreed on Wi-Fi
-     * Direct with this one, the lowest id hosts and the others join. Null while no such
-     * member is heard: the radio then finds a group by itself, as before any agreement.
+     * This phone's Wi-Fi Direct role: of the members that agreed on Wi-Fi Direct with this
+     * one, the lowest id hosts and the others join. The members heard lately decide; when
+     * none is, the role stays with every agreed member, so the pair keeps rejoining the same
+     * group after a drop instead of both trying at random (where neither may find the
+     * other). Null only while nobody agreed on Wi-Fi Direct.
      */
     @Synchronized
     fun wifiDirectRole(): GroupRole? {
+        val host = wifiDirectHost() ?: return null
+        return if (host == self) GroupRole.HOST else GroupRole.JOIN
+    }
+
+    /** Who hosts the Wi-Fi Direct group by [wifiDirectRole]: this phone or a member; null = nobody agreed. */
+    @Synchronized
+    fun wifiDirectHost(): MemberId? {
         val now = nowMs()
-        val wd = peers.filter { (id, p) -> TransportId.WIFI_DIRECT in agreedSet(id, p) && heardLately(p, now) }
-        if (wd.isEmpty()) return null
-        return if (wd.keys.all { hex(self) < hex(it) }) GroupRole.HOST else GroupRole.JOIN
+        val agreed = peers.filter { (id, p) -> TransportId.WIFI_DIRECT in agreedSet(id, p) }
+        if (agreed.isEmpty()) return null
+        val wd = agreed.filter { (_, p) -> heardLately(p, now) }.ifEmpty { agreed }
+        return (wd.keys + self).minBy { hex(it) }
     }
 
     @Synchronized

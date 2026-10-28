@@ -32,6 +32,7 @@ satellite_now=зараз на супутнику: SMS іде через ньог
 satellite_not_now=SMS сам піде через супутник, коли оператор на нього перемкнеться (не зараз)
 bluetooth_is_off=Bluetooth вимкнено
 wifi_is_off=Wi-Fi вимкнено
+wifi_direct_needs_location=Геолокацію вимкнено: Wi-Fi Direct на цьому телефоні без неї не працює
 no_lora_node=вузол LoRa не під'єднано
 cannot_approve=не вдається прийняти: на цьому пристрої немає секрету мережі
 approved_compare=прийнято — порівняйте код %1$s

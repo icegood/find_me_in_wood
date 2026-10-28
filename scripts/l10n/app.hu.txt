@@ -32,6 +32,7 @@ satellite_now=most műholdon: az SMS azon megy
 satellite_not_now=az SMS magától használja, ha a szolgáltató műholdra vált (most nem)
 bluetooth_is_off=A Bluetooth ki van kapcsolva
 wifi_is_off=A Wi-Fi ki van kapcsolva
+wifi_direct_needs_location=A helymeghatározás ki van kapcsolva: a Wi-Fi Directnek szüksége van rá ezen a telefonon
 no_lora_node=nincs csatlakoztatott LoRa-csomópont
 cannot_approve=nem fogadható el: ezen az eszközön nincs meg a hálózat titka
 approved_compare=elfogadva — hasonlítsd össze a kódot: %1$s

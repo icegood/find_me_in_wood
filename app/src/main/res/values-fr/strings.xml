@@ -35,6 +35,7 @@
     <string name="satellite_not_now">les SMS l\'utilisent d\'eux-mêmes quand l\'opérateur passe au satellite (pas maintenant)</string>
     <string name="bluetooth_is_off">Bluetooth désactivé</string>
     <string name="wifi_is_off">Wi-Fi désactivé</string>
+    <string name="wifi_direct_needs_location">La localisation est désactivée : Wi-Fi Direct en a besoin sur ce téléphone</string>
     <string name="no_lora_node">aucun nœud LoRa connecté</string>
     <string name="cannot_approve">impossible d\'accepter : cet appareil n\'a pas le secret du réseau</string>
     <string name="approved_compare">accepté — comparez le code %1$s</string>

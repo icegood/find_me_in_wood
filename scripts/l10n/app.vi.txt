@@ -32,6 +32,7 @@ satellite_now=đang dùng vệ tinh: SMS đi qua vệ tinh
 satellite_not_now=SMS tự dùng vệ tinh khi nhà mạng chuyển sang vệ tinh (không phải lúc này)
 bluetooth_is_off=Bluetooth đang tắt
 wifi_is_off=Wi-Fi đang tắt
+wifi_direct_needs_location=Vị trí đang tắt: Wi-Fi Direct cần vị trí trên điện thoại này
 no_lora_node=chưa kết nối nút LoRa nào
 cannot_approve=không thể chấp nhận: thiết bị này không có bí mật của mạng
 approved_compare=đã chấp nhận — so sánh mã %1$s

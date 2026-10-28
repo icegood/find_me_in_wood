@@ -32,6 +32,7 @@ satellite_now=ใช้ดาวเทียมอยู่: SMS ส่งผ่
 satellite_not_now=SMS จะใช้เองเมื่อผู้ให้บริการสลับไปดาวเทียม (ไม่ใช่ตอนนี้)
 bluetooth_is_off=บลูทูธปิดอยู่
 wifi_is_off=Wi-Fi ปิดอยู่
+wifi_direct_needs_location=ตำแหน่งปิดอยู่: Wi-Fi Direct ต้องใช้ตำแหน่งบนโทรศัพท์นี้
 no_lora_node=ไม่มีโหนด LoRa เชื่อมต่อ
 cannot_approve=รับไม่ได้: อุปกรณ์นี้ไม่มีรหัสลับของเครือข่าย
 approved_compare=รับแล้ว — เทียบรหัส %1$s

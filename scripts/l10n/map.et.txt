@@ -96,3 +96,7 @@ link_state_decide=Ühendus puudub: lubage allpool %1$s
 link_state_wait=Ühendus puudub: %2$s peab oma telefonis lubama %1$s
 link_state_off=Ühendus puudub: keeldusite kõigist ühendustest: %1$s
 link_state_silent=Pole kuulda olnud %1$s: telefon magab, raadio väljas või levist väljas
+link_state_other=Veel pole ühendust üle %1$s: kaadrid tulevad endiselt üle %2$s
+link_state_relayed=Otseühendust pole: kuuldav ainult teiste liikmete kaudu
+wd_host_me=Wi-Fi Direct: see telefon on grupi host, %1$s liitub
+wd_host_them=Wi-Fi Direct: %1$s on grupi host, see telefon liitub

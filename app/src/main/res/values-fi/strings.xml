@@ -35,6 +35,7 @@
     <string name="satellite_not_now">tekstiviestit käyttävät sitä itse, kun operaattori vaihtaa satelliittiin (ei nyt)</string>
     <string name="bluetooth_is_off">Bluetooth on pois päältä</string>
     <string name="wifi_is_off">Wi-Fi on pois päältä</string>
+    <string name="wifi_direct_needs_location">Sijainti on pois päältä: Wi-Fi Direct tarvitsee sitä tässä puhelimessa</string>
     <string name="no_lora_node">LoRa-solmua ei ole yhdistetty</string>
     <string name="cannot_approve">ei voi hyväksyä: laitteella ei ole verkon salaisuutta</string>
     <string name="approved_compare">hyväksytty — vertaa koodia %1$s</string>

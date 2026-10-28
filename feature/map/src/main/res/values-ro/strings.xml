@@ -108,4 +108,8 @@
     <string name="link_state_wait">Neconectat: %2$s trebuie să permită %1$s pe telefonul său</string>
     <string name="link_state_off">Neconectat: ați refuzat toate legăturile cu %1$s</string>
     <string name="link_state_silent">Nu s-a mai auzit de %1$s: telefon în repaus, radio oprit sau în afara razei</string>
+    <string name="link_state_other">Încă neconectat prin %1$s: cadrele vin încă prin %2$s</string>
+    <string name="link_state_relayed">Fără conexiune directă: auzit doar prin alți membri</string>
+    <string name="wd_host_me">Wi-Fi Direct: acest telefon găzduiește grupul, %1$s se alătură</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s găzduiește grupul, acest telefon se alătură</string>
 </resources>

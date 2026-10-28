@@ -96,3 +96,7 @@ link_state_decide=Niet verbonden: sta %1$s hieronder toe
 link_state_wait=Niet verbonden: %2$s moet %1$s op de eigen telefoon toestaan
 link_state_off=Niet verbonden: je hebt elke verbinding met %1$s geweigerd
 link_state_silent=Al %1$s niet gehoord: telefoon slaapt, radio uit of buiten bereik
+link_state_other=Nog niet verbonden via %1$s: frames komen nog via %2$s
+link_state_relayed=Niet direct verbonden: alleen gehoord via andere leden
+wd_host_me=Wi-Fi Direct: deze telefoon host de groep, %1$s doet mee
+wd_host_them=Wi-Fi Direct: %1$s host de groep, deze telefoon doet mee

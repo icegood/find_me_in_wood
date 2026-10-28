@@ -32,6 +32,7 @@ satellite_now=no satélite agora: o SMS passa por ele
 satellite_not_now=o SMS usa sozinho quando a operadora muda para satélite (não agora)
 bluetooth_is_off=Bluetooth desligado
 wifi_is_off=Wi-Fi desligado
+wifi_direct_needs_location=A localização está desligada: o Wi-Fi Direct precisa dela neste telefone
 no_lora_node=nenhum nó LoRa conectado
 cannot_approve=não é possível aceitar: este aparelho não tem o segredo da rede
 approved_compare=aceito — compare o código %1$s

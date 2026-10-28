@@ -29,7 +29,12 @@ data class PeerState(
     val linkDeniedByMe: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
     /** Of [linkCommon], what the peer's user allowed. */
     val linkAllowedByPeer: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
+    /** Who hosts the Wi-Fi Direct group; null while Wi-Fi Direct is agreed with nobody. */
+    val wifiDirectHost: WifiDirectHost? = null,
 )
+
+/** The Wi-Fi Direct group's host: [member], or this phone when that is null. */
+data class WifiDirectHost(val member: MemberId?)
 
 /** Pure-Kotlin peer table (FR-6.1/6.3): staleness + purge, injectable clock. */
 class PeerTracker(
@@ -61,6 +66,7 @@ class PeerTracker(
             linkAllowedByMe = cur?.linkAllowedByMe ?: emptyList(),
             linkDeniedByMe = cur?.linkDeniedByMe ?: emptyList(),
             linkAllowedByPeer = cur?.linkAllowedByPeer ?: emptyList(),
+            wifiDirectHost = cur?.wifiDirectHost,
         ))
     }
 
@@ -74,11 +80,13 @@ class PeerTracker(
         allowedByMe: List<com.icegood.findmeinwood.core.model.TransportId> = options,
         deniedByMe: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
         allowedByPeer: List<com.icegood.findmeinwood.core.model.TransportId> = options,
+        wifiDirectHost: WifiDirectHost? = null,
     ) {
         val cur = peers.value[member] ?: return
         val next = cur.copy(
             link = link, linkOptions = options, linkSuggestion = suggestion, linkCommon = common,
             linkAllowedByMe = allowedByMe, linkDeniedByMe = deniedByMe, linkAllowedByPeer = allowedByPeer,
+            wifiDirectHost = wifiDirectHost,
         )
         if (next != cur) peers.value = peers.value + (member to next)
     }

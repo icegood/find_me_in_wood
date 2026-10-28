@@ -123,9 +123,30 @@ class MapMathTest {
         kotlin.test.assertTrue(needsLinkDecision(listOf(common)))
         kotlin.test.assertEquals(LinkVerdict(LinkVerdict.Kind.WAIT_PEER, listOf(wd)), linkVerdict(common.copy(linkAllowedByMe = listOf(wd), linkDeniedByMe = listOf(bt)), now))
         kotlin.test.assertEquals(LinkVerdict.Kind.ALL_OFF, linkVerdict(common.copy(linkDeniedByMe = listOf(bt, wd), linkAllowedByPeer = listOf(wd)), now)?.kind)
-        val agreed = common.copy(link = wd, linkAllowedByMe = listOf(wd), linkAllowedByPeer = listOf(wd), linkDeniedByMe = listOf(bt))
+        val agreed = common.copy(link = wd, linkAllowedByMe = listOf(wd), linkAllowedByPeer = listOf(wd), linkDeniedByMe = listOf(bt), transport = wd)
         kotlin.test.assertEquals(LinkVerdict(LinkVerdict.Kind.CONNECTED, listOf(wd)), linkVerdict(agreed, now))
+        kotlin.test.assertEquals(
+            LinkVerdict(LinkVerdict.Kind.OTHER_RADIO, listOf(bt)), linkVerdict(agreed.copy(transport = bt), now),
+            "agreed on Wi-Fi Direct, frames over Bluetooth: not connected over Wi-Fi Direct",
+        )
+        kotlin.test.assertEquals(LinkVerdict.Kind.RELAYED, linkVerdict(agreed.copy(transport = null), now)?.kind)
         kotlin.test.assertEquals(LinkVerdict.Kind.SILENT, linkVerdict(agreed, now + 4 * 60_000)?.kind)
         kotlin.test.assertFalse(needsLinkDecision(listOf(agreed)))
+    }
+
+    @Test
+    fun `the Wi-Fi Direct host is named on members it is agreed with`() {
+        val wd = com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT
+        val idP = com.icegood.findmeinwood.core.model.MemberId(ByteArray(32) { 2 })
+        val idQ = com.icegood.findmeinwood.core.model.MemberId(ByteArray(32) { 3 })
+        val p = com.icegood.findmeinwood.core.session.PeerState(idP, nickname = "Pixel", lastSeenMs = 0, lastSeq = 0u, linkOptions = listOf(wd))
+        val q = p.copy(memberId = idQ, nickname = "Huawei")
+        val peers = mapOf(idP to p, idQ to q)
+        kotlin.test.assertNull(wifiDirectHostLine(p, peers), "agreed with nobody")
+        val me = com.icegood.findmeinwood.core.session.WifiDirectHost(null)
+        kotlin.test.assertEquals(WifiDirectHostLine(byMe = true), wifiDirectHostLine(p.copy(wifiDirectHost = me), peers))
+        val byQ = com.icegood.findmeinwood.core.session.WifiDirectHost(idQ)
+        kotlin.test.assertEquals(WifiDirectHostLine(byMe = false, host = "Huawei"), wifiDirectHostLine(p.copy(wifiDirectHost = byQ), peers))
+        kotlin.test.assertNull(wifiDirectHostLine(p.copy(wifiDirectHost = byQ, linkOptions = emptyList()), peers), "not agreed with this one")
     }
 }

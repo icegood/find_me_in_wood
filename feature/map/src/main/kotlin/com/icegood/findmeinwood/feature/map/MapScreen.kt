@@ -910,7 +910,7 @@ fun PeerList(
                     TextButton(onClick = { onFind(peer.memberId) }) { Text(stringResource(R.string.find)) }
                 }
             }
-            LinkRow(peer, onSelectLink, onAllowLink, linkStatuses)
+            LinkRow(peer, ps, onSelectLink, onAllowLink, linkStatuses)
             UnavailableLinks(peer, linkStatuses, onLinkFix)
         }
     }
@@ -979,6 +979,7 @@ internal fun uncertainty(ctx: Context, peerAccM: Int, myAccM: Int): String {
 @Composable
 private fun LinkRow(
     peer: PeerState,
+    peers: Map<MemberId, PeerState>,
     onSelect: ((MemberId, com.icegood.findmeinwood.core.model.TransportId) -> Unit)?,
     onAllow: ((MemberId, com.icegood.findmeinwood.core.model.TransportId, Boolean) -> Unit)?,
     statuses: List<com.icegood.findmeinwood.core.model.LinkStatus>,
@@ -998,6 +999,10 @@ private fun LinkRow(
             Text(
                 when (v.kind) {
                     LinkVerdict.Kind.CONNECTED -> stringResource(R.string.link_state_ok, radios)
+                    LinkVerdict.Kind.OTHER_RADIO -> stringResource(
+                        R.string.link_state_other, viaLabel(ctx, peer.link), radios,
+                    )
+                    LinkVerdict.Kind.RELAYED -> stringResource(R.string.link_state_relayed)
                     LinkVerdict.Kind.DECIDE -> stringResource(R.string.link_state_decide, radios)
                     LinkVerdict.Kind.WAIT_PEER -> stringResource(R.string.link_state_wait, radios, them)
                     LinkVerdict.Kind.ALL_OFF -> stringResource(R.string.link_state_off, them)
@@ -1008,6 +1013,13 @@ private fun LinkRow(
             )
         }
         peer.linkCommon.forEach { t -> TransportDecision(peer, t, them, onAllow) }
+        wifiDirectHostLine(peer, peers)?.let { h ->
+            Text(
+                if (h.byMe) stringResource(R.string.wd_host_me, them)
+                else stringResource(R.string.wd_host_them, h.host ?: stringResource(R.string.member)),
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
         val link = peer.link ?: return@Column
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             var open by remember { mutableStateOf(false) }
@@ -1041,12 +1053,14 @@ private fun LinkRow(
 }
 
 /**
- * The pair's link in one line, so the user sees what is missing: connected, a decision
- * of theirs or of this user, every link turned down, or the member not heard although a
- * link is agreed. Null while the offers are still being exchanged.
+ * The pair's link in one line, so the user sees what is missing: connected (frames really
+ * come in over a radio — an agreed link alone is not a connection), heard over another
+ * radio than the agreed one, only through other members, a decision of theirs or of this
+ * user, every link turned down, or the member not heard although a link is agreed. Null
+ * while the offers are still being exchanged.
  */
 internal data class LinkVerdict(val kind: Kind, val radios: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList()) {
-    enum class Kind { CONNECTED, DECIDE, WAIT_PEER, ALL_OFF, SILENT }
+    enum class Kind { CONNECTED, OTHER_RADIO, RELAYED, DECIDE, WAIT_PEER, ALL_OFF, SILENT }
 }
 
 internal fun linkVerdict(peer: PeerState, nowMs: Long): LinkVerdict? {
@@ -1055,13 +1069,27 @@ internal fun linkVerdict(peer: PeerState, nowMs: Long): LinkVerdict? {
     val open = peer.linkCommon.filter { it !in peer.linkAllowedByMe && it !in peer.linkDeniedByMe }
         .sortedBy { it !in peer.linkAllowedByPeer }
     val waiting = peer.linkCommon.filter { linkDecision(peer, it) == LinkDecision.WAITING }
+    val heard = peer.transport
     return when {
         peer.link != null && nowMs - peer.lastSeenMs > SILENT_AFTER_MS -> LinkVerdict(LinkVerdict.Kind.SILENT)
-        peer.link != null -> LinkVerdict(LinkVerdict.Kind.CONNECTED, listOfNotNull(peer.link))
+        peer.link != null && heard == null -> LinkVerdict(LinkVerdict.Kind.RELAYED)
+        peer.link != null && heard != peer.link -> LinkVerdict(LinkVerdict.Kind.OTHER_RADIO, listOf(heard!!))
+        peer.link != null -> LinkVerdict(LinkVerdict.Kind.CONNECTED, listOf(heard!!))
         open.isNotEmpty() -> LinkVerdict(LinkVerdict.Kind.DECIDE, open)
         waiting.isNotEmpty() -> LinkVerdict(LinkVerdict.Kind.WAIT_PEER, waiting)
         else -> LinkVerdict(LinkVerdict.Kind.ALL_OFF)
     }
+}
+
+/** Who hosts the Wi-Fi Direct group: this phone, or the member named [host] (null name = unnamed). */
+internal data class WifiDirectHostLine(val byMe: Boolean, val host: String? = null)
+
+/** The Wi-Fi Direct host as shown for [peer]; null when Wi-Fi Direct is not agreed with it. */
+internal fun wifiDirectHostLine(peer: PeerState, peers: Map<MemberId, PeerState>): WifiDirectHostLine? {
+    val host = peer.wifiDirectHost ?: return null
+    if (com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT !in peer.linkOptions) return null
+    val member = host.member ?: return WifiDirectHostLine(byMe = true)
+    return WifiDirectHostLine(byMe = false, host = peers[member]?.nickname)
 }
 
 /** Some member waits for this user to allow or turn down a link (marks the Members tab). */
@@ -1186,6 +1214,7 @@ internal fun fixLabel(ctx: Context, f: com.icegood.findmeinwood.core.model.LinkF
     when (f) {
         com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_BLUETOOTH -> R.string.fix_turn_on
         com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_WIFI -> R.string.fix_turn_on
+        com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_LOCATION -> R.string.fix_turn_on
         com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER -> R.string.fix_set_number
         com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS -> R.string.fix_allow
     },

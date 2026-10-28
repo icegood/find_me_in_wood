@@ -32,6 +32,7 @@ satellite_now=على القمر الصناعي الآن: تمر الرسائل �
 satellite_not_now=تستخدمه الرسائل النصية تلقائيًا عندما ينتقل المشغّل إلى القمر الصناعي (ليس الآن)
 bluetooth_is_off=البلوتوث متوقف
 wifi_is_off=Wi-Fi متوقف
+wifi_direct_needs_location=الموقع متوقف: يحتاجه Wi-Fi Direct على هذا الهاتف
 no_lora_node=لا توجد عقدة LoRa متصلة
 cannot_approve=تعذّر القبول: لا يملك هذا الجهاز سرّ الشبكة
 approved_compare=تم القبول — قارن الرمز %1$s

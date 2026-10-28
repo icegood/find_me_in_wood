@@ -96,3 +96,7 @@ link_state_decide=Nicht verbunden: %1$s unten erlauben
 link_state_wait=Nicht verbunden: %2$s muss %1$s auf dem eigenen Telefon erlauben
 link_state_off=Nicht verbunden: Sie haben jede Verbindung mit %1$s abgelehnt
 link_state_silent=Seit %1$s nicht gehört: Telefon schläft, Funk aus oder außer Reichweite
+link_state_other=Noch nicht über %1$s verbunden: Frames kommen weiter über %2$s
+link_state_relayed=Nicht direkt verbunden: nur über andere Mitglieder gehört
+wd_host_me=Wi-Fi Direct: Dieses Telefon stellt die Gruppe, %1$s tritt bei
+wd_host_them=Wi-Fi Direct: %1$s stellt die Gruppe, dieses Telefon tritt bei

@@ -32,6 +32,7 @@ satellite_now=қазір жерсерікте: SMS сол арқылы жүре�
 satellite_not_now=оператор жерсерікке ауысқанда SMS оны өзі пайдаланады (қазір емес)
 bluetooth_is_off=Bluetooth өшірулі
 wifi_is_off=Wi-Fi өшірулі
+wifi_direct_needs_location=Орналасу өшірулі: бұл телефонда Wi-Fi Direct үшін ол қажет
 no_lora_node=LoRa түйіні қосылмаған
 cannot_approve=қабылдау мүмкін емес: бұл құрылғыда желі құпиясы жоқ
 approved_compare=қабылданды — %1$s кодын салыстырыңыз

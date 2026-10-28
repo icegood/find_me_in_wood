@@ -309,6 +309,8 @@ class MainActivity : ComponentActivity() {
                             when (fix) {
                                 com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_BLUETOOTH -> turnOnBluetooth()
                                 com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_WIFI -> turnOnWifi()
+                                com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_LOCATION ->
+                                    startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
                                 com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER -> tab = "settings"
                                 com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS -> smsPermissionLauncher.launch(smsPermissions)
                             }

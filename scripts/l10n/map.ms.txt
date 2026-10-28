@@ -96,3 +96,7 @@ link_state_decide=Tidak disambung: benarkan %1$s di bawah
 link_state_wait=Tidak disambung: %2$s perlu membenarkan %1$s pada telefonnya
 link_state_off=Tidak disambung: anda menolak semua pautan dengan %1$s
 link_state_silent=Tidak kedengaran selama %1$s: telefon tidur, radio dimatikan atau di luar jangkauan
+link_state_other=Belum disambung melalui %1$s: bingkai masih datang melalui %2$s
+link_state_relayed=Tidak disambung terus: hanya didengar melalui ahli lain
+wd_host_me=Wi-Fi Direct: telefon ini menjadi hos kumpulan, %1$s menyertai
+wd_host_them=Wi-Fi Direct: %1$s menjadi hos kumpulan, telefon ini menyertai

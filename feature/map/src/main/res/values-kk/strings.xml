@@ -108,4 +108,8 @@
     <string name="link_state_wait">Байланыс жоқ: %2$s өз телефонында %1$s рұқсат етуі керек</string>
     <string name="link_state_off">Байланыс жоқ: %1$s бойынша барлық байланыстан бас тарттыңыз</string>
     <string name="link_state_silent">%1$s бойы естілмейді: телефон ұйқыда, радио өшірулі немесе аймақтан тыс</string>
+    <string name="link_state_other">%1$s арқылы әлі қосылмаған: кадрлар әлі %2$s арқылы келеді</string>
+    <string name="link_state_relayed">Тікелей қосылмаған: тек басқа мүшелер арқылы естіледі</string>
+    <string name="wd_host_me">Wi-Fi Direct: бұл телефон топты басқарады, %1$s қосылады</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s топты басқарады, бұл телефон қосылады</string>
 </resources>

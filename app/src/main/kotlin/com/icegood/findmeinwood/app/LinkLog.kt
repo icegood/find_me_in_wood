@@ -184,6 +184,8 @@ internal class LinkLogSampler(
             putJsonObject("radios") {
                 manager.radioStates.value.forEach { (t, s) -> put(t.name, s.name) }
             }
+            // Agreed Wi-Fi Direct role: HOST, JOIN, or null (agreed with nobody).
+            put("wifiDirectRole", manager.links?.wifiDirectRole()?.name)
             putJsonObject("ble") {
                 put("central", bluetooth.centralLinkCount())
                 put("peripheral", bluetooth.peripheralLinkCount())

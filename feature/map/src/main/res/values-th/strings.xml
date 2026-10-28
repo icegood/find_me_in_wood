@@ -108,4 +108,8 @@
     <string name="link_state_wait">ไม่ได้เชื่อมต่อ: %2$s ต้องอนุญาต %1$s บนโทรศัพท์ของตน</string>
     <string name="link_state_off">ไม่ได้เชื่อมต่อ: คุณปฏิเสธทุกลิงก์กับ %1$s</string>
     <string name="link_state_silent">ไม่ได้ยินมา %1$s: โทรศัพท์หลับ วิทยุปิด หรืออยู่นอกระยะ</string>
+    <string name="link_state_other">ยังไม่เชื่อมต่อผ่าน %1$s: เฟรมยังคงมาทาง %2$s</string>
+    <string name="link_state_relayed">ไม่ได้เชื่อมต่อโดยตรง: ได้ยินผ่านสมาชิกคนอื่นเท่านั้น</string>
+    <string name="wd_host_me">Wi-Fi Direct: โทรศัพท์นี้เป็นโฮสต์กลุ่ม %1$s เข้าร่วม</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s เป็นโฮสต์กลุ่ม โทรศัพท์นี้เข้าร่วม</string>
 </resources>

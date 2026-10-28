@@ -108,4 +108,8 @@
     <string name="link_state_wait">जुड़ा नहीं: %2$s को अपने फ़ोन पर %1$s की अनुमति देनी होगी</string>
     <string name="link_state_off">जुड़ा नहीं: आपने %1$s के साथ हर लिंक मना कर दिया</string>
     <string name="link_state_silent">%1$s से नहीं सुना: फ़ोन सो रहा है, रेडियो बंद है या दायरे से बाहर</string>
+    <string name="link_state_other">अभी %1$s से कनेक्ट नहीं: फ़्रेम अब भी %2$s से आ रहे हैं</string>
+    <string name="link_state_relayed">सीधा कनेक्शन नहीं: केवल अन्य सदस्यों के ज़रिए सुना गया</string>
+    <string name="wd_host_me">Wi-Fi Direct: यह फ़ोन समूह होस्ट करता है, %1$s जुड़ता है</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s समूह होस्ट करता है, यह फ़ोन जुड़ता है</string>
 </resources>

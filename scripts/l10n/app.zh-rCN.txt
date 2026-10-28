@@ -32,6 +32,7 @@ satellite_now=当前使用卫星：短信经由卫星发送
 satellite_not_now=运营商切换到卫星时短信会自动使用（当前未使用）
 bluetooth_is_off=蓝牙已关闭
 wifi_is_off=WLAN 已关闭
+wifi_direct_needs_location=位置信息已关闭：本机的 Wi-Fi Direct 需要开启位置信息
 no_lora_node=未连接 LoRa 节点
 cannot_approve=无法批准：此设备没有网络密钥
 approved_compare=已批准 — 请核对代码 %1$s

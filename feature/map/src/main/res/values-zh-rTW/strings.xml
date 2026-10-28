@@ -108,4 +108,8 @@
     <string name="link_state_wait">未連線：%2$s 需要在其手機上允許 %1$s</string>
     <string name="link_state_off">未連線：您拒絕了與 %1$s 的所有連線</string>
     <string name="link_state_silent">已 %1$s 未收到：手機休眠、無線電關閉或超出範圍</string>
+    <string name="link_state_other">尚未透過 %1$s 連線：訊框仍經由 %2$s 傳來</string>
+    <string name="link_state_relayed">未直接連線：只能透過其他成員收到</string>
+    <string name="wd_host_me">Wi-Fi Direct：本機建立群組，%1$s 加入</string>
+    <string name="wd_host_them">Wi-Fi Direct：%1$s 建立群組，本機加入</string>
 </resources>

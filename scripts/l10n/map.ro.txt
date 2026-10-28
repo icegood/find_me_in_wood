@@ -96,3 +96,7 @@ link_state_decide=Neconectat: permiteți %1$s mai jos
 link_state_wait=Neconectat: %2$s trebuie să permită %1$s pe telefonul său
 link_state_off=Neconectat: ați refuzat toate legăturile cu %1$s
 link_state_silent=Nu s-a mai auzit de %1$s: telefon în repaus, radio oprit sau în afara razei
+link_state_other=Încă neconectat prin %1$s: cadrele vin încă prin %2$s
+link_state_relayed=Fără conexiune directă: auzit doar prin alți membri
+wd_host_me=Wi-Fi Direct: acest telefon găzduiește grupul, %1$s se alătură
+wd_host_them=Wi-Fi Direct: %1$s găzduiește grupul, acest telefon se alătură

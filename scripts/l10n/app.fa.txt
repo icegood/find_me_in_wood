@@ -32,6 +32,7 @@ satellite_now=الان روی ماهواره: پیامک از آن می‌گذر
 satellite_not_now=وقتی اپراتور به ماهواره برود، پیامک خودش از آن استفاده می‌کند (الان نه)
 bluetooth_is_off=بلوتوث خاموش است
 wifi_is_off=Wi-Fi خاموش است
+wifi_direct_needs_location=موقعیت مکانی خاموش است: Wi-Fi Direct در این گوشی به آن نیاز دارد
 no_lora_node=هیچ گرهٔ LoRa متصل نیست
 cannot_approve=پذیرش ممکن نیست: این دستگاه رمز شبکه را ندارد
 approved_compare=پذیرفته شد — کد %1$s را مقایسه کنید

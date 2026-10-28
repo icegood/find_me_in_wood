@@ -97,3 +97,7 @@ link_state_decide=Not connected: allow %1$s below
 link_state_wait=Not connected: %2$s has to allow %1$s on their phone
 link_state_off=Not connected: you turned down every link with %1$s
 link_state_silent=Not heard for %1$s: phone asleep, radio off or out of range
+link_state_other=Not connected via %1$s yet: frames still come over %2$s
+link_state_relayed=Not connected directly: heard only through other members
+wd_host_me=Wi-Fi Direct: this phone hosts the group, %1$s joins it
+wd_host_them=Wi-Fi Direct: %1$s hosts the group, this phone joins it

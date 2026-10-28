@@ -35,6 +35,7 @@
     <string name="satellite_not_now">SMS jį naudoja pats, kai operatorius persijungia į palydovą (ne dabar)</string>
     <string name="bluetooth_is_off">Bluetooth išjungtas</string>
     <string name="wifi_is_off">Wi-Fi išjungtas</string>
+    <string name="wifi_direct_needs_location">Vieta išjungta: šiame telefone Wi-Fi Direct jos reikia</string>
     <string name="no_lora_node">neprijungtas LoRa mazgas</string>
     <string name="cannot_approve">negalima priimti: šiame įrenginyje nėra tinklo paslapties</string>
     <string name="approved_compare">priimta — palyginkite kodą %1$s</string>

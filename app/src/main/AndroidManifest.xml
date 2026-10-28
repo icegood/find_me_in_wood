@@ -15,7 +15,10 @@
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+    <!-- Wi-Fi Direct never derives a location: asserting so lets it work with Location off
+         (Android 13+; without the flag every P2P call fails while Location is off). -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- LNP/1 SMS rung: the one channel apps can push through satellite (direct-to-cell /

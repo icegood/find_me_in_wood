@@ -108,4 +108,8 @@
     <string name="link_state_wait">Bağlı değil: %2$s kendi telefonunda %1$s izni vermeli</string>
     <string name="link_state_off">Bağlı değil: %1$s ile tüm bağlantıları reddettiniz</string>
     <string name="link_state_silent">%1$s süredir duyulmuyor: telefon uykuda, radyo kapalı veya menzil dışı</string>
+    <string name="link_state_other">Henüz %1$s ile bağlı değil: çerçeveler hâlâ %2$s üzerinden geliyor</string>
+    <string name="link_state_relayed">Doğrudan bağlı değil: yalnızca diğer üyeler aracılığıyla duyuluyor</string>
+    <string name="wd_host_me">Wi-Fi Direct: bu telefon grubu barındırıyor, %1$s katılıyor</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s grubu barındırıyor, bu telefon katılıyor</string>
 </resources>

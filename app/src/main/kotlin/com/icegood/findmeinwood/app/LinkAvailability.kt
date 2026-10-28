@@ -15,6 +15,8 @@ internal object LinkAvailability {
     data class Inputs(
         val bluetoothOn: Boolean,
         val wifiOn: Boolean,
+        /** Location switched on (Wi-Fi Direct needs it up to Android 12). */
+        val locationOn: Boolean = true,
         val lora: RadioState?,
         val phoneNumber: String,
         val smsPermitted: Boolean,
@@ -43,8 +45,13 @@ internal object LinkAvailability {
         return listOf(
             if (i.bluetoothOn) LinkStatus(bt, TransportId.BLUETOOTH)
             else LinkStatus(bt, TransportId.BLUETOOTH, s(R.string.bluetooth_is_off), LinkFix.TURN_ON_BLUETOOTH),
-            if (i.wifiOn) LinkStatus(wd, TransportId.WIFI_DIRECT)
-            else LinkStatus(wd, TransportId.WIFI_DIRECT, s(R.string.wifi_is_off), LinkFix.TURN_ON_WIFI),
+            when {
+                !i.wifiOn -> LinkStatus(wd, TransportId.WIFI_DIRECT, s(R.string.wifi_is_off), LinkFix.TURN_ON_WIFI)
+                // From Android 13 the app asserts it never locates by Wi-Fi, so Location may stay off.
+                !i.locationOn && i.sdk < 33 ->
+                    LinkStatus(wd, TransportId.WIFI_DIRECT, s(R.string.wifi_direct_needs_location), LinkFix.TURN_ON_LOCATION)
+                else -> LinkStatus(wd, TransportId.WIFI_DIRECT)
+            },
             if (i.lora == RadioState.READY) LinkStatus(lora, TransportId.LORA)
             else LinkStatus(lora, TransportId.LORA, s(R.string.no_lora_node)),
             sms,

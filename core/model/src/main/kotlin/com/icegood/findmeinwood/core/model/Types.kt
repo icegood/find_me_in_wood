@@ -72,7 +72,7 @@ data class LinkOffer(
 )
 
 /** What the user can do on this phone to make an unavailable link usable. */
-enum class LinkFix { TURN_ON_BLUETOOTH, TURN_ON_WIFI, SET_PHONE_NUMBER, ALLOW_SMS }
+enum class LinkFix { TURN_ON_BLUETOOTH, TURN_ON_WIFI, TURN_ON_LOCATION, SET_PHONE_NUMBER, ALLOW_SMS }
 
 /**
  * One supported link as seen on this phone, for the member list: usable now (reason null,

@@ -32,6 +32,7 @@ satellite_now=nyt satelliitissa: tekstiviestit kulkevat sen kautta
 satellite_not_now=tekstiviestit käyttävät sitä itse, kun operaattori vaihtaa satelliittiin (ei nyt)
 bluetooth_is_off=Bluetooth on pois päältä
 wifi_is_off=Wi-Fi on pois päältä
+wifi_direct_needs_location=Sijainti on pois päältä: Wi-Fi Direct tarvitsee sitä tässä puhelimessa
 no_lora_node=LoRa-solmua ei ole yhdistetty
 cannot_approve=ei voi hyväksyä: laitteella ei ole verkon salaisuutta
 approved_compare=hyväksytty — vertaa koodia %1$s

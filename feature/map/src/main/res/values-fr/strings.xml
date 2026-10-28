@@ -108,4 +108,8 @@
     <string name="link_state_wait">Non connecté : %2$s doit autoriser %1$s sur son téléphone</string>
     <string name="link_state_off">Non connecté : vous avez refusé toutes les liaisons avec %1$s</string>
     <string name="link_state_silent">Pas entendu depuis %1$s : téléphone en veille, radio coupée ou hors de portée</string>
+    <string name="link_state_other">Pas encore connecté via %1$s : les trames arrivent toujours par %2$s</string>
+    <string name="link_state_relayed">Pas de connexion directe : entendu seulement via d’autres membres</string>
+    <string name="wd_host_me">Wi-Fi Direct : ce téléphone héberge le groupe, %1$s le rejoint</string>
+    <string name="wd_host_them">Wi-Fi Direct : %1$s héberge le groupe, ce téléphone le rejoint</string>
 </resources>

@@ -32,6 +32,7 @@ satellite_now=şu an uyduda: SMS onun üzerinden gider
 satellite_not_now=operatör uyduya geçtiğinde SMS onu kendiliğinden kullanır (şu an değil)
 bluetooth_is_off=Bluetooth kapalı
 wifi_is_off=Wi-Fi kapalı
+wifi_direct_needs_location=Konum kapalı: Wi-Fi Direct bu telefonda konuma ihtiyaç duyar
 no_lora_node=bağlı LoRa düğümü yok
 cannot_approve=kabul edilemiyor: bu cihazda ağın sırrı yok
 approved_compare=kabul edildi — %1$s kodunu karşılaştırın

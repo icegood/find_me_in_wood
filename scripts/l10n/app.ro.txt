@@ -32,6 +32,7 @@ satellite_now=acum prin satelit: SMS trece prin el
 satellite_not_now=SMS îl folosește singur când operatorul trece pe satelit (nu acum)
 bluetooth_is_off=Bluetooth este oprit
 wifi_is_off=Wi-Fi este oprit
+wifi_direct_needs_location=Locația este oprită: Wi-Fi Direct are nevoie de ea pe acest telefon
 no_lora_node=niciun nod LoRa conectat
 cannot_approve=nu se poate accepta: acest dispozitiv nu are secretul rețelei
 approved_compare=acceptat — comparați codul %1$s

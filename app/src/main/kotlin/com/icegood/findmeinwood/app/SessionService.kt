@@ -383,6 +383,7 @@ class SessionService : Service() {
             LinkAvailability.Inputs(
                 bluetoothOn = bluetoothOn(),
                 wifiOn = wifiOn(),
+                locationOn = locationOn(),
                 lora = manager.radioStates.value[TransportId.LORA],
                 phoneNumber = Prefs.myPhoneNumber(this@SessionService),
                 smsPermitted = smsPermitted(),
@@ -399,6 +400,10 @@ class SessionService : Service() {
     private fun wifiOn() = runCatching {
         getSystemService(android.net.wifi.WifiManager::class.java)?.isWifiEnabled == true
     }.getOrDefault(false)
+
+    private fun locationOn() = runCatching {
+        getSystemService(android.location.LocationManager::class.java)?.isLocationEnabled != false
+    }.getOrDefault(true)
 
     private fun smsPermitted() = listOf(android.Manifest.permission.SEND_SMS, android.Manifest.permission.RECEIVE_SMS).all {
         checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED

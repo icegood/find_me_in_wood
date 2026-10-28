@@ -108,4 +108,8 @@
     <string name="link_state_wait">Ni povezave: %2$s mora dovoliti %1$s na svojem telefonu</string>
     <string name="link_state_off">Ni povezave: zavrnili ste vse povezave z %1$s</string>
     <string name="link_state_silent">Ni slišati že %1$s: telefon spi, radio izklopljen ali izven dosega</string>
+    <string name="link_state_other">Še ni povezave prek %1$s: okvirji še vedno prihajajo prek %2$s</string>
+    <string name="link_state_relayed">Ni neposredne povezave: sliši se le prek drugih članov</string>
+    <string name="wd_host_me">Wi-Fi Direct: ta telefon gosti skupino, %1$s se pridruži</string>
+    <string name="wd_host_them">Wi-Fi Direct: %1$s gosti skupino, ta telefon se pridruži</string>
 </resources>

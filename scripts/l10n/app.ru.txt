@@ -32,6 +32,7 @@ satellite_now=сейчас на спутнике: SMS идёт через нег
 satellite_not_now=SMS сам пойдёт через спутник, когда оператор на него переключится (не сейчас)
 bluetooth_is_off=Bluetooth выключен
 wifi_is_off=Wi-Fi выключен
+wifi_direct_needs_location=Геолокация выключена: Wi-Fi Direct на этом телефоне без неё не работает
 no_lora_node=узел LoRa не подключён
 cannot_approve=не удаётся принять: на этом устройстве нет секрета сети
 approved_compare=принят — сравните код %1$s

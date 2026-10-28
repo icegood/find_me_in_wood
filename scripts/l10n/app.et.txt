@@ -32,6 +32,7 @@ satellite_now=praegu satelliidil: SMS käib selle kaudu
 satellite_not_now=SMS kasutab seda ise, kui operaator lülitub satelliidile (mitte praegu)
 bluetooth_is_off=Bluetooth on väljas
 wifi_is_off=Wi-Fi on väljas
+wifi_direct_needs_location=Asukoht on väljas: Wi-Fi Direct vajab seda selles telefonis
 no_lora_node=LoRa sõlme pole ühendatud
 cannot_approve=ei saa vastu võtta: seadmel pole võrgu saladust
 approved_compare=vastu võetud — võrrelge koodi %1$s

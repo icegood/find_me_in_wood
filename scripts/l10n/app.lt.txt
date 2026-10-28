@@ -32,6 +32,7 @@ satellite_now=dabar per palydovą: SMS eina per jį
 satellite_not_now=SMS jį naudoja pats, kai operatorius persijungia į palydovą (ne dabar)
 bluetooth_is_off=Bluetooth išjungtas
 wifi_is_off=Wi-Fi išjungtas
+wifi_direct_needs_location=Vieta išjungta: šiame telefone Wi-Fi Direct jos reikia
 no_lora_node=neprijungtas LoRa mazgas
 cannot_approve=negalima priimti: šiame įrenginyje nėra tinklo paslapties
 approved_compare=priimta — palyginkite kodą %1$s
