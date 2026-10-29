@@ -100,3 +100,6 @@ link_state_other=%1$s-ით ჯერ არ არის დაკავში
 link_state_relayed=პირდაპირი კავშირი არ არის: ისმის მხოლოდ სხვა წევრების გავლით
 wd_host_me=Wi-Fi Direct: ეს ტელეფონი მასპინძლობს ჯგუფს, %1$s უერთდება
 wd_host_them=Wi-Fi Direct: %1$s მასპინძლობს ჯგუფს, ეს ტელეფონი უერთდება
+wd_in_turn=რიგრიგობით სხვა %1$d ჯგუფთან
+wd_pick_me=Wi-Fi Direct ჯგუფის მასპინძელი იყოს ეს ტელეფონი
+wd_pick_them=Wi-Fi Direct ჯგუფს უმასპინძლოს %1$s-მა

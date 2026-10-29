@@ -9,7 +9,6 @@ import com.icegood.findmeinwood.core.model.TransportId.BLUETOOTH
 import com.icegood.findmeinwood.core.model.TransportId.LORA
 import com.icegood.findmeinwood.core.model.TransportId.SMS
 import com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT
-import com.icegood.findmeinwood.transport.api.GroupRole
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -206,8 +205,15 @@ class LinkNegotiatorTest {
         val a2 = LinkNegotiator(idA, { now }, beacon, sms).apply { restore(keptA) }
         val b2 = LinkNegotiator(idB, { now }, beacon, sms).apply { restore(keptB) }
         assertEquals(keptA, a2.decisions(), "kept before the peer is heard again")
-        assertEquals(GroupRole.HOST, a2.wifiDirectRole(), "the kept Wi-Fi Direct decision sets the role before anyone is heard")
-        assertEquals(GroupRole.JOIN, b2.wifiDirectRole())
+        assertEquals(idA, a2.wifiDirectHostOf(idB), "the kept Wi-Fi Direct decision sets the host before anyone is heard")
+        assertEquals(idA, b2.wifiDirectHostOf(idA))
+        // A kept No: no pair group with that member, even before it is heard again.
+        val kept = LinkNegotiator(idA, { now }, beacon, sms).apply {
+            setOffers(listOf(LinkOffer(WIFI_DIRECT)))
+            restore(mapOf(idB to mapOf("WIFI_DIRECT::" to false)))
+            setMembers(listOf(idA, idB))
+        }
+        assertEquals(emptyList(), kept.wifiDirectGroups())
         a2.setOffers(listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT), LinkOffer(SMS, "+380001")))
         b2.setOffers(listOf(LinkOffer(SMS, "+380002"), LinkOffer(WIFI_DIRECT), LinkOffer(BLUETOOTH)))
         repeat(3) {
@@ -216,8 +222,8 @@ class LinkNegotiatorTest {
         }
         assertEquals(BLUETOOTH, a2.link(idB), "agreed again with nobody tapping")
         assertTrue(a2.agreed(idB))
-        assertEquals(GroupRole.HOST, a2.wifiDirectRole())
-        assertEquals(GroupRole.JOIN, b2.wifiDirectRole())
+        assertEquals(idA, a2.wifiDirectHostOf(idB))
+        assertEquals(idA, b2.wifiDirectHostOf(idA))
     }
 
     @Test
@@ -233,21 +239,89 @@ class LinkNegotiatorTest {
     }
 
     @Test
-    fun `the lower member id hosts the Wi-Fi Direct group, also while the pair is out of touch`() {
-        assertNull(a.wifiDirectRole())
-        assertNull(a.wifiDirectHost())
+    fun `each pair decides its own Wi-Fi Direct host, also while out of touch`() {
+        assertNull(a.wifiDirectHostOf(idB))
+        assertEquals(emptyList(), a.wifiDirectGroups(), "Wi-Fi off (not offered): no group")
         handshake()
-        assertEquals(GroupRole.HOST, a.wifiDirectRole())
-        assertEquals(GroupRole.JOIN, b.wifiDirectRole())
-        assertEquals(idA, b.wifiDirectHost())
+        assertEquals(idA, a.wifiDirectHostOf(idB), "lower id hosts")
+        assertEquals(idA, b.wifiDirectHostOf(idA))
+        assertEquals(listOf(LinkNegotiator.WifiDirectGroup(idA, listOf(idB))), a.wifiDirectGroups())
+        assertEquals(listOf(LinkNegotiator.WifiDirectGroup(idA, listOf(idA))), b.wifiDirectGroups())
         now += beacon * 4
-        assertEquals(GroupRole.HOST, a.wifiDirectRole(), "out of touch: the agreed host keeps hosting")
-        assertEquals(GroupRole.JOIN, b.wifiDirectRole(), "and the other keeps joining its group")
+        assertEquals(idA, a.wifiDirectHostOf(idB), "out of touch: the pair keeps its host")
         exchange()
-        assertEquals(GroupRole.HOST, a.wifiDirectRole())
         b.setOffers(listOf(LinkOffer(BLUETOOTH))) // B switched Wi-Fi off
         repeat(2) { exchange() }
-        assertNull(a.wifiDirectRole(), "Wi-Fi Direct no longer agreed")
+        assertNull(a.wifiDirectHostOf(idB), "Wi-Fi Direct no longer agreed")
+    }
+
+    @Test
+    fun `either of the pair may swap the host, the newer pick wins`() {
+        handshake()
+        b.pickHost(idA, meHosts = true)
+        repeat(2) { exchange() }
+        assertEquals(idB, a.wifiDirectHostOf(idB), "A follows B's pick")
+        assertEquals(idB, b.wifiDirectHostOf(idA))
+        a.pickHost(idA, meHosts = true) // not a peer: ignored
+        a.pickHost(idB, meHosts = true)
+        repeat(2) { exchange() }
+        assertEquals(idA, b.wifiDirectHostOf(idA), "the newer pick wins")
+        repeat(4) { exchange() } // picks are announced a few times only
+        assertEquals(idA, a.wifiDirectHostOf(idB))
+    }
+
+    @Test
+    fun `a phone serves its hosted group and one per host it joins, a pair group for every member it can pair with`() {
+        val idC = MemberId(ByteArray(32) { 0 }) // lowest of all
+        val idD = MemberId(ByteArray(32) { 9 })
+        val c = LinkNegotiator(idC, { now }, beacon, sms)
+        val d = LinkNegotiator(idD, { now }, beacon, sms)
+        val wd = listOf(LinkOffer(WIFI_DIRECT))
+        listOf(a, b, c, d).forEach { it.setOffers(wd) }
+        fun ctl(n: LinkNegotiator) = n.run { announceNow(); outgoing() }
+        fun meet(x: LinkNegotiator, xi: MemberId, y: LinkNegotiator, yi: MemberId) {
+            y.onFrame(xi, WIFI_DIRECT, true, ctl(x))
+            x.onFrame(yi, WIFI_DIRECT, true, ctl(y))
+            x.allow(yi, WIFI_DIRECT, true); y.allow(xi, WIFI_DIRECT, true)
+            repeat(3) {
+                y.onFrame(xi, WIFI_DIRECT, true, ctl(x))
+                x.onFrame(yi, WIFI_DIRECT, true, ctl(y))
+            }
+        }
+        meet(a, idA, b, idB) // A hosts B
+        meet(c, idC, a, idA) // C hosts A
+        meet(a, idA, d, idD) // A hosts D
+        assertEquals(
+            listOf(LinkNegotiator.WifiDirectGroup(idA, listOf(idB, idD)), LinkNegotiator.WifiDirectGroup(idC, listOf(idC))),
+            a.wifiDirectGroups(),
+            "A hosts one group for B and D, and joins C's in turn",
+        )
+        // A member heard but undecided meets A in their pair's group, where the handshake runs.
+        val idE = MemberId(ByteArray(32) { 5 })
+        a.onFrame(idE, WIFI_DIRECT, true, LinkCtl(offers = wd))
+        assertEquals(LinkNegotiator.WifiDirectGroup(idA, listOf(idB, idE, idD)), a.wifiDirectGroups().first())
+        // Every member of the network can pair: one never heard gets its pair group too.
+        val idF = MemberId(ByteArray(32) { 0x0f })
+        a.setMembers(listOf(idA, idB, idF))
+        assertTrue(idF in a.wifiDirectGroups().first().members)
+        // A member that does not offer Wi-Fi Direct has no group with A.
+        a.onFrame(idF, BLUETOOTH, true, LinkCtl(offers = listOf(LinkOffer(BLUETOOTH))))
+        assertFalse(idF in a.wifiDirectGroups().first().members)
+        // E turns Wi-Fi Direct down: refused, no common group needed for it any more.
+        val e = LinkNegotiator(idE, { now }, beacon, sms).apply { setOffers(wd) }
+        e.onFrame(idA, WIFI_DIRECT, true, LinkCtl(offers = wd))
+        e.allow(idA, WIFI_DIRECT, false)
+        a.onFrame(idE, WIFI_DIRECT, true, e.outgoing())
+        assertTrue(a.wifiDirectRefused(idE))
+        assertFalse(a.wifiDirectRefused(idB))
+        assertFalse(a.wifiDirectRefused(MemberId(ByteArray(32) { 7 })), "unknown member")
+        assertEquals(
+            listOf(LinkNegotiator.WifiDirectGroup(idA, listOf(idB, idD)), LinkNegotiator.WifiDirectGroup(idC, listOf(idC))),
+            a.wifiDirectGroups(),
+            "the member that turned Wi-Fi Direct down has no group with A",
+        )
+        a.allow(idB, WIFI_DIRECT, false)
+        assertTrue(a.wifiDirectRefused(idB), "this user's No counts too")
     }
 
     @Test
@@ -299,5 +373,20 @@ class LinkNegotiatorTest {
         val legacy = com.icegood.findmeinwood.core.model.LinkAck(LinkNegotiator.prefix(idA), a.hash(idB, theirs))
         a.onFrame(idB, BLUETOOTH, true, LinkCtl(offers = theirs, acks = listOf(legacy)))
         assertEquals(listOf(BLUETOOTH, WIFI_DIRECT), a.all().single().agreed)
+    }
+}
+
+class WifiDirectSecretTest {
+    @Test
+    fun `group credentials differ per host and per hour, and every member derives the same`() {
+        val key = ByteArray(32) { 1 }
+        val a = MemberId(ByteArray(32) { 1 })
+        val b = MemberId(ByteArray(32) { 2 })
+        val s = SessionManager.wifiDirectSecret(key, a, 10)
+        assertTrue(s.contentEquals(SessionManager.wifiDirectSecret(key, a, 10)), "the same on every phone")
+        assertFalse(s.contentEquals(SessionManager.wifiDirectSecret(key, b, 10)), "a different group per host")
+        assertFalse(s.contentEquals(SessionManager.wifiDirectSecret(key, a, 11)), "a new name every hour")
+        assertFalse(s.contentEquals(SessionManager.wifiDirectSecret(ByteArray(32) { 2 }, a, 10)), "only members can derive it")
+        assertEquals(32, s.size)
     }
 }

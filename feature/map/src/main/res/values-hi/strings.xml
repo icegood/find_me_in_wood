@@ -112,4 +112,7 @@
     <string name="link_state_relayed">सीधा कनेक्शन नहीं: केवल अन्य सदस्यों के ज़रिए सुना गया</string>
     <string name="wd_host_me">Wi-Fi Direct: यह फ़ोन समूह होस्ट करता है, %1$s जुड़ता है</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s समूह होस्ट करता है, यह फ़ोन जुड़ता है</string>
+    <string name="wd_in_turn">%1$d अन्य समूहों के साथ बारी-बारी से</string>
+    <string name="wd_pick_me">इस फ़ोन पर Wi-Fi Direct समूह होस्ट करें</string>
+    <string name="wd_pick_them">%1$s को Wi-Fi Direct समूह होस्ट करने दें</string>
 </resources>

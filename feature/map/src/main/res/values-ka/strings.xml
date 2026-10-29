@@ -112,4 +112,7 @@
     <string name="link_state_relayed">პირდაპირი კავშირი არ არის: ისმის მხოლოდ სხვა წევრების გავლით</string>
     <string name="wd_host_me">Wi-Fi Direct: ეს ტელეფონი მასპინძლობს ჯგუფს, %1$s უერთდება</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s მასპინძლობს ჯგუფს, ეს ტელეფონი უერთდება</string>
+    <string name="wd_in_turn">რიგრიგობით სხვა %1$d ჯგუფთან</string>
+    <string name="wd_pick_me">Wi-Fi Direct ჯგუფის მასპინძელი იყოს ეს ტელეფონი</string>
+    <string name="wd_pick_them">Wi-Fi Direct ჯგუფს უმასპინძლოს %1$s-მა</string>
 </resources>

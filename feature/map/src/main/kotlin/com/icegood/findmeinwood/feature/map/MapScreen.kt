@@ -845,9 +845,10 @@ fun PeerList(
     onAllowLink: ((MemberId, com.icegood.findmeinwood.core.model.TransportId, Boolean) -> Unit)? = null,
     linkStatuses: List<com.icegood.findmeinwood.core.model.LinkStatus> = emptyList(),
     onLinkFix: ((com.icegood.findmeinwood.core.model.LinkFix) -> Unit)? = null,
+    onPickHost: ((MemberId, Boolean) -> Unit)? = null,
 ) {
     val me = rememberDeviceFix(LocalContext.current)?.location
-    PeerList(peers, me, modifier, findTarget, onFind, emptyText, onRename, onSelectLink, onAllowLink, linkStatuses, onLinkFix)
+    PeerList(peers, me, modifier, findTarget, onFind, emptyText, onRename, onSelectLink, onAllowLink, linkStatuses, onLinkFix, onPickHost)
 }
 
 /** FR-6.4: mapless alternative — distance and bearing to each peer. */
@@ -869,6 +870,8 @@ fun PeerList(
     /** Every supported link on this phone; the unusable ones are shown greyed with why. */
     linkStatuses: List<com.icegood.findmeinwood.core.model.LinkStatus> = emptyList(),
     onLinkFix: ((com.icegood.findmeinwood.core.model.LinkFix) -> Unit)? = null,
+    /** This user picks who hosts the pair's Wi-Fi Direct group (true = this phone). */
+    onPickHost: ((MemberId, Boolean) -> Unit)? = null,
 ) {
     val ps by peers.collectAsState()
     val ctx = LocalContext.current
@@ -911,7 +914,7 @@ fun PeerList(
                     TextButton(onClick = { onFind(peer.memberId) }) { Text(stringResource(R.string.find)) }
                 }
             }
-            LinkRow(peer, ps, onSelectLink, onAllowLink, linkStatuses, onLinkFix)
+            LinkRow(peer, ps, onSelectLink, onAllowLink, linkStatuses, onLinkFix, onPickHost)
         }
     }
     renaming?.let { peer ->
@@ -985,6 +988,7 @@ private fun LinkRow(
     onAllow: ((MemberId, com.icegood.findmeinwood.core.model.TransportId, Boolean) -> Unit)?,
     statuses: List<com.icegood.findmeinwood.core.model.LinkStatus>,
     onFix: ((com.icegood.findmeinwood.core.model.LinkFix) -> Unit)?,
+    onPickHost: ((MemberId, Boolean) -> Unit)? = null,
 ) {
     val ctx = LocalContext.current
     val them = peer.nickname ?: stringResource(R.string.them)
@@ -1037,17 +1041,33 @@ private fun LinkRow(
                                 if (t == com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT) {
                                     wifiDirectHostLine(peer, peers)?.let { h ->
                                         Text(
-                                            if (h.byMe) stringResource(R.string.wd_host_me, them)
-                                            else stringResource(R.string.wd_host_them, h.host ?: stringResource(R.string.member)),
+                                            (if (h.byMe) stringResource(R.string.wd_host_me, them)
+                                            else stringResource(R.string.wd_host_them, h.host ?: stringResource(R.string.member))) +
+                                                (if (h.turns > 0) " · " + stringResource(R.string.wd_in_turn, h.turns) else ""),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = Color.Gray,
                                         )
+                                        // The pair's group as Wi-Fi lists it on the phones.
+                                        h.group?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = Color.Gray) }
                                     }
                                 }
                             }
                         },
                         // Tapping an agreed transport selects it for the pair at once.
                         onClick = { if (agreed && onSelect != null) { open = false; onSelect(peer.memberId, t) } },
+                    )
+                }
+                // FR-3.5b: either of the pair may swap who hosts their Wi-Fi Direct group.
+                if (onPickHost != null) wifiDirectHostLine(peer, peers)?.let { h ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = {
+                            Text(
+                                if (h.byMe) stringResource(R.string.wd_pick_them, them) else stringResource(R.string.wd_pick_me),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        onClick = { open = false; onPickHost(peer.memberId, !h.byMe) },
                     )
                 }
                 peer.linkSuggestion?.let { t ->
@@ -1106,15 +1126,18 @@ internal fun linkVerdict(peer: PeerState, nowMs: Long): LinkVerdict? {
     }
 }
 
-/** Who hosts the Wi-Fi Direct group: this phone, or the member named [host] (null name = unnamed). */
-internal data class WifiDirectHostLine(val byMe: Boolean, val host: String? = null)
+/**
+ * Who hosts the pair's Wi-Fi Direct group: this phone, or the member named [host] (null name
+ * = unnamed); [turns] = other groups the radio serves in turn with it.
+ */
+internal data class WifiDirectHostLine(val byMe: Boolean, val host: String? = null, val turns: Int = 0, val group: String? = null)
 
 /** The Wi-Fi Direct host as shown for [peer]; null when Wi-Fi Direct is not agreed with it. */
 internal fun wifiDirectHostLine(peer: PeerState, peers: Map<MemberId, PeerState>): WifiDirectHostLine? {
     val host = peer.wifiDirectHost ?: return null
     if (com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT !in peer.linkOptions) return null
-    val member = host.member ?: return WifiDirectHostLine(byMe = true)
-    return WifiDirectHostLine(byMe = false, host = peers[member]?.nickname)
+    val member = host.member ?: return WifiDirectHostLine(byMe = true, turns = host.turns, group = host.group)
+    return WifiDirectHostLine(byMe = false, host = peers[member]?.nickname, turns = host.turns, group = host.group)
 }
 
 /** Some member waits for this user to allow or turn down a link (marks the Members tab). */

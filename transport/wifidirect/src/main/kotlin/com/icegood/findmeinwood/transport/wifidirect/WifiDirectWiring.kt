@@ -26,9 +26,8 @@ data class GroupCredentials(val networkName: String, val passphrase: String) {
         /** Android requires "DIRECT-" + two characters; the passphrase must be 8–63 chars. */
         fun from(secret: ByteArray): GroupCredentials {
             require(secret.size >= 20) { "secret too short" }
-            val tag = secret.copyOfRange(0, 4).joinToString("") { "%02x".format(it) }
             val pass = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(secret.copyOfRange(4, 20))
-            return GroupCredentials("DIRECT-fm-$tag", pass)
+            return GroupCredentials(com.icegood.findmeinwood.transport.api.groupNetworkName(secret), pass)
         }
     }
 }

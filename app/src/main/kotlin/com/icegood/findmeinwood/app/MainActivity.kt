@@ -313,6 +313,7 @@ class MainActivity : ComponentActivity() {
                         onRename = { id, name -> MemberNames.rename(this@MainActivity, id, name) },
                         onSelectLink = { id, t -> SessionService.activeManager?.selectLink(id, t) },
                         onAllowLink = { id, t, on -> SessionService.activeManager?.allowLink(id, t, on) },
+                        onPickHost = { id, me -> SessionService.activeManager?.pickWifiDirectHost(id, me) },
                         linkStatuses = SessionBus.linkStatuses.collectAsState().value,
                         onLinkFix = { fix ->
                             when (fix) {

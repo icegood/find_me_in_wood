@@ -100,3 +100,6 @@ link_state_other=עדיין אין חיבור דרך %1$s: המסגרות עדי
 link_state_relayed=אין חיבור ישיר: נשמע רק דרך חברים אחרים
 wd_host_me=Wi-Fi Direct: הטלפון הזה מארח את הקבוצה, %1$s מצטרף
 wd_host_them=Wi-Fi Direct: %1$s מארח את הקבוצה, הטלפון הזה מצטרף
+wd_in_turn=לסירוגין עם %1$d קבוצות נוספות
+wd_pick_me=הטלפון הזה יארח את קבוצת Wi-Fi Direct
+wd_pick_them=ש-%1$s יארח את קבוצת Wi-Fi Direct

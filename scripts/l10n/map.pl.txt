@@ -100,3 +100,6 @@ link_state_other=Jeszcze brak połączenia przez %1$s: ramki wciąż przychodzą
 link_state_relayed=Brak połączenia bezpośredniego: słychać tylko przez innych członków
 wd_host_me=Wi-Fi Direct: ten telefon prowadzi grupę, %1$s dołącza
 wd_host_them=Wi-Fi Direct: %1$s prowadzi grupę, ten telefon dołącza
+wd_in_turn=na zmianę z %1$d innymi grupami
+wd_pick_me=Prowadź grupę Wi-Fi Direct na tym telefonie
+wd_pick_them=Niech %1$s prowadzi grupę Wi-Fi Direct

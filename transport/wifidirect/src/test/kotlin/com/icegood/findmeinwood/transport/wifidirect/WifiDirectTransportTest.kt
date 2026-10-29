@@ -195,6 +195,31 @@ class WifiDirectHeartbeatTest {
     }
 }
 
+class WifiDirectCloseLinkTest {
+    private val freePort = java.net.ServerSocket(0).use { it.localPort }
+
+    @Test
+    fun `a link the session refuses is closed`() = runBlocking<Unit> {
+        val t = WifiDirectTransport(dummyContext(), port = freePort)
+        try {
+            t.start(SessionConfig(NetworkId(ByteArray(8)), setOf(TransportId.WIFI_DIRECT)))
+            val c = Socket()
+            withTimeout(5_000) {
+                while (true) {
+                    try { c.connect(InetSocketAddress("127.0.0.1", freePort), 500); break } catch (_: Exception) { delay(50) }
+                }
+            }
+            withTimeout(5_000) { while (t.peerLinkCount() < 1) delay(20) }
+            t.closeLink("/127.0.0.1:${c.localPort}")
+            assertEquals(0, t.peerLinkCount())
+            t.closeLink("/127.0.0.1:1") // unknown: nothing happens
+            c.close()
+        } finally {
+            t.stop()
+        }
+    }
+}
+
 class WifiDirectConstantsTest {
     @Test
     fun `frame cap matches protocol`() {

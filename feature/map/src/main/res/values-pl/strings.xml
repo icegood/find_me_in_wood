@@ -112,4 +112,7 @@
     <string name="link_state_relayed">Brak połączenia bezpośredniego: słychać tylko przez innych członków</string>
     <string name="wd_host_me">Wi-Fi Direct: ten telefon prowadzi grupę, %1$s dołącza</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s prowadzi grupę, ten telefon dołącza</string>
+    <string name="wd_in_turn">na zmianę z %1$d innymi grupami</string>
+    <string name="wd_pick_me">Prowadź grupę Wi-Fi Direct na tym telefonie</string>
+    <string name="wd_pick_them">Niech %1$s prowadzi grupę Wi-Fi Direct</string>
 </resources>

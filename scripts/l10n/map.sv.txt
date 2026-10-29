@@ -100,3 +100,6 @@ link_state_other=Inte ansluten via %1$s än: ramar kommer fortfarande över %2$s
 link_state_relayed=Inte direkt ansluten: hörs bara via andra medlemmar
 wd_host_me=Wi-Fi Direct: den här telefonen är värd för gruppen, %1$s ansluter
 wd_host_them=Wi-Fi Direct: %1$s är värd för gruppen, den här telefonen ansluter
+wd_in_turn=turvis med %1$d andra grupper
+wd_pick_me=Var värd för Wi-Fi Direct-gruppen på den här telefonen
+wd_pick_them=Låt %1$s vara värd för Wi-Fi Direct-gruppen

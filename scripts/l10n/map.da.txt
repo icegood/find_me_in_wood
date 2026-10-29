@@ -100,3 +100,6 @@ link_state_other=Endnu ikke forbundet via %1$s: rammer kommer stadig over %2$s
 link_state_relayed=Ikke direkte forbundet: høres kun gennem andre medlemmer
 wd_host_me=Wi-Fi Direct: denne telefon er vært for gruppen, %1$s deltager
 wd_host_them=Wi-Fi Direct: %1$s er vært for gruppen, denne telefon deltager
+wd_in_turn=på skift med %1$d andre grupper
+wd_pick_me=Vær vært for Wi-Fi Direct-gruppen på denne telefon
+wd_pick_them=Lad %1$s være vært for Wi-Fi Direct-gruppen

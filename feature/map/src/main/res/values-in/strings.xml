@@ -112,4 +112,7 @@
     <string name="link_state_relayed">Tidak terhubung langsung: hanya terdengar lewat anggota lain</string>
     <string name="wd_host_me">Wi-Fi Direct: ponsel ini menjadi host grup, %1$s bergabung</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s menjadi host grup, ponsel ini bergabung</string>
+    <string name="wd_in_turn">bergantian dengan %1$d grup lain</string>
+    <string name="wd_pick_me">Jadikan ponsel ini host grup Wi-Fi Direct</string>
+    <string name="wd_pick_them">Biarkan %1$s menjadi host grup Wi-Fi Direct</string>
 </resources>

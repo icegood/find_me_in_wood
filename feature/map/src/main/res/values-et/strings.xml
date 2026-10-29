@@ -112,4 +112,7 @@
     <string name="link_state_relayed">Otseühendust pole: kuuldav ainult teiste liikmete kaudu</string>
     <string name="wd_host_me">Wi-Fi Direct: see telefon on grupi host, %1$s liitub</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s on grupi host, see telefon liitub</string>
+    <string name="wd_in_turn">kordamööda veel %1$d grupiga</string>
+    <string name="wd_pick_me">Wi-Fi Directi grupi host on see telefon</string>
+    <string name="wd_pick_them">Lase %1$s olla Wi-Fi Directi grupi host</string>
 </resources>

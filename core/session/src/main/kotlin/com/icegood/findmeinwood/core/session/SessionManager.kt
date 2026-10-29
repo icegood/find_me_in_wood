@@ -11,6 +11,7 @@ import com.icegood.findmeinwood.core.model.BeaconPayload
 import com.icegood.findmeinwood.core.model.DecryptedBeacon
 import com.icegood.findmeinwood.core.model.EncryptedFrame
 import com.icegood.findmeinwood.core.model.GnssFix
+import com.icegood.findmeinwood.core.model.LinkOffer
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.NetworkProfile
 import com.icegood.findmeinwood.core.model.PayloadCodec
@@ -19,7 +20,9 @@ import com.icegood.findmeinwood.core.model.RekeyCodec
 import com.icegood.findmeinwood.core.model.SaltWrap
 import com.icegood.findmeinwood.core.crypto.EpochKeys
 import com.icegood.findmeinwood.core.model.TransportId
+import com.icegood.findmeinwood.transport.api.GroupPlan
 import com.icegood.findmeinwood.transport.api.GroupRole
+import com.icegood.findmeinwood.transport.api.groupNetworkName
 import com.icegood.findmeinwood.transport.api.SessionConfig
 import com.icegood.findmeinwood.transport.api.Transport
 import com.icegood.findmeinwood.transport.api.RadioState
@@ -72,6 +75,17 @@ class SessionManager(
 ) {
     companion object {
         const val INITIAL_TTL: UByte = 3u
+        /** Wi-Fi Direct group names change this often (a scanner cannot follow a phone by one). */
+        const val HOUR_MS = 3_600_000L
+
+        /**
+         * Credentials of the Wi-Fi Direct group hosted by [host] in [hour] (FR-8.7): every
+         * member derives them from the network key alone.
+         */
+        fun wifiDirectSecret(key: ByteArray, host: MemberId, hour: Long): ByteArray {
+            val salt = host.bytes + java.nio.ByteBuffer.allocate(8).putLong(hour).array()
+            return com.icegood.findmeinwood.core.crypto.Hkdf.derive(key, salt, "fmiw-wifi-direct-host".toByteArray(), 32)
+        }
         const val KEEP_ALIVE_MS = 60_000L
         /** Minimum gap between extra (link-control) beacons. */
         const val REPLY_GAP_MS = 1_000L
@@ -171,10 +185,15 @@ class SessionManager(
 
     private fun announce(switches: List<LinkNegotiator.Switch>) {
         switches.forEach { onLinkSwitch?.invoke(it) }
-        applyGroupRole()
+        val groups = applyWifiDirect()
         // Agreed set, selection and suggestion feed the member list.
-        val host = links?.wifiDirectHost()?.let { WifiDirectHost(it.takeIf { m -> m != profile.myMemberId }) }
         links?.all()?.forEach { v ->
+            val host = links.wifiDirectHostOf(v.peer)?.let { h ->
+                // How many other groups the radio takes turns with for this pair's one.
+                val turns = groups.size - 1
+                val name = groupNetworkName(wifiDirectSecret(keys.current(), h, clock() / HOUR_MS))
+                WifiDirectHost(h.takeIf { it != profile.myMemberId }, turns, name)
+            }
             tracker.setLinkInfo(
                 v.peer, v.link, v.agreed, v.suggestion,
                 common = v.common, allowedByMe = v.allowedByMe, deniedByMe = v.deniedByMe, allowedByPeer = v.allowedByPeer,
@@ -208,6 +227,16 @@ class SessionManager(
         }
     }
 
+    /**
+     * The links this phone can offer now (radio switches, permissions). The Wi-Fi Direct
+     * groups follow at once: waiting for the next beacon would leave the radio idle for
+     * up to a beacon interval after a start or a radio coming back (FR-3.5c, 20 s).
+     */
+    fun setLinkOffers(offers: List<LinkOffer>) {
+        links?.setOffers(offers) ?: return
+        applyWifiDirect()
+    }
+
     /** This phone's user allows every transport common with [peer] (LNP/3 handshake). */
     fun confirmLinks(peer: MemberId) {
         links?.let { announce(it.confirm(peer)) }
@@ -221,6 +250,11 @@ class SessionManager(
     /** User picked [t] for the link with [peer] (LNP/3: within the agreed set, no handshake). */
     fun selectLink(peer: MemberId, t: TransportId) {
         links?.let { announce(it.select(peer, t)) }
+    }
+
+    /** This user picks who hosts the pair's Wi-Fi Direct group (FR-3.5b). */
+    fun pickWifiDirectHost(peer: MemberId, meHosts: Boolean) {
+        links?.let { it.pickHost(peer, meHosts); announce(emptyList()) }
     }
 
     /**
@@ -289,16 +323,41 @@ class SessionManager(
         return live().filter { it.id !in LinkNegotiator.RUNGS || it.id in agreed }
     }
 
-    @Volatile private var groupRole: GroupRole? = null
+    @Volatile private var groupPlans: List<GroupPlan> = emptyList()
 
-    /** Hands the agreed Wi-Fi Direct role to the radios when it changes. */
-    private fun applyGroupRole() {
-        val role = links?.wifiDirectRole()
-        if (role == groupRole) return
-        groupRole = role
-        com.icegood.findmeinwood.transport.api.DebugLog.d { "wifi direct role: ${role ?: "undecided"}" }
-        transports.forEach { it.setGroupRole(role) }
+    /**
+     * Hands the Wi-Fi Direct groups this phone serves to the radios when they change
+     * (FR-3.5b): one per host, credentials from the network key, the host and the hour.
+     */
+    private fun applyWifiDirect(): List<LinkNegotiator.WifiDirectGroup> {
+        // Every member of the network can pair with this phone: the member list says who.
+        book?.let { b -> links?.setMembers(b.members()) }
+        val groups = links?.wifiDirectGroups().orEmpty()
+        val hour = clock() / HOUR_MS
+        val key = keys.current()
+        val plans = groups.map { g ->
+            GroupPlan(
+                wifiDirectSecret(key, g.host, hour),
+                if (g.host == profile.myMemberId) GroupRole.HOST else GroupRole.JOIN,
+                pairs = g.members.size,
+            )
+        }
+        if (plans != groupPlans) {
+            groupPlans = plans
+            com.icegood.findmeinwood.transport.api.DebugLog.d {
+                "wifi direct groups: " + wifiDirectGroupNames().joinToString()
+            }
+            transports.forEach { it.setGroups(plans) }
+        }
+        return groups
     }
+
+    /** The Wi-Fi Direct groups this phone serves now, as the link log shows them: "host", "join <member>". */
+    fun wifiDirectGroupNames(): List<String> = links?.wifiDirectGroups().orEmpty().map { g ->
+        if (g.host == profile.myMemberId) "host" else "join " + shortId(g.host)
+    }
+
+    private fun shortId(id: MemberId) = id.bytes.take(4).joinToString("") { "%02x".format(it) }
 
     /** Last known radio state per transport (drives the status line in the UI). */
     private val _radioStates = MutableStateFlow<Map<TransportId, RadioState>>(emptyMap())
@@ -349,8 +408,15 @@ class SessionManager(
                 delay(keepAliveMs)
                 housekeeping()
             }
-        }        // Decisions kept from the last run may already fix the Wi-Fi Direct role.
-        applyGroupRole()
+        }        // Decisions kept from the last run may already fix the Wi-Fi Direct groups.
+        applyWifiDirect()
+        // Group names change on the hour: every phone moves at the same moment.
+        jobs += scope.launch {
+            while (true) {
+                delay(HOUR_MS - clock() % HOUR_MS + 1_000)
+                applyWifiDirect()
+            }
+        }
     }
 
     /** The radios' members-only secret (Bluetooth members code, Wi-Fi Direct group) of a key. */
@@ -361,6 +427,7 @@ class SessionManager(
     private fun pushGroupSecrets() {
         val all = keys.newestFirst().map { groupSecretOf(it.second) }
         transports.forEach { it.setGroupSecrets(all.first(), all.drop(1)) }
+        applyWifiDirect()
     }
 
     /** Once per beacon interval: stale/purged peers, quiet-link suggestions. */
@@ -483,6 +550,14 @@ class SessionManager(
         com.icegood.findmeinwood.transport.api.DebugLog.d {
             "rx ${ev.source} from ${f.senderId.bytes.take(4).joinToString("") { "%02x".format(it) }} ttl ${f.ttl}"
         }
+        // FR-8.7: a member whose pair turned Wi-Fi Direct down keeps no link with us on it.
+        val link = ev.link
+        if (ev.source == TransportId.WIFI_DIRECT && f.ttl == INITIAL_TTL && link != null &&
+            links?.wifiDirectRefused(f.senderId) == true
+        ) {
+            transports.firstOrNull { it.id == TransportId.WIFI_DIRECT }?.closeLink(link)
+            return
+        }
         // A member the master dropped is out: nothing it sends counts, nothing is relayed.
         if (book?.isRemoved(f.senderId) == true) {
             bump { it.copy(dropped = it.dropped + 1) }
@@ -503,6 +578,7 @@ class SessionManager(
             if (book?.merge(sync) == true) {
                 forgetRemoved()
                 onBookChanged?.invoke()
+                applyWifiDirect() // new members are new pairs
             }
             // Still differs (we know something they do not): answer with ours.
             if (book?.knowsMoreThan(sync) == true) syncBook()

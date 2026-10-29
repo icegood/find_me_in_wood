@@ -209,6 +209,33 @@ class SessionManagerBranchTest {
     }
 
     @Test
+    fun `wifi direct groups reach the radio as soon as this phone offers it, not at the next beacon`() = runBlocking {
+        val plans = mutableListOf<List<com.icegood.findmeinwood.transport.api.GroupPlan>>()
+        val wd = object : com.icegood.findmeinwood.transport.api.Transport {
+            override val id = TransportId.WIFI_DIRECT
+            override fun start(config: com.icegood.findmeinwood.transport.api.SessionConfig) = kotlinx.coroutines.flow.emptyFlow<com.icegood.findmeinwood.transport.api.TransportEvent>()
+            override suspend fun stop() {}
+            override suspend fun send(wireFrame: ByteArray) = com.icegood.findmeinwood.transport.api.SendResult.Sent
+            override fun setGroups(groups: List<com.icegood.findmeinwood.transport.api.GroupPlan>) { plans += groups }
+        }
+        // A kept Allow: the pair needs no handshake after a restart.
+        val links = LinkNegotiator(me, { now }, beaconIntervalMs = 60_000).apply {
+            restore(mapOf(other to mapOf("WIFI_DIRECT::" to true)))
+        }
+        val m = SessionManager(profile, listOf(wd), flowOf(), { now }, links = links, scope = scope, keepAliveMs = 60_000)
+        m.start()
+        try {
+            assertTrue(plans.lastOrNull().isNullOrEmpty(), "no offers yet: no group")
+            m.setLinkOffers(listOf(LinkOffer(TransportId.WIFI_DIRECT)))
+            assertEquals(1, plans.last().size, "the pair's group is served at once")
+            val n = plans.size
+            m.setLinkOffers(listOf(LinkOffer(TransportId.WIFI_DIRECT)))
+            assertEquals(n, plans.size, "unchanged offers leave the radio alone")
+        } finally { m.stop() }
+        SessionManager(profile, listOf(wd), flowOf(), { now }, scope = scope).setLinkOffers(emptyList())
+    }
+
+    @Test
     fun `negotiated link travels in signed beacons and selection switches at once`() = runBlocking {
         val links = LinkNegotiator(me, { now }, beaconIntervalMs = 60_000)
         links.setOffers(listOf(LinkOffer(TransportId.BLUETOOTH), LinkOffer(TransportId.SMS, "+1")))

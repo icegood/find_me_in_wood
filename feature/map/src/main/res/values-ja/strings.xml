@@ -112,4 +112,7 @@
     <string name="link_state_relayed">直接接続なし: 他のメンバー経由でのみ受信</string>
     <string name="wd_host_me">Wi-Fi Direct: この端末がグループをホストし、%1$s が参加します</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s がグループをホストし、この端末が参加します</string>
+    <string name="wd_in_turn">他の %1$d グループと交代で</string>
+    <string name="wd_pick_me">この端末で Wi-Fi Direct グループをホスト</string>
+    <string name="wd_pick_them">%1$s に Wi-Fi Direct グループをホストさせる</string>
 </resources>

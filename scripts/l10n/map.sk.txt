@@ -100,3 +100,6 @@ link_state_other=Zatiaľ nepripojené cez %1$s: rámce stále chodia cez %2$s
 link_state_relayed=Nepripojené priamo: počuť len cez iných členov
 wd_host_me=Wi-Fi Direct: tento telefón hostí skupinu, %1$s sa pripája
 wd_host_them=Wi-Fi Direct: %1$s hostí skupinu, tento telefón sa pripája
+wd_in_turn=striedavo s ďalšími %1$d skupinami
+wd_pick_me=Hostiť skupinu Wi-Fi Direct na tomto telefóne
+wd_pick_them=Nechať %1$s hostiť skupinu Wi-Fi Direct

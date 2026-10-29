@@ -112,4 +112,7 @@
     <string name="link_state_relayed">Ikke direkte koblet: høres bare gjennom andre medlemmer</string>
     <string name="wd_host_me">Wi-Fi Direct: denne telefonen er vert for gruppen, %1$s blir med</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s er vert for gruppen, denne telefonen blir med</string>
+    <string name="wd_in_turn">på skift med %1$d andre grupper</string>
+    <string name="wd_pick_me">Vær vert for Wi-Fi Direct-gruppen på denne telefonen</string>
+    <string name="wd_pick_them">La %1$s være vert for Wi-Fi Direct-gruppen</string>
 </resources>

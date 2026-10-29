@@ -112,4 +112,7 @@
     <string name="link_state_relayed">직접 연결 없음: 다른 멤버를 통해서만 수신됨</string>
     <string name="wd_host_me">Wi-Fi Direct: 이 휴대폰이 그룹을 호스팅하고 %1$s이(가) 참여합니다</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s이(가) 그룹을 호스팅하고 이 휴대폰이 참여합니다</string>
+    <string name="wd_in_turn">다른 그룹 %1$d개와 번갈아</string>
+    <string name="wd_pick_me">이 휴대폰에서 Wi-Fi Direct 그룹 호스팅</string>
+    <string name="wd_pick_them">%1$s이(가) Wi-Fi Direct 그룹을 호스팅하게 하기</string>
 </resources>

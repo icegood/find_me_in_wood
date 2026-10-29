@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.wifi.p2p.WifiP2pManager
 import com.icegood.findmeinwood.core.model.NetworkId
 import com.icegood.findmeinwood.core.model.TransportId
+import com.icegood.findmeinwood.transport.api.GroupPlan
 import com.icegood.findmeinwood.transport.api.GroupRole
 import com.icegood.findmeinwood.transport.api.RadioState
 import com.icegood.findmeinwood.transport.api.SendResult
@@ -34,8 +35,13 @@ class WifiDirectRoleLogicTest {
     private val creds = GroupCredentials.from(secret)
     private val made = mutableListOf<WifiDirectTransport>()
 
-    private fun transport(wiring: FakeWiring, owner: Boolean = false, pollMs: Long = 10_000L) =
-        WifiDirectTransport(ctx, wiring, pollMs).apply { setPreferGroupOwner(owner); made += this }
+    /** [role]: the pair group it serves (the network's secret), null = none yet. */
+    private fun transport(wiring: FakeWiring, owner: Boolean = false, pollMs: Long = 10_000L, role: GroupRole? = GroupRole.JOIN) =
+        WifiDirectTransport(ctx, wiring, pollMs).apply {
+            setPreferGroupOwner(owner)
+            role?.let { setGroups(listOf(GroupPlan(secret, it))) }
+            made += this
+        }
 
     private fun lastState(events: kotlinx.coroutines.flow.Flow<TransportEvent>): RadioState? =
         (events as kotlinx.coroutines.flow.SharedFlow<TransportEvent>).replayCache
@@ -51,7 +57,7 @@ class WifiDirectRoleLogicTest {
         try {
             val w = FakeWiring()
             val t = transport(w, pollMs = 20)
-            t.setGroupRole(GroupRole.HOST)
+            t.setGroups(listOf(GroupPlan(secret, GroupRole.HOST)))
             t.start(cfg)
             withTimeout(5_000) { while (w.cancelCalls == 0) delay(10) }
             val before = w.createGroupCalls
@@ -99,8 +105,8 @@ class WifiDirectRoleLogicTest {
         assertEquals(RadioState.SCANNING, firstState(t))
         assertTrue(w.discoverCalls >= 1, "must discover (and be discoverable)")
         assertTrue(w.infoCallbacks.isNotEmpty(), "must ask for group info")
-        assertEquals(listOf(creds), w.joins, "joins with the network's credentials")
-        assertEquals(0, w.createGroupCalls, "joins first, hosts only later")
+        assertEquals(listOf(creds), w.joins, "joins its pair's group with its credentials")
+        assertEquals(0, w.createGroupCalls, "a joining phone never hosts")
         t.stop()
         assertEquals(1, w.removeGroupCalls)
     }
@@ -114,10 +120,10 @@ class WifiDirectRoleLogicTest {
     }
 
     @Test
-    fun `without a network secret there is no group at all`() = runBlocking<Unit> {
+    fun `without a pair group to serve there is no group at all`() = runBlocking<Unit> {
         val w = FakeWiring()
-        val t = transport(w, owner = true)
-        t.start(SessionConfig(NetworkId(ByteArray(8)), setOf(TransportId.WIFI_DIRECT)))
+        val t = transport(w, owner = true, role = null)
+        t.start(cfg)
         assertTrue(w.joins.isEmpty() && w.createGroupCalls == 0)
         t.stop()
     }
@@ -133,78 +139,88 @@ class WifiDirectRoleLogicTest {
     }
 
     @Test
-    fun `no host found within the join window - this phone hosts`() = runBlocking<Unit> {
-        val window = WifiDirectTransport.JOIN_WINDOW_MS
-        WifiDirectTransport.JOIN_WINDOW_MS = 20
+    fun `several groups are served in turn, an urgent one at once`() = runBlocking<Unit> {
+        val slot = WifiDirectTransport.SLOT_MS
+        WifiDirectTransport.SLOT_MS = 100
+        val other = ByteArray(32) { (it + 7).toByte() }
         try {
-            val w = FakeWiring().apply { failJoin = true }
-            val t = transport(w, pollMs = 30L)
+            val w = FakeWiring()
+            val t = transport(w, pollMs = 20L)
             t.start(cfg)
-            delay(200)
-            assertTrue(w.joins.size >= 1)
-            assertTrue(w.createGroupCalls >= 1, "hosts after the join window")
+            t.setGroups(listOf(GroupPlan(secret, GroupRole.HOST), GroupPlan(other, GroupRole.JOIN)))
+            assertEquals(creds, w.created.last(), "hosts its own group first")
+            // Nobody joined within the slot: on to the group it joins.
+            withTimeout(5_000) { while (w.joins.none { it == GroupCredentials.from(other) }) delay(10) }
+            // ...and back to its own one after that slot.
+            val hosted = w.created.size
+            withTimeout(5_000) { while (w.created.size == hosted) delay(10) }
+            // Urgent traffic for the joined group's pair: there at once.
+            val joins = w.joins.size
+            t.serveNow(1)
+            assertTrue(w.joins.size > joins)
+            t.serveNow(1)
+            t.serveNow(5) // out of range: ignored
+            // A plan that still holds the group served now keeps it.
+            val removes = w.removeGroupCalls
+            t.setGroups(listOf(GroupPlan(other, GroupRole.JOIN)))
+            assertEquals(removes, w.removeGroupCalls, "the group served now carries on")
             t.stop()
         } finally {
-            WifiDirectTransport.JOIN_WINDOW_MS = window
+            WifiDirectTransport.SLOT_MS = slot
         }
     }
 
     @Test
-    fun `a host nobody joins gives the group up and tries joining again`() = runBlocking<Unit> {
-        val idle = WifiDirectTransport.HOST_IDLE_MS
-        WifiDirectTransport.HOST_IDLE_MS = 20
+    fun `a slot ends soon after a member linked in it`() = runBlocking<Unit> {
+        val dwell = WifiDirectTransport.LINKED_DWELL_MS
+        WifiDirectTransport.LINKED_DWELL_MS = 50
+        val other = ByteArray(32) { (it + 7).toByte() }
+        val server = ServerSocket(0)
         try {
-            val w = FakeWiring()
-            val t = transport(w, pollMs = 30L)
+            val w = object : FakeWiring() {
+                override fun bind(port: Int): ServerSocket? = null
+            }
+            w.socketToReturn = Socket("127.0.0.1", server.localPort)
+            val t = transport(w, pollMs = 20L)
             t.start(cfg)
-            w.answerInfo(formed = true, owner = true, host = "192.168.49.1")
-            delay(250)
-            assertTrue(w.removeGroupCalls >= 1, "idle host must yield")
-            assertTrue(w.joins.size >= 2, "and try joining again")
+            t.setGroups(listOf(GroupPlan(secret, GroupRole.JOIN), GroupPlan(other, GroupRole.JOIN)))
+            w.answerInfo(formed = true, owner = false, host = "127.0.0.1")
+            withTimeout(5_000) { while (t.peerLinkCount() == 0) delay(10) }
+            withTimeout(5_000) { while (w.joins.none { it == GroupCredentials.from(other) }) delay(10) }
+            assertEquals(0, t.peerLinkCount(), "leaving a group closes its links")
             t.stop()
         } finally {
-            WifiDirectTransport.HOST_IDLE_MS = idle
+            server.close()
+            WifiDirectTransport.LINKED_DWELL_MS = dwell
         }
     }
 
     @Test
     fun `agreed host creates the group at once and never gives it up`() = runBlocking<Unit> {
-        val idle = WifiDirectTransport.HOST_IDLE_MS
-        WifiDirectTransport.HOST_IDLE_MS = 20
-        try {
-            val w = FakeWiring()
-            val t = transport(w, pollMs = 30L)
-            t.setGroupRole(GroupRole.HOST)
-            t.start(cfg)
-            assertEquals(listOf(creds), w.created, "hosts without a join window")
-            assertTrue(w.joins.isEmpty())
-            w.answerInfo(formed = true, owner = true, host = "192.168.49.1")
-            delay(250)
-            assertEquals(0, w.removeGroupCalls, "the agreed host waits for its members")
-            t.stop()
-        } finally {
-            WifiDirectTransport.HOST_IDLE_MS = idle
-        }
+        val w = FakeWiring()
+        val t = transport(w, pollMs = 30L, role = GroupRole.HOST)
+        t.start(cfg)
+        assertEquals(listOf(creds), w.created, "hosts at once")
+        assertTrue(w.joins.isEmpty())
+        w.answerInfo(formed = true, owner = true, host = "192.168.49.1")
+        delay(250)
+        assertEquals(0, w.removeGroupCalls, "the agreed host waits for its members")
+        t.stop()
     }
 
     @Test
-    fun `agreed member only joins and gives up a group it hosts alone at once`() = runBlocking<Unit> {
-        val window = WifiDirectTransport.JOIN_WINDOW_MS
-        WifiDirectTransport.JOIN_WINDOW_MS = 20
-        try {
-            val w = FakeWiring().apply { failJoin = true }
-            val t = transport(w, pollMs = 30L)
-            t.start(cfg)
-            w.answerInfo(formed = true, owner = true, host = "192.168.49.1") // hosting before the agreement
-            t.setGroupRole(GroupRole.JOIN)
-            assertEquals(1, w.removeGroupCalls, "a lone host that should join gives up at once")
-            delay(200)
-            assertEquals(0, w.createGroupCalls, "never hosts, whatever the join window says")
-            assertTrue(w.joins.size >= 2)
-            t.stop()
-        } finally {
-            WifiDirectTransport.JOIN_WINDOW_MS = window
-        }
+    fun `a member told to join gives up a group it hosts alone at once and never hosts`() = runBlocking<Unit> {
+        val w = FakeWiring().apply { failJoin = true }
+        val t = transport(w, pollMs = 30L, role = GroupRole.HOST)
+        t.start(cfg)
+        w.answerInfo(formed = true, owner = true, host = "192.168.49.1") // hosting by the old pick
+        val created = w.createGroupCalls
+        t.setGroups(listOf(GroupPlan(secret, GroupRole.JOIN))) // the pair swapped the host
+        assertEquals(1, w.removeGroupCalls, "a lone host that should join gives up at once")
+        delay(200)
+        assertEquals(created, w.createGroupCalls, "never hosts again")
+        assertTrue(w.joins.size >= 2)
+        t.stop()
     }
 
     @Test
@@ -296,20 +312,13 @@ class WifiDirectRoleLogicTest {
                 joins += creds // no callback: the framework never answers
             }
         }
-        // Keep the phone in its join phase for the whole test (no switch to hosting).
-        val window = WifiDirectTransport.JOIN_WINDOW_MS
-        WifiDirectTransport.JOIN_WINDOW_MS = 3_600_000L
-        try {
-            val t = transport(w, pollMs = 30L)
-            t.start(cfg)
-            delay(100)
-            assertEquals(1, w.joins.size, "a pending join must not be spammed")
-            delay(WifiDirectTransport.PENDING_TIMEOUT_MS + 100)
-            assertTrue(w.joins.size >= 2, "an unanswered join must expire and retry")
-            t.stop()
-        } finally {
-            WifiDirectTransport.JOIN_WINDOW_MS = window
-        }
+        val t = transport(w, pollMs = 30L)
+        t.start(cfg)
+        delay(100)
+        assertEquals(1, w.joins.size, "a pending join must not be spammed")
+        delay(WifiDirectTransport.FORM_TIMEOUT_MS + 200)
+        assertTrue(w.joins.size >= 2, "an unanswered join must be given up and asked again")
+        t.stop()
     }
 
     @Test

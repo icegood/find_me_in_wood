@@ -100,3 +100,6 @@ link_state_other=Henüz %1$s ile bağlı değil: çerçeveler hâlâ %2$s üzeri
 link_state_relayed=Doğrudan bağlı değil: yalnızca diğer üyeler aracılığıyla duyuluyor
 wd_host_me=Wi-Fi Direct: bu telefon grubu barındırıyor, %1$s katılıyor
 wd_host_them=Wi-Fi Direct: %1$s grubu barındırıyor, bu telefon katılıyor
+wd_in_turn=%1$d başka grupla sırayla
+wd_pick_me=Wi-Fi Direct grubunu bu telefonda barındır
+wd_pick_them=Wi-Fi Direct grubunu %1$s barındırsın

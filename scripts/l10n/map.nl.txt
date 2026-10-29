@@ -100,3 +100,6 @@ link_state_other=Nog niet verbonden via %1$s: frames komen nog via %2$s
 link_state_relayed=Niet direct verbonden: alleen gehoord via andere leden
 wd_host_me=Wi-Fi Direct: deze telefoon host de groep, %1$s doet mee
 wd_host_them=Wi-Fi Direct: %1$s host de groep, deze telefoon doet mee
+wd_in_turn=om beurten met %1$d andere groepen
+wd_pick_me=Wi-Fi Direct-groep op deze telefoon hosten
+wd_pick_them=%1$s de Wi-Fi Direct-groep laten hosten

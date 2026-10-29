@@ -112,4 +112,7 @@
     <string name="link_state_relayed">Tidak disambung terus: hanya didengar melalui ahli lain</string>
     <string name="wd_host_me">Wi-Fi Direct: telefon ini menjadi hos kumpulan, %1$s menyertai</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s menjadi hos kumpulan, telefon ini menyertai</string>
+    <string name="wd_in_turn">bergilir dengan %1$d kumpulan lain</string>
+    <string name="wd_pick_me">Hos kumpulan Wi-Fi Direct pada telefon ini</string>
+    <string name="wd_pick_them">Biar %1$s menjadi hos kumpulan Wi-Fi Direct</string>
 </resources>

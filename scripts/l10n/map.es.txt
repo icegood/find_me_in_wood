@@ -100,3 +100,6 @@ link_state_other=Aún sin conexión por %1$s: las tramas siguen llegando por %2$
 link_state_relayed=Sin conexión directa: solo se oye a través de otros miembros
 wd_host_me=Wi-Fi Direct: este teléfono aloja el grupo, %1$s se une
 wd_host_them=Wi-Fi Direct: %1$s aloja el grupo, este teléfono se une
+wd_in_turn=por turnos con otros %1$d grupos
+wd_pick_me=Alojar el grupo Wi-Fi Direct en este teléfono
+wd_pick_them=Que %1$s aloje el grupo Wi-Fi Direct

@@ -100,3 +100,6 @@ link_state_other=尚未通过 %1$s 连接：帧仍经由 %2$s 传来
 link_state_relayed=未直接连接：只能通过其他成员收到
 wd_host_me=Wi-Fi Direct：本机创建群组，%1$s 加入
 wd_host_them=Wi-Fi Direct：%1$s 创建群组，本机加入
+wd_in_turn=与另外 %1$d 个群组轮流
+wd_pick_me=由本机创建 Wi-Fi Direct 群组
+wd_pick_them=由 %1$s 创建 Wi-Fi Direct 群组

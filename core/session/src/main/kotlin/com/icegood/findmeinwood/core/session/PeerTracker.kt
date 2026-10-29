@@ -33,8 +33,12 @@ data class PeerState(
     val wifiDirectHost: WifiDirectHost? = null,
 )
 
-/** The Wi-Fi Direct group's host: [member], or this phone when that is null. */
-data class WifiDirectHost(val member: MemberId?)
+/**
+ * The pair's Wi-Fi Direct host: [member], or this phone when that is null. [turns] = how
+ * many other groups this phone's radio serves in turn with this one (0 = all its time).
+ * [group] = the pair's group Wi-Fi name this hour.
+ */
+data class WifiDirectHost(val member: MemberId?, val turns: Int = 0, val group: String? = null)
 
 /** Pure-Kotlin peer table (FR-6.1/6.3): staleness + purge, injectable clock. */
 class PeerTracker(

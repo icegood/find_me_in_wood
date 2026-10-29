@@ -112,4 +112,7 @@
     <string name="link_state_relayed">Nepripojené priamo: počuť len cez iných členov</string>
     <string name="wd_host_me">Wi-Fi Direct: tento telefón hostí skupinu, %1$s sa pripája</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s hostí skupinu, tento telefón sa pripája</string>
+    <string name="wd_in_turn">striedavo s ďalšími %1$d skupinami</string>
+    <string name="wd_pick_me">Hostiť skupinu Wi-Fi Direct na tomto telefóne</string>
+    <string name="wd_pick_them">Nechať %1$s hostiť skupinu Wi-Fi Direct</string>
 </resources>

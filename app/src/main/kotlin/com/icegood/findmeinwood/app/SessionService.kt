@@ -358,7 +358,7 @@ class SessionService : Service() {
                 }
                 val statuses = linkStatuses(manager)
                 SessionBus.publishLinkStatuses(statuses)
-                links.setOffers(LinkAvailability.offers(statuses))
+                manager.setLinkOffers(LinkAvailability.offers(statuses))
                 links.setName(Prefs.currentDisplayName(this@SessionService))
                 // The member card: name and links for members who never heard us directly.
                 manager.book?.let { b ->

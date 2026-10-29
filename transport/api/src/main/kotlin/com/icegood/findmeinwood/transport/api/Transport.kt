@@ -28,8 +28,26 @@ sealed interface SendResult {
     data object HandedToUser : SendResult
 }
 
-/** This phone's part in a radio group shared by members (the Wi-Fi Direct group). */
+/** This phone's part in a radio group (a Wi-Fi Direct group). */
 enum class GroupRole { HOST, JOIN }
+
+/**
+ * One Wi-Fi Direct group this phone takes part in (FR-3.5b): its credentials come from
+ * [secret]; [role] is this phone's in it, as its pairs agreed. [pairs] = how many members
+ * this phone meets in it.
+ */
+class GroupPlan(val secret: ByteArray, val role: GroupRole, val pairs: Int = 1) {
+    /** The group's Wi-Fi name, as phones nearby list it. */
+    val networkName: String get() = groupNetworkName(secret)
+
+    override fun equals(other: Any?) =
+        other is GroupPlan && secret.contentEquals(other.secret) && role == other.role && pairs == other.pairs
+    override fun hashCode() = (secret.contentHashCode() * 31 + role.hashCode()) * 31 + pairs
+}
+
+/** Wi-Fi name of the group made from [secret] (Android requires "DIRECT-" + two characters). */
+fun groupNetworkName(secret: ByteArray): String =
+    "DIRECT-fm-" + secret.copyOfRange(0, 4).joinToString("") { "%02x".format(it) }
 
 data class SessionConfig(
     val networkId: NetworkId,
@@ -75,10 +93,16 @@ interface Transport {
     fun connect(radioPeerId: String) {}
 
     /**
-     * The role members agreed for this phone in a shared group (LNP/3), or null while none
-     * is agreed: the radio then picks one itself. Radios without groups ignore it.
+     * The groups this phone serves (LNP/3, FR-3.5b): the one it hosts, then one per member
+     * it joins. Several groups are served in turn. Radios without groups ignore it.
      */
-    fun setGroupRole(role: GroupRole?) {}
+    fun setGroups(groups: List<GroupPlan>) {}
+
+    /** Serve the group of [groups] at [index] now: its pair has something urgent. */
+    fun serveNow(index: Int) {}
+
+    /** Closes the radio link [link] (a member that may not use this radio with us). */
+    fun closeLink(link: String) {}
 
     /**
      * The network key moved to a new epoch (a member was removed): radios use [current]

@@ -100,3 +100,6 @@ link_state_other=Ei vielä yhteyttä %1$s-yhteydellä: kehykset tulevat yhä %2$
 link_state_relayed=Ei suoraa yhteyttä: kuuluu vain muiden jäsenten kautta
 wd_host_me=Wi-Fi Direct: tämä puhelin isännöi ryhmää, %1$s liittyy
 wd_host_them=Wi-Fi Direct: %1$s isännöi ryhmää, tämä puhelin liittyy
+wd_in_turn=vuorotellen %1$d muun ryhmän kanssa
+wd_pick_me=Isännöi Wi-Fi Direct -ryhmää tällä puhelimella
+wd_pick_them=Anna %1$s isännöidä Wi-Fi Direct -ryhmää

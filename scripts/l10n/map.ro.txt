@@ -100,3 +100,6 @@ link_state_other=Încă neconectat prin %1$s: cadrele vin încă prin %2$s
 link_state_relayed=Fără conexiune directă: auzit doar prin alți membri
 wd_host_me=Wi-Fi Direct: acest telefon găzduiește grupul, %1$s se alătură
 wd_host_them=Wi-Fi Direct: %1$s găzduiește grupul, acest telefon se alătură
+wd_in_turn=pe rând cu alte %1$d grupuri
+wd_pick_me=Găzduiește grupul Wi-Fi Direct pe acest telefon
+wd_pick_them=Lasă %1$s să găzduiască grupul Wi-Fi Direct

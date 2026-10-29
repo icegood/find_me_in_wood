@@ -2,11 +2,11 @@ package com.icegood.findmeinwood.core.session
 
 import com.icegood.findmeinwood.core.model.LinkAck
 import com.icegood.findmeinwood.core.model.LinkCtl
+import com.icegood.findmeinwood.core.model.LinkHost
 import com.icegood.findmeinwood.core.model.LinkOffer
 import com.icegood.findmeinwood.core.model.LinkSel
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.TransportId
-import com.icegood.findmeinwood.transport.api.GroupRole
 import java.util.zip.CRC32
 
 /**
@@ -28,9 +28,10 @@ import java.util.zip.CRC32
  *   negotiator only [suggest]s the next agreed transport; switching is the user's choice.
  * - Routing: frames go out only on radios this user allowed for some peer ([radios]), so
  *   a pair stays in touch while any of its agreed radios reaches.
- * - Wi-Fi Direct roles follow from the agreement ([wifiDirectRole]): the lowest member id
- *   hosts the group — computed the same on every phone, so nothing needs to be sent — and
- *   keeps hosting while the members are out of touch.
+ * - Wi-Fi Direct is per pair too ([wifiDirectHostOf]): of the two, the lower member id hosts
+ *   unless the pair picked the other way round ([pickHost], announced like a selection).
+ *   This phone serves one group it hosts and one per member it joins
+ *   ([wifiDirectGroups]); the radio takes them in turn.
  */
 class LinkNegotiator(
     private val self: MemberId,
@@ -95,6 +96,10 @@ class LinkNegotiator(
         val decisions = HashMap<String, Boolean>()
         /** We decided something for this peer (an empty allowed list is an answer too). */
         var acking = false
+        /** Picked Wi-Fi Direct host: true = this phone, false = the peer, null = the lower id. */
+        var hostMe: Boolean? = null
+        var hostEpoch = 0
+        var hostAnnounce = 0
     }
 
     private val peers = HashMap<MemberId, Peer>()
@@ -158,18 +163,23 @@ class LinkNegotiator(
         // Until the peer echoes our ack, and until we echoed theirs.
         val handshaking = acks.any { (id, ack) -> ackSent[id] != ack.h || peers[id]?.theirEcho != ack.h || echoSent[id] != ack.e }
         val sels = peers.filter { (_, p) -> p.announce > 0 && p.selected != null }
+        val hostPicks = peers.filter { (_, p) -> p.hostAnnounce > 0 && p.hostMe != null }
         // An answer the peer waits for always goes out (and clears [urgent]), else every
         // frame heard meanwhile would ask for one more extra beacon.
-        if (!dirty && !urgent && !handshaking && sels.isEmpty() && beaconCount % OFFERS_EVERY != 0) return null
+        if (!dirty && !urgent && !handshaking && sels.isEmpty() && hostPicks.isEmpty() &&
+            beaconCount % OFFERS_EVERY != 0
+        ) return null
         dirty = false
         urgent = false
         acks.forEach { (id, ack) -> ackSent[id] = ack.h; echoSent[id] = ack.e }
         sels.values.forEach { it.announce-- }
+        hostPicks.values.forEach { it.hostAnnounce-- }
         return LinkCtl(
             offers = myOffers,
             acks = acks.map { it.second },
             sel = sels.map { (id, p) -> LinkSel(prefix(id), p.selected!!, p.epoch) },
             name = myName,
+            hosts = hostPicks.map { (id, p) -> LinkHost(prefix(id), p.hostMe!!, p.hostEpoch) },
         )
     }
 
@@ -205,6 +215,15 @@ class LinkNegotiator(
                     p.selected = s.t
                     p.epoch = s.e
                     p.selectedAtMs = nowMs()
+                }
+            }
+            // Their pick says whether *they* host: for this phone it is the other way round.
+            ctl.hosts.firstOrNull { it.p.contentEquals(prefix(self)) }?.let { h ->
+                val meHosts = !h.h
+                val newer = h.e > p.hostEpoch || h.e == p.hostEpoch && p.hostMe != meHosts && hex(peer) < hex(self)
+                if (newer) {
+                    p.hostMe = meHosts
+                    p.hostEpoch = h.e
                 }
             }
         }
@@ -297,34 +316,91 @@ class LinkNegotiator(
         return peers.flatMap { (id, p) -> allowedByMe(id, p) + undecided(id, p) }.toSet()
     }
 
-    /**
-     * This phone's Wi-Fi Direct role: of the members that agreed on Wi-Fi Direct with this
-     * one, the lowest id hosts and the others join. The members heard lately decide; when
-     * none is, the role stays with every agreed member, so the pair keeps rejoining the same
-     * group after a drop instead of both trying at random (where neither may find the
-     * other). Null only while nobody agreed on Wi-Fi Direct.
-     */
+    /** One Wi-Fi Direct group this phone serves: hosted by [host] (this phone or a member), with [members]. */
+    data class WifiDirectGroup(val host: MemberId, val members: List<MemberId>)
+
+    /** The network's members (its member list): being one means being able to pair with every other. */
+    private var members: Set<MemberId> = emptySet()
+
     @Synchronized
-    fun wifiDirectRole(): GroupRole? {
-        val host = wifiDirectHost() ?: return null
-        return if (host == self) GroupRole.HOST else GroupRole.JOIN
+    fun setMembers(ids: Collection<MemberId>) {
+        members = ids.toSet() - self
     }
 
-    /** Who hosts the Wi-Fi Direct group by [wifiDirectRole]: this phone or a member; null = nobody agreed. */
+    /**
+     * Who hosts the pair's Wi-Fi Direct group once agreed (FR-3.5b): this phone or [peer].
+     * Null while the pair has not agreed on Wi-Fi Direct (a decision kept from the last run
+     * counts until the peer is heard again).
+     */
     @Synchronized
-    fun wifiDirectHost(): MemberId? {
-        val now = nowMs()
-        val agreed = peers.filter { (id, p) -> TransportId.WIFI_DIRECT in agreedSet(id, p) }
-        if (agreed.isEmpty()) {
-            // Just restarted: before any member is heard, the members this user allowed
-            // Wi-Fi Direct for decide, so the pair's group forms at once, not by guessing.
-            val kept = restored.filter { (id, d) -> id !in peers && d.any { (k, v) -> v && k.startsWith("${TransportId.WIFI_DIRECT.name}:") } }
-            if (kept.isEmpty()) return null
-            return (kept.keys + self).minBy { hex(it) }
-        }
-        val wd = agreed.filter { (_, p) -> heardLately(p, now) }.ifEmpty { agreed }
-        return (wd.keys + self).minBy { hex(it) }
+    fun wifiDirectHostOf(peer: MemberId): MemberId? {
+        val p = peers[peer]
+        val agreed = if (p != null) TransportId.WIFI_DIRECT in agreedSet(peer, p) else restoredAllows(peer)
+        return if (agreed) pairHost(peer) else null
     }
+
+    /** The pair's host by the pair alone: the pick one of the two made, else the lower member id. */
+    private fun pairHost(peer: MemberId): MemberId = when (peers[peer]?.hostMe) {
+        true -> self
+        false -> peer
+        null -> if (hex(self) < hex(peer)) self else peer
+    }
+
+    /**
+     * The groups this phone serves (FR-3.5b): every member it can pair with over Wi-Fi
+     * Direct meets it in their pair's group — agreed or not yet decided (the handshake runs
+     * there), never one that turned it down or does not offer it. The group this phone
+     * hosts comes first (shared by every pair that makes it host, each still a pair of its
+     * own), then one per member it joins.
+     */
+    @Synchronized
+    fun wifiDirectGroups(): List<WifiDirectGroup> {
+        if (myOffers.none { it.t == TransportId.WIFI_DIRECT }) return emptyList()
+        val ids = (members + peers.keys + restored.keys).filter { it != self }.sortedBy { hex(it) }
+        val pairable = ids.filter { id ->
+            val offers = peers[id]?.offers
+            !wifiDirectRefused(id) && !restoredDenies(id) &&
+                (offers == null || TransportId.WIFI_DIRECT in commonOf(offers))
+        }
+        val byHost = pairable.groupBy { pairHost(it) }
+        val mine = byHost[self]?.let { listOf(WifiDirectGroup(self, it)) }.orEmpty()
+        val joins = byHost.filterKeys { it != self }.toSortedMap(compareBy { hex(it) })
+            .map { (host, members) -> WifiDirectGroup(host, members) }
+        return mine + joins
+    }
+
+    /** This user picks who hosts the pair's Wi-Fi Direct group; the peer follows from the next beacon. */
+    @Synchronized
+    fun pickHost(peer: MemberId, meHosts: Boolean) {
+        val p = peers[peer] ?: return
+        p.hostMe = meHosts
+        p.hostEpoch++
+        p.hostAnnounce = SELECT_BEACONS
+        urgent = true
+    }
+
+    /**
+     * The pair settled Wi-Fi Direct and it is not agreed: this user or theirs turned it
+     * down. Such a member may not keep a Wi-Fi Direct link with this phone (FR-8.7).
+     */
+    @Synchronized
+    fun wifiDirectRefused(peer: MemberId): Boolean {
+        val p = peers[peer] ?: return false
+        val offers = p.offers ?: return false
+        if (TransportId.WIFI_DIRECT !in commonOf(offers)) return false
+        if (TransportId.WIFI_DIRECT in agreedSet(peer, p)) return false
+        val e = entry(TransportId.WIFI_DIRECT, offers)
+        val mineNo = p.decisions[e] == false
+        val theirsNo = p.theirAckH != null && p.theirAckT?.let { TransportId.WIFI_DIRECT !in it } == true
+        return mineNo || theirsNo
+    }
+
+    private fun restoredAllows(peer: MemberId): Boolean =
+        restored[peer]?.any { (k, v) -> v && k.startsWith("${TransportId.WIFI_DIRECT.name}:") } == true
+
+    /** Kept from the last run: this user turned Wi-Fi Direct down for [peer] (until it is heard again). */
+    private fun restoredDenies(peer: MemberId): Boolean =
+        peer !in peers && restored[peer]?.any { (k, v) -> !v && k.startsWith("${TransportId.WIFI_DIRECT.name}:") } == true
 
     @Synchronized
     fun common(peer: MemberId): List<TransportId> = peers[peer]?.offers?.let { commonOf(it) } ?: emptyList()

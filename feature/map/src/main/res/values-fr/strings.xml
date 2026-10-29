@@ -112,4 +112,7 @@
     <string name="link_state_relayed">Pas de connexion directe : entendu seulement via d’autres membres</string>
     <string name="wd_host_me">Wi-Fi Direct : ce téléphone héberge le groupe, %1$s le rejoint</string>
     <string name="wd_host_them">Wi-Fi Direct : %1$s héberge le groupe, ce téléphone le rejoint</string>
+    <string name="wd_in_turn">à tour de rôle avec %1$d autres groupes</string>
+    <string name="wd_pick_me">Héberger le groupe Wi-Fi Direct sur ce téléphone</string>
+    <string name="wd_pick_them">Laisser %1$s héberger le groupe Wi-Fi Direct</string>
 </resources>

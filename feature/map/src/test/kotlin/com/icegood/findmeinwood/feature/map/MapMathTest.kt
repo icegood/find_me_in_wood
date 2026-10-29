@@ -148,5 +148,7 @@ class MapMathTest {
         val byQ = com.icegood.findmeinwood.core.session.WifiDirectHost(idQ)
         kotlin.test.assertEquals(WifiDirectHostLine(byMe = false, host = "Huawei"), wifiDirectHostLine(p.copy(wifiDirectHost = byQ), peers))
         kotlin.test.assertNull(wifiDirectHostLine(p.copy(wifiDirectHost = byQ, linkOptions = emptyList()), peers), "not agreed with this one")
+        val named = com.icegood.findmeinwood.core.session.WifiDirectHost(idQ, group = "DIRECT-fm-0a0b0c0d")
+        kotlin.test.assertEquals("DIRECT-fm-0a0b0c0d", wifiDirectHostLine(p.copy(wifiDirectHost = named), peers)?.group, "the pair's group name is shown")
     }
 }

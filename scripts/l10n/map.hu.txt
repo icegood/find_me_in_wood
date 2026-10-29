@@ -100,3 +100,6 @@ link_state_other=Még nincs kapcsolat ezen: %1$s; a keretek még ezen jönnek: %
 link_state_relayed=Nincs közvetlen kapcsolat: csak más tagokon keresztül hallható
 wd_host_me=Wi-Fi Direct: ez a telefon a csoport gazdája, %1$s csatlakozik
 wd_host_them=Wi-Fi Direct: %1$s a csoport gazdája, ez a telefon csatlakozik
+wd_in_turn=felváltva %1$d másik csoporttal
+wd_pick_me=Ez a telefon legyen a Wi-Fi Direct csoport gazdája
+wd_pick_them=%1$s legyen a Wi-Fi Direct csoport gazdája

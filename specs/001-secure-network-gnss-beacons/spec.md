@@ -54,35 +54,55 @@ frame is encrypted and authenticated with the network's key.
   with name and password filled in; it then joins as FR-2.2.
 
 ### US-3 — Links between members (mesh)
-- FR-3.1 Each pair of members uses one agreed link; a member may run several radios at
-  once (Bluetooth, Wi-Fi Direct, LoRa node, SMS).
+- FR-3.1 Links are pairwise: every pair of members is a point-to-point link of its own.
+  The pair alone decides which transports it may use, which one it uses and, for Wi-Fi
+  Direct, which of the two hosts; nothing another pair decided changes it. A medium shared
+  by several members (one Wi-Fi Direct group) exists only when each of them chose it
+  (FR-3.5d). A member may run several radios at once (Bluetooth, Wi-Fi Direct, LoRa node,
+  SMS), each serving the pairs that agreed on it.
 - FR-3.2 Every phone shows every supported link for each member: usable ones, and greyed
   ones with the reason and a fix (Turn on, Set number, Allow). Satellite is a note: SMS
   uses it when the carrier does. Only usable links are offered in the handshake.
-- FR-3.3 Frames relay: a valid frame not seen before is re-sent on the other radios while
-  TTL > 0 (start 3), and on the radio it came in on to every link but that one — a Wi-Fi
-  Direct group owner, or a phone with several Bluetooth links, is the only way between the
-  members around it (LoRa is not relayed back onto its own air). Duplicates and frames
-  failing authentication are never relayed.
+- FR-3.3 Frames relay: a valid frame not seen before is re-sent while TTL > 0 (start 3) to
+  every other member over that pair's own link — the radio it came in on included, to
+  every link but the one it came from (a Wi-Fi Direct host or a phone with several
+  Bluetooth links is the only way between the members around it; LoRa is not relayed back
+  onto its own air). A relay never uses a link the next pair did not agree on. Duplicates
+  and frames failing authentication are never relayed.
 - FR-3.4 A member heard only through others is shown "via others".
 - FR-3.5 Links are negotiated in-band by LNP/3: one handshake per pair agrees the *set* of
   usable transports; within it the link switches at any time without a new handshake.
   There is no fallback — nothing switches by itself.
-- FR-3.5a Routing follows the decisions: member frames go out only on radios this user
-  allowed for some peer — every allowed radio, so a pair keeps reaching each other while
-  any of its agreed radios does. While a peer heard lately waits for this user's decision
-  (offers unknown, or a common transport not yet decided) frames go on every radio.
+- FR-3.5a Routing follows each pair's decisions: a member's frames reach a peer only over
+  transports that pair agreed on — on point-to-point links (a Wi-Fi Direct socket, a
+  Bluetooth connection) per peer; on a broadcast medium (LoRa air) while some pair on it
+  agreed. Every agreed transport of the pair carries them, so the pair keeps reaching each
+  other while any of them does. While the pair has not decided yet (offers unknown, or a
+  common transport undecided) frames go on every radio, so the handshake can get through.
   Management frames (discovery, joining) are not limited.
-- FR-3.5b Wi-Fi Direct roles follow the agreement: of the members agreed on Wi-Fi Direct —
-  those in reach (heard within 3 beacon intervals), or all of them while none is — the
-  lowest member id hosts the group and the others only join; the host never gives up its
-  group, so a pair out of touch rejoins the same group. A working group is never torn down
-  for a role change. With nobody agreed on Wi-Fi Direct the radio finds a group by itself.
-  Each member's row names the host ("this phone hosts the group, X joins it").
+- FR-3.5b Wi-Fi Direct roles are per pair, for every member this phone can pair with on it
+  (agreed, or not decided yet): of the two, the lower member id hosts, unless
+  the pair picked the other way round in the link menu (either member may; the newer pick
+  wins, as selections do). Computed from the pair alone, kept while the two are out of
+  touch, so they rejoin the same group. Separate pairs run separate groups at the same
+  time (A–B and C–D are two groups). A phone hosts at most one group and cannot be in two
+  (Android): all its pairs that make it host share its one group (each still a pair of
+  its own, FR-3.5d), and when its pairs need it in several groups (join two hosts, or join
+  one and host for another) it switches between them by itself: it serves each such pair
+  in turn, long enough to exchange what is pending (at least one beacon each way), and
+  goes to a pair at once when that pair has something urgent (a handshake step, a chat
+  message, a find request). Nothing waits for the user. The member row says when the
+  pair's link is shared in time ("Wi-Fi Direct, in turn with 2 others").
+- FR-3.5d A host's group is shared only by the pairs that each chose it: every member in it
+  joined by its own pair agreement with the host (and the host's pick, FR-3.5b), and the
+  host closes the link of any member whose pair turned Wi-Fi Direct down (FR-8.7). Members
+  in one group reach each other only through the host's relay over their own pair links
+  (FR-3.3, shown "via others"), never directly.
 - FR-3.5c Two phones that both allowed Wi-Fi Direct connect over it with only Wi-Fi on
   (Bluetooth off), and on Android 13+ with Location off (the app asserts it never locates
   by Wi-Fi). Up to Android 12 Location is required: Wi-Fi Direct is then shown unavailable
-  with a "Turn on" fix. The pair reconnects by itself within 20 s of whatever dropped it
+  with a "Turn on" fix. The pair reconnects by itself within 20 s of whatever dropped it (a pair
+  shared in time, FR-3.5b: within 20 s of its turn)
   (Wi-Fi off and on, a group lost, an app restart), also with a screen off: requests are
   retried every 5 s and given up after 15 s, and every socket carries a heartbeat every 5 s,
   so one silent for 15 s is closed instead of being counted as a link. The network the user
@@ -188,9 +208,15 @@ frame is encrypted and authenticated with the network's key.
 - FR-8.6 Battery: scanning is continuous for 2 min after start or any link change (and
   while listening), otherwise a 5 s burst per minute; advertising at low power (balanced
   while findable).
-- FR-8.7 Wi-Fi Direct joins the network's own group by credentials derived from the network
-  key (no system dialogs, no strangers): try to join for 20–40 s, then host; an idle host
-  gives way after 60–120 s.
+- FR-8.7 Wi-Fi Direct group credentials derive from the network key and the host's member id
+  (no system dialogs, no strangers, a different group per host); the name also changes
+  every hour, so a scanner cannot follow a phone by it. A member joins a host's group only
+  when that pair agreed on Wi-Fi Direct (or it accepted the host's shared group); the host
+  closes a socket whose first authenticated frame comes from a member without such an
+  agreement. Being a member of the network means being able to pair with every other member,
+  nothing more: there is no group of the network as a whole. Two members that have not
+  decided on Wi-Fi Direct yet meet in their pair's group (host as FR-3.5b) and run the
+  handshake there; a member that turned it down, or does not offer it, gets no group.
 - FR-8.9 Removing a member re-salts the network key: the master draws a new random salt
   (epoch n+1; traffic key = HKDF(epoch-0 key, salt)) and seals it to every remaining
   member's box key (EC P-256, published on its signed card) in a master-signed rekey that

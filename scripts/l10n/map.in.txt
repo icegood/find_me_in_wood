@@ -100,3 +100,6 @@ link_state_other=Belum terhubung lewat %1$s: frame masih datang lewat %2$s
 link_state_relayed=Tidak terhubung langsung: hanya terdengar lewat anggota lain
 wd_host_me=Wi-Fi Direct: ponsel ini menjadi host grup, %1$s bergabung
 wd_host_them=Wi-Fi Direct: %1$s menjadi host grup, ponsel ini bergabung
+wd_in_turn=bergantian dengan %1$d grup lain
+wd_pick_me=Jadikan ponsel ini host grup Wi-Fi Direct
+wd_pick_them=Biarkan %1$s menjadi host grup Wi-Fi Direct

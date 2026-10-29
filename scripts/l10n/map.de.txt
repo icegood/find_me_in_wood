@@ -100,3 +100,6 @@ link_state_other=Noch nicht über %1$s verbunden: Frames kommen weiter über %2$
 link_state_relayed=Nicht direkt verbunden: nur über andere Mitglieder gehört
 wd_host_me=Wi-Fi Direct: Dieses Telefon stellt die Gruppe, %1$s tritt bei
 wd_host_them=Wi-Fi Direct: %1$s stellt die Gruppe, dieses Telefon tritt bei
+wd_in_turn=abwechselnd mit %1$d anderen Gruppen
+wd_pick_me=Wi-Fi-Direct-Gruppe auf diesem Telefon stellen
+wd_pick_them=%1$s die Wi-Fi-Direct-Gruppe stellen lassen

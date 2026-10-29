@@ -13,9 +13,14 @@ class DiscoveryApiTest {
         t.setFindable(byteArrayOf(1))
         t.setFindable(null)
         t.connect("AA:BB")
-        GroupRole.entries.forEach { t.setGroupRole(it) }
-        t.setGroupRole(null)
+        t.setGroups(GroupRole.entries.map { GroupPlan(byteArrayOf(1), it) })
+        t.serveNow(0)
+        t.closeLink("AA:BB")
+        assertEquals(GroupPlan(byteArrayOf(1), GroupRole.HOST, 2), GroupPlan(byteArrayOf(1), GroupRole.HOST, 2))
+        assertTrue(GroupPlan(byteArrayOf(1), GroupRole.JOIN) != GroupPlan(byteArrayOf(2), GroupRole.JOIN))
+        assertEquals(GroupPlan(byteArrayOf(1), GroupRole.JOIN).hashCode(), GroupPlan(byteArrayOf(1), GroupRole.JOIN).hashCode())
         t.setGroupSecrets(byteArrayOf(1), listOf(byteArrayOf(2)))
+        assertEquals("DIRECT-fm-0a0b0c0d", GroupPlan(byteArrayOf(10, 11, 12, 13, 14), GroupRole.JOIN).networkName)
         kotlinx.coroutines.runBlocking { assertEquals(null, t.relay(byteArrayOf(1), except = "AA:BB"), "radios relay back only when they can") }
         assertEquals("L", TransportEvent.FrameReceived(
             com.icegood.findmeinwood.core.model.EncryptedFrame(NetworkId(ByteArray(8)), com.icegood.findmeinwood.core.model.MemberId(ByteArray(32)), 1u, 3u, 0L, ByteArray(16)),

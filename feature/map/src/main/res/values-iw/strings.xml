@@ -112,4 +112,7 @@
     <string name="link_state_relayed">אין חיבור ישיר: נשמע רק דרך חברים אחרים</string>
     <string name="wd_host_me">Wi-Fi Direct: הטלפון הזה מארח את הקבוצה, %1$s מצטרף</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s מארח את הקבוצה, הטלפון הזה מצטרף</string>
+    <string name="wd_in_turn">לסירוגין עם %1$d קבוצות נוספות</string>
+    <string name="wd_pick_me">הטלפון הזה יארח את קבוצת Wi-Fi Direct</string>
+    <string name="wd_pick_them">ש-%1$s יארח את קבוצת Wi-Fi Direct</string>
 </resources>

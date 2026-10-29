@@ -112,4 +112,7 @@
     <string name="link_state_relayed">Nije izravno povezano: čuje se samo preko drugih članova</string>
     <string name="wd_host_me">Wi-Fi Direct: ovaj telefon je domaćin grupe, %1$s se pridružuje</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s je domaćin grupe, ovaj telefon se pridružuje</string>
+    <string name="wd_in_turn">naizmjence s još %1$d grupa</string>
+    <string name="wd_pick_me">Ovaj telefon je domaćin grupe Wi-Fi Direct</string>
+    <string name="wd_pick_them">Neka %1$s bude domaćin grupe Wi-Fi Direct</string>
 </resources>

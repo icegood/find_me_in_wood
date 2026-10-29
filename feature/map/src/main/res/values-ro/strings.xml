@@ -112,4 +112,7 @@
     <string name="link_state_relayed">Fără conexiune directă: auzit doar prin alți membri</string>
     <string name="wd_host_me">Wi-Fi Direct: acest telefon găzduiește grupul, %1$s se alătură</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s găzduiește grupul, acest telefon se alătură</string>
+    <string name="wd_in_turn">pe rând cu alte %1$d grupuri</string>
+    <string name="wd_pick_me">Găzduiește grupul Wi-Fi Direct pe acest telefon</string>
+    <string name="wd_pick_them">Lasă %1$s să găzduiască grupul Wi-Fi Direct</string>
 </resources>

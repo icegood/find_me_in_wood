@@ -100,3 +100,6 @@ link_state_other=Još nije povezano putem %1$s: okviri i dalje stižu putem %2$s
 link_state_relayed=Nije izravno povezano: čuje se samo preko drugih članova
 wd_host_me=Wi-Fi Direct: ovaj telefon je domaćin grupe, %1$s se pridružuje
 wd_host_them=Wi-Fi Direct: %1$s je domaćin grupe, ovaj telefon se pridružuje
+wd_in_turn=naizmjence s još %1$d grupa
+wd_pick_me=Ovaj telefon je domaćin grupe Wi-Fi Direct
+wd_pick_them=Neka %1$s bude domaćin grupe Wi-Fi Direct

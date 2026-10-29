@@ -100,3 +100,6 @@ link_state_other=%1$s арқылы әлі қосылмаған: кадрлар �
 link_state_relayed=Тікелей қосылмаған: тек басқа мүшелер арқылы естіледі
 wd_host_me=Wi-Fi Direct: бұл телефон топты басқарады, %1$s қосылады
 wd_host_them=Wi-Fi Direct: %1$s топты басқарады, бұл телефон қосылады
+wd_in_turn=басқа %1$d топпен кезекпен
+wd_pick_me=Wi-Fi Direct тобын осы телефон басқарсын
+wd_pick_them=Wi-Fi Direct тобын %1$s басқарсын

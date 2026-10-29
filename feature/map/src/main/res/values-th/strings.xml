@@ -112,4 +112,7 @@
     <string name="link_state_relayed">ไม่ได้เชื่อมต่อโดยตรง: ได้ยินผ่านสมาชิกคนอื่นเท่านั้น</string>
     <string name="wd_host_me">Wi-Fi Direct: โทรศัพท์นี้เป็นโฮสต์กลุ่ม %1$s เข้าร่วม</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s เป็นโฮสต์กลุ่ม โทรศัพท์นี้เข้าร่วม</string>
+    <string name="wd_in_turn">สลับกับกลุ่มอื่นอีก %1$d กลุ่ม</string>
+    <string name="wd_pick_me">ให้โทรศัพท์นี้เป็นโฮสต์กลุ่ม Wi-Fi Direct</string>
+    <string name="wd_pick_them">ให้ %1$s เป็นโฮสต์กลุ่ม Wi-Fi Direct</string>
 </resources>

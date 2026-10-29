@@ -100,3 +100,6 @@ link_state_other=Vēl nav savienots caur %1$s: kadri joprojām nāk caur %2$s
 link_state_relayed=Nav tiešā savienojuma: dzirdams tikai caur citiem dalībniekiem
 wd_host_me=Wi-Fi Direct: šis tālrunis vada grupu, %1$s pievienojas
 wd_host_them=Wi-Fi Direct: %1$s vada grupu, šis tālrunis pievienojas
+wd_in_turn=pārmaiņus ar vēl %1$d grupām
+wd_pick_me=Šis tālrunis vadīs Wi-Fi Direct grupu
+wd_pick_them=Ļaut %1$s vadīt Wi-Fi Direct grupu

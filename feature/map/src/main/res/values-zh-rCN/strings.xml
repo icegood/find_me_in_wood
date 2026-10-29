@@ -112,4 +112,7 @@
     <string name="link_state_relayed">未直接连接：只能通过其他成员收到</string>
     <string name="wd_host_me">Wi-Fi Direct：本机创建群组，%1$s 加入</string>
     <string name="wd_host_them">Wi-Fi Direct：%1$s 创建群组，本机加入</string>
+    <string name="wd_in_turn">与另外 %1$d 个群组轮流</string>
+    <string name="wd_pick_me">由本机创建 Wi-Fi Direct 群组</string>
+    <string name="wd_pick_them">由 %1$s 创建 Wi-Fi Direct 群组</string>
 </resources>

@@ -114,6 +114,17 @@ data class LinkSel(
     val e: Int,
 )
 
+/** Who hosts the pair's Wi-Fi Direct group, picked by one of the two (FR-3.5b). */
+@kotlinx.serialization.Serializable
+data class LinkHost(
+    /** First 4 bytes of the peer's member id. */
+    val p: ByteArray,
+    /** The sender hosts (else the peer does). */
+    val h: Boolean,
+    /** Per-pair pick counter: the higher one is current; equal: lower member id wins. */
+    val e: Int,
+)
+
 @kotlinx.serialization.Serializable
 data class LinkCtl(
     val v: Int = 3,
@@ -124,6 +135,8 @@ data class LinkCtl(
     val sel: List<LinkSel> = emptyList(),
     /** Sender's display name, so members show up by name rather than as "member". */
     val name: String? = null,
+    /** Wi-Fi Direct host picks made on this phone (repeated like selections). */
+    val hosts: List<LinkHost> = emptyList(),
 )
 
 @kotlinx.serialization.Serializable

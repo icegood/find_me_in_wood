@@ -100,3 +100,6 @@ link_state_other=Chưa kết nối qua %1$s: khung vẫn đến qua %2$s
 link_state_relayed=Không kết nối trực tiếp: chỉ nghe qua các thành viên khác
 wd_host_me=Wi-Fi Direct: điện thoại này làm chủ nhóm, %1$s tham gia
 wd_host_them=Wi-Fi Direct: %1$s làm chủ nhóm, điện thoại này tham gia
+wd_in_turn=luân phiên với %1$d nhóm khác
+wd_pick_me=Làm chủ nhóm Wi-Fi Direct trên điện thoại này
+wd_pick_them=Để %1$s làm chủ nhóm Wi-Fi Direct

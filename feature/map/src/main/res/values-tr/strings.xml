@@ -112,4 +112,7 @@
     <string name="link_state_relayed">Doğrudan bağlı değil: yalnızca diğer üyeler aracılığıyla duyuluyor</string>
     <string name="wd_host_me">Wi-Fi Direct: bu telefon grubu barındırıyor, %1$s katılıyor</string>
     <string name="wd_host_them">Wi-Fi Direct: %1$s grubu barındırıyor, bu telefon katılıyor</string>
+    <string name="wd_in_turn">%1$d başka grupla sırayla</string>
+    <string name="wd_pick_me">Wi-Fi Direct grubunu bu telefonda barındır</string>
+    <string name="wd_pick_them">Wi-Fi Direct grubunu %1$s barındırsın</string>
 </resources>

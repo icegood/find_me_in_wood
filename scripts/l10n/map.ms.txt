@@ -100,3 +100,6 @@ link_state_other=Belum disambung melalui %1$s: bingkai masih datang melalui %2$s
 link_state_relayed=Tidak disambung terus: hanya didengar melalui ahli lain
 wd_host_me=Wi-Fi Direct: telefon ini menjadi hos kumpulan, %1$s menyertai
 wd_host_them=Wi-Fi Direct: %1$s menjadi hos kumpulan, telefon ini menyertai
+wd_in_turn=bergilir dengan %1$d kumpulan lain
+wd_pick_me=Hos kumpulan Wi-Fi Direct pada telefon ini
+wd_pick_them=Biar %1$s menjadi hos kumpulan Wi-Fi Direct

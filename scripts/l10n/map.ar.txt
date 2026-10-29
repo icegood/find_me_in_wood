@@ -100,3 +100,6 @@ link_state_other=لا اتصال عبر %1$s بعد: الإطارات ما زا�
 link_state_relayed=لا اتصال مباشر: يُسمع فقط عبر أعضاء آخرين
 wd_host_me=Wi-Fi Direct: هذا الهاتف يستضيف المجموعة، و%1$s ينضم إليها
 wd_host_them=Wi-Fi Direct: %1$s يستضيف المجموعة، وهذا الهاتف ينضم إليها
+wd_in_turn=بالتناوب مع %1$d مجموعات أخرى
+wd_pick_me=استضف مجموعة Wi-Fi Direct على هذا الهاتف
+wd_pick_them=دع %1$s يستضيف مجموعة Wi-Fi Direct

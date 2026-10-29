@@ -100,3 +100,6 @@ link_state_other=Dar neprisijungta per %1$s: kadrai vis dar ateina per %2$s
 link_state_relayed=Nėra tiesioginio ryšio: girdima tik per kitus narius
 wd_host_me=Wi-Fi Direct: šis telefonas yra grupės šeimininkas, %1$s prisijungia
 wd_host_them=Wi-Fi Direct: %1$s yra grupės šeimininkas, šis telefonas prisijungia
+wd_in_turn=pakaitomis su dar %1$d grupėmis
+wd_pick_me=Šis telefonas bus Wi-Fi Direct grupės šeimininkas
+wd_pick_them=Tegul %1$s būna Wi-Fi Direct grupės šeimininkas
