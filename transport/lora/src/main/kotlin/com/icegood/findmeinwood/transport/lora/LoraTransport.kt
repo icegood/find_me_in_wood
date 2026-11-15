@@ -42,7 +42,8 @@ import kotlinx.coroutines.launch
  *
  *  (1) no Bluetooth scanner, the connect refused, or the node has no serial service
  *  (2) the node disconnected, or nothing was received for watchdogTimeoutMs
- *  (3) after reconnectDelayMs: connect again
+ *  (3) after reconnectDelayMs, doubled on every failure in a row up to
+ *     maxReconnectDelayMs (back to the start once Ready): connect again
  * ```
  *
  * Sending: Ready flushes the queue at once; in any other running state the last
@@ -52,6 +53,8 @@ class LoraTransport(
     private val context: Context,
     private val link: LoraNodeLink = BleNodeLink(context),
     private val reconnectDelayMs: Long = 5_000,
+    /** The reconnect delay doubles on every failure in a row, up to this. */
+    private val maxReconnectDelayMs: Long = 60_000,
     private val watchdogPeriodMs: Long = 10_000,
     private val watchdogTimeoutMs: Long = 30_000,
 ) : Transport {
@@ -66,6 +69,9 @@ class LoraTransport(
     @Volatile private var running = false
     @Volatile private var linkReady = false
     @Volatile private var lastRxMs = 0L
+    /** Delay before the next reconnect; back to [reconnectDelayMs] once the link is ready. */
+    private var nextReconnectMs = reconnectDelayMs
+    private var reconnectJob: kotlinx.coroutines.Job? = null
 
     override fun start(config: SessionConfig): Flow<TransportEvent> {
         if (!running) {
@@ -87,6 +93,7 @@ class LoraTransport(
     override suspend fun stop() {
         running = false
         linkReady = false
+        synchronized(this) { reconnectJob?.cancel(); reconnectJob = null; nextReconnectMs = reconnectDelayMs }
         txQueue.clear()
         link.disconnect()
         emit(RadioState.STOPPED)
@@ -112,6 +119,7 @@ class LoraTransport(
         when (state) {
             NodeLinkState.READY -> {
                 linkReady = true
+                synchronized(this) { nextReconnectMs = reconnectDelayMs }
                 lastRxMs = System.currentTimeMillis()
                 emit(RadioState.READY)
                 flushQueue()
@@ -119,19 +127,25 @@ class LoraTransport(
             NodeLinkState.DOWN -> {
                 linkReady = false
                 emit(RadioState.LINK_DOWN)
-                if (running) scope.launch { reconnectWithBackoff() }
+                if (running) scheduleReconnect()
             }
             NodeLinkState.CONNECTING -> emit(RadioState.CONNECTING)
         }
     }
 
-    private suspend fun reconnectWithBackoff() {
-        var delayMs = reconnectDelayMs
-        while (running && !linkReady) {
-            delay(delayMs)
-            delayMs = (delayMs * 2).coerceAtMost(60_000) // capped backoff
-            link.connect()
-            return // connect() re-subscribes; DOWN events re-trigger backoff
+    /**
+     * One reconnect at a time, each failure in a row waiting twice as long as the one
+     * before (capped): a node that is gone is not hammered, one that is back within
+     * seconds is found at once.
+     */
+    @Synchronized
+    private fun scheduleReconnect() {
+        if (reconnectJob?.isActive == true) return
+        val wait = nextReconnectMs
+        nextReconnectMs = (wait * 2).coerceAtMost(maxReconnectDelayMs)
+        reconnectJob = scope.launch {
+            delay(wait)
+            if (running && !linkReady) link.connect() // a DOWN it reports schedules the next
         }
     }
 

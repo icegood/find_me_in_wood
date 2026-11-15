@@ -248,5 +248,35 @@ class LoraTimersTest {
         t.stop()
     }
 
+    @Test
+    fun `each failed reconnect in a row waits twice as long, up to the cap, and Ready resets it`() = runBlocking<Unit> {
+        val link = FakeNodeLink()
+        val t = LoraTransport(
+            dummyContext(), link,
+            reconnectDelayMs = 40, maxReconnectDelayMs = 160, watchdogPeriodMs = 60_000, watchdogTimeoutMs = 120_000,
+        )
+        t.start(dummyConfig())
+        kotlinx.coroutines.delay(50)
+        suspend fun failAndTime(): Long {
+            val n = link.connects.get()
+            val t0 = System.currentTimeMillis()
+            link.emit(NodeLinkState.DOWN)
+            link.emit(NodeLinkState.DOWN) // a second report: still one reconnect
+            kotlinx.coroutines.withTimeout(5_000) { while (link.connects.get() == n) kotlinx.coroutines.delay(5) }
+            kotlinx.coroutines.delay(20)
+            kotlin.test.assertEquals(n + 1, link.connects.get(), "one reconnect per failure")
+            return System.currentTimeMillis() - t0 - 20
+        }
+        val gaps = List(4) { failAndTime() }
+        kotlin.test.assertTrue(gaps[0] in 30..75, "first: the base delay, got $gaps")
+        kotlin.test.assertTrue(gaps[1] in 70..150, "second: doubled, got $gaps")
+        kotlin.test.assertTrue(gaps[2] in 150..260, "third: doubled again, got $gaps")
+        kotlin.test.assertTrue(gaps[3] in 150..260, "capped, got $gaps")
+        link.emit(NodeLinkState.READY)
+        kotlinx.coroutines.delay(30)
+        kotlin.test.assertTrue(failAndTime() in 30..75, "Ready starts over")
+        t.stop()
+    }
+
     private fun dummyConfig() = SessionConfig(NetworkId(ByteArray(8)), setOf(TransportId.LORA))
 }
