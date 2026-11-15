@@ -75,21 +75,47 @@ internal sealed interface GroupState {
  * request on entry, and again at a poll once it was refused or went unanswered.
  *
  * ```
- *  Stopped ──start──▶ (target), or RadioOff while Wi-Fi is off
- *  any ──stop──▶ Stopped
- *  any running ──Wi-Fi off──▶ RadioOff ──Wi-Fi on──▶ (target)
- *  any running ──other slot, role or band (setGroups, serveNow, rotation):
- *                leave the group if formed──▶ (target)
+ *                   ┌─────────┐
+ *  stop (any) ─────▶│ Stopped │
+ *                   └────┬────┘
+ *                  start │ (while Wi-Fi is off: to RadioOff)
+ *                        ▼
+ *  ┌──────────┐ Wi-Fi ┌───────────────────────────────────────────────────┐
+ *  │ RadioOff │──on──▶│ (target): chosen by the slot served now.          │
+ *  └──────────┘       │ Entered again from any running state when the     │
+ *       ▲             │ slot, role or band changes (setGroups, serveNow,  │
+ *       │ Wi-Fi off   │ rotation); a formed group is left first.          │
+ *       │ (any        └─────┬───────────────┬─────────────────┬───────────┘
+ *       │  running)         │ no group      │ hosting         │ joining
+ *                           ▼               ▼                 ▼
+ *                       ┌──────┐      ┌──────────┐       ┌─────────┐
+ *                       │ Idle │      │ Creating │◀─┐    │ Joining │◀───────────┐
+ *                       └──────┘      └──┬─────┬─┘  │    └──┬────┬─┘            │
+ *                                        │     └─(1)┘       │    │ (2)          │
+ *                                        │                  │    ▼              │
+ *                                        │                  │  ┌──────────┐     │
+ *                                        │                  │  │ Checking │─(3)─┤
+ *                                        │                  │  └──┬─────┬─┘     │
+ *                                        │                  │     │     │ in the group to join
+ *                                        │                  │     │     ▼       │
+ *                                        │                  │     │  ┌────────────┐
+ *                                        │                  │     │  │ Addressing │─(4)┘
+ *                                        │                  │     │  └─────┬──────┘
+ *                                        │    group formed  │     │        │
+ *                                        ▼                  ▼     ▼        ▼
+ *                                     ┌──────────────────────────────────────┐
+ *                                     │                Formed                │
+ *                                     └───────┬─────────────────────┬────────┘
+ *                                             │ group lost          │ (5)
+ *                                             ▼                     ▼
+ *                                         (target)               Joining
  *
- *  Creating ──no group after CREATE_TIMEOUT_MS: cancel──▶ Creating (asked again)
- *  Joining ──no group after attempt × JOIN_STEP_MS (at most FORM_TIMEOUT_MS),
- *            or a group owner came in sight──▶ Checking
- *  Checking ──in the group to join──▶ Addressing
- *  Checking ──in none or another: cancel──▶ Joining (asked again, attempt + 1)
- *  Addressing ──no address after ADDRESS_WAIT_MS: cancel──▶ Joining (asked again, attempt + 1)
- *  Creating | Joining | Checking | Addressing ──group formed──▶ Formed
- *  Formed ──group lost──▶ (target)
- *  Formed ──hosting alone while the pair has it join: leave──▶ Joining
+ *  (1) no group after CREATE_TIMEOUT_MS: cancel, ask again
+ *  (2) overdue (attempt × JOIN_STEP_MS, at most FORM_TIMEOUT_MS), or a group owner
+ *      came in sight
+ *  (3) in no group or in another: cancel, ask again with attempt + 1
+ *  (4) no address after ADDRESS_WAIT_MS: cancel, ask again with attempt + 1
+ *  (5) hosting alone while the pair has this phone join: leave the group
  * ```
  */
 class WifiDirectTransport(
