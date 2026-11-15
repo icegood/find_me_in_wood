@@ -39,6 +39,66 @@ import kotlinx.coroutines.channels.BufferOverflow
  *
  * BLUETOOTH_SCAN/CONNECT/ADVERTISE permissions are requested and gated by the app layer
  * before this transport is started; runtime rejections surface as SecurityException.
+ * Three state machines run here. They are kept in flags ([running], [radiosUp],
+ * [scanning], the [clients] / [clientReady] maps), not in a state type.
+ *
+ * 1. Radios (GATT server, advertising, scanning):
+ *
+ * ```
+ *                  ┌─────────┐
+ *  stop (any) ────▶│ Stopped │
+ *                  └────┬────┘
+ *                 start │
+ *            ┌──────────┴───────────┐
+ *            │ Bluetooth off, or    │ Bluetooth on: server,
+ *            │ the radios refused   │ advertising and scan started
+ *            ▼                      ▼
+ *      ┌──────────┐      (1)      ┌─────────┐
+ *      │ RadioOff │──────────────▶│ RadioUp │
+ *      │          │◀──────────────│         │
+ *      └──────────┘      (2)      └─────────┘
+ *
+ *  (1) the supervisor (every SUPERVISOR_INTERVAL_MS) finds Bluetooth on
+ *  (2) the supervisor finds Bluetooth off: every link is dropped
+ * ```
+ *
+ * 2. Scanning, while RadioUp ([tickRadios]):
+ *
+ * ```
+ *               a link appeared or dropped (from Burst or Paused)
+ *         ┌──────────────────────────────────────────────────────┐
+ *         ▼                                                      │
+ *  ┌────────────┐  (1)   ┌────────┐  after SLOW_PERIOD_MS − BURST_MS  ┌───────┐
+ *  │ Continuous │───────▶│ Paused │──────────────────────────────────▶│ Burst │
+ *  └────────────┘        └────────┘◀──────────────────────────────────└───────┘
+ *                                           after BURST_MS
+ *
+ *  (1) no link change for FAST_SCAN_MS and not only listening for networks
+ *  Continuous with no link: the scan is started afresh every RESCAN_MS
+ * ```
+ *
+ * 3. One link this phone opened to a member seen in the scan (links members open
+ *    to this phone need no steps here: they are ready once they subscribe):
+ *
+ * ```
+ *  seen in the scan
+ *         │
+ *         ▼
+ *  ┌────────────┐ connected ┌───────────┐ size agreed ┌─────────────┐ (3) ┌───────┐
+ *  │ Connecting │──────────▶│ Connected │────────────▶│ Discovering │────▶│ Ready │
+ *  └─────┬──────┘           └─────┬─────┘             └───┬─────┬───┘     └───┬───┘
+ *        │ (1)                    │ (2)               (2) │     │ (4)         │ (5)
+ *        ▼                        ▼                       ▼     ▼             ▼
+ *  ┌──────────────────────────────────────────────────────────────────────────────┐
+ * │                    Closed (the next scan result tries again)                  │
+ *  └──────────────────────────────────────────────────────────────────────────────┘
+ *
+ *  (1) no answer within CONNECT_TIMEOUT_MS, or the connect failed
+ *  (2) not Ready within CONNECT_TIMEOUT_MS of connecting
+ *  (3) our service found and notifications switched on
+ *  (4) not a member's phone: our service is missing
+ *  (5) disconnected, or nothing heard for linkTimeoutMs
+ * ```
  */
 @SuppressLint("MissingPermission")
 class BluetoothTransport internal constructor(

@@ -23,6 +23,30 @@ import kotlinx.coroutines.launch
 /**
  * LoRa transport (T5.2, US-7): node = opaque byte pipe (BLE or USB link),
  * stream framing with magic, watchdog + auto-reconnect (FR-7.4), TX queue N=5 (FR-7.5).
+ * States (the link to the node; LoRa itself is a shared-air pipe behind it):
+ *
+ * ```
+ *                  ┌─────────┐
+ *  stop (any) ────▶│ Stopped │
+ *                  └────┬────┘
+ *                 start │
+ *                       ▼
+ *                ┌────────────┐   node found, its link opened    ┌───────┐
+ *         ┌─────▶│ Connecting │─────────────────────────────────▶│ Ready │
+ *         │      └─────┬──────┘                                  └───┬───┘
+ *         │            │ (1)                                         │ (2)
+ *         │            ▼                                             │
+ *         │      ┌──────────┐                                        │
+ *         └─(3)──│ LinkDown │◀───────────────────────────────────────┘
+ *                └──────────┘
+ *
+ *  (1) no Bluetooth scanner, the connect refused, or the node has no serial service
+ *  (2) the node disconnected, or nothing was received for watchdogTimeoutMs
+ *  (3) after reconnectDelayMs: connect again
+ * ```
+ *
+ * Sending: Ready flushes the queue at once; in any other running state the last
+ * [TX_QUEUE] frames wait for Ready.
  */
 class LoraTransport(
     private val context: Context,

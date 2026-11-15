@@ -30,6 +30,14 @@ const val BEACON_AUTHORITY_SUFFIX = ".beacons"
  * buffers the newest envelope. The user shares it explicitly via [shareBeacon], which
  * exports a named `.fmiw1` file so messengers attach it instead of showing a bare text
  * blob the receiving device cannot classify.
+ * States: there is no link to set up, so the transport is always ready once started.
+ *
+ * ```
+ *  ┌─────────┐  start   ┌───────┐  send: keep the newest frame (never opens a UI)
+ *  │ Stopped │─────────▶│ Ready │  shareBeacon: the user hands that frame to a messenger
+ *  └─────────┘◀─────────└───────┘
+ *               stop
+ * ```
  */
 class ShareTransport(private val context: Context) : Transport {
     override val id: TransportId = TransportId.INTERNET
