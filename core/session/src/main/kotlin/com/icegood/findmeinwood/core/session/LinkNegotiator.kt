@@ -1,5 +1,6 @@
 package com.icegood.findmeinwood.core.session
 
+import com.icegood.findmeinwood.core.model.WifiBand
 import com.icegood.findmeinwood.core.model.LinkAck
 import com.icegood.findmeinwood.core.model.LinkCtl
 import com.icegood.findmeinwood.core.model.LinkHost
@@ -100,7 +101,28 @@ class LinkNegotiator(
         var hostMe: Boolean? = null
         var hostEpoch = 0
         var hostAnnounce = 0
+        /** Band of the Wi-Fi Direct group the peer hosts, as it last said. */
+        var band: WifiBand? = null
     }
+
+    /** Band of the Wi-Fi Direct group this phone hosts (the user's choice). */
+    private var myBand = WifiBand.GHZ_2_4
+
+    /** This user picked the band of the group this phone hosts; its joiners hear it at once. */
+    @Synchronized
+    fun setBand(band: WifiBand) {
+        if (band == myBand) return
+        myBand = band
+        dirty = true
+        urgent = true
+    }
+
+    @Synchronized
+    fun band(): WifiBand = myBand
+
+    /** Band of the group [peer] hosts, as it said; null until heard. */
+    @Synchronized
+    fun bandOf(peer: MemberId): WifiBand? = peers[peer]?.band
 
     private val peers = HashMap<MemberId, Peer>()
     private var myOffers: List<LinkOffer> = emptyList()
@@ -180,6 +202,7 @@ class LinkNegotiator(
             sel = sels.map { (id, p) -> LinkSel(prefix(id), p.selected!!, p.epoch) },
             name = myName,
             hosts = hostPicks.map { (id, p) -> LinkHost(prefix(id), p.hostMe!!, p.hostEpoch) },
+            band = myBand,
         )
     }
 
@@ -209,6 +232,7 @@ class LinkNegotiator(
             p.theirAckT = ack?.t
             p.theirAckH = ack?.h
             p.theirEcho = ack?.e
+            ctl.band?.let { p.band = it }
             ctl.sel.firstOrNull { it.p.contentEquals(prefix(self)) }?.let { s ->
                 val newer = s.e > p.epoch || s.e == p.epoch && s.t != p.selected && hex(peer) < hex(self)
                 if (newer && s.t in agreedSet(peer, p)) {

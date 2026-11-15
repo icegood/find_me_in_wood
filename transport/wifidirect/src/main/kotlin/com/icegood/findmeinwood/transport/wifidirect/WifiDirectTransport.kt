@@ -28,6 +28,32 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 
 /**
+ * Where this phone's Wi-Fi Direct group stands. Every change goes through
+ * [WifiDirectTransport.moveState]; the graph is in that class's comment.
+ */
+internal sealed interface GroupState {
+    /** Not started, or stopped. */
+    data object Stopped : GroupState
+    /** Wi-Fi (and with it P2P) is off: every request would be refused. */
+    data object RadioOff : GroupState
+    /** The plan has no group to serve now. */
+    data object Idle : GroupState
+    /** Hosting: a create is under way since [since]; [askedAt] = last request, null = ask at the next poll. */
+    data class Creating(val since: Long, val askedAt: Long?) : GroupState
+    /**
+     * Joining: a join is under way since [since]; [askedAt] as for [Creating]. [attempt]:
+     * which try in a row this is (1 = the first), the later ones are given longer.
+     */
+    data class Joining(val since: Long, val askedAt: Long?, val attempt: Int = 1) : GroupState
+    /** A join is overdue: asking the system which group this phone is in. */
+    data class Checking(val since: Long, val attempt: Int) : GroupState
+    /** In the group to join since [since], waiting for its address (DHCP). */
+    data class Addressing(val since: Long, val attempt: Int) : GroupState
+    /** The group is up; [owner] = this phone hosts it. */
+    data class Formed(val owner: Boolean) : GroupState
+}
+
+/**
  * WiFi Direct transport (T4.1, wifidirect.wsd): P2P group + TCP sockets,
  * framing [u32be len][frame], one socket per peer, send fans out.
  *
@@ -37,13 +63,34 @@ import kotlinx.coroutines.launch
  * The group runs under [GroupCredentials] derived from the network's secret: members
  * join it with name + passphrase (a WPA2 login, not an invitation), so no system dialog
  * appears on either phone and devices outside the network are never contacted. Groups:
- * the session hands the ones this phone serves ([setGroups], FR-3.5b) — the one it hosts,
- * one per member it joins, the network's common group while a handshake is pending. A
- * phone can be in one group at a time, so several are served in turn: each for a few
- * seconds once a member is linked (both sides send a beacon at once), or until a group
- * nobody showed up in has had its slot; [serveNow] jumps to one with urgent traffic. Every
- * group has its pair's role: the host hosts, the others only join. No plan, no group.
- * [setPreferGroupOwner] makes this phone always host, whatever was agreed.
+ * the session hands the ones this phone serves ([setGroups], FR-3.5b) — the one it hosts
+ * and one per member it joins. A phone can be in one group at a time, so several are
+ * served in turn: each for a few seconds once a member is linked (both sides send a beacon
+ * at once), or until a group nobody showed up in has had its slot; [serveNow] jumps to one
+ * with urgent traffic. Every group has its pair's role: the host hosts, the others only
+ * join. No plan, no group. [setPreferGroupOwner] makes this phone always host.
+ *
+ * Group state machine ([GroupState]). (target) = the state for the slot served now:
+ * no group → Idle, hosting → Creating, else Joining; Creating and Joining send their
+ * request on entry, and again at a poll once it was refused or went unanswered.
+ *
+ * ```
+ *  Stopped ──start──▶ (target), or RadioOff while Wi-Fi is off
+ *  any ──stop──▶ Stopped
+ *  any running ──Wi-Fi off──▶ RadioOff ──Wi-Fi on──▶ (target)
+ *  any running ──other slot, role or band (setGroups, serveNow, rotation):
+ *                leave the group if formed──▶ (target)
+ *
+ *  Creating ──no group after CREATE_TIMEOUT_MS: cancel──▶ Creating (asked again)
+ *  Joining ──no group after attempt × JOIN_STEP_MS (at most FORM_TIMEOUT_MS),
+ *            or a group owner came in sight──▶ Checking
+ *  Checking ──in the group to join──▶ Addressing
+ *  Checking ──in none or another: cancel──▶ Joining (asked again, attempt + 1)
+ *  Addressing ──no address after ADDRESS_WAIT_MS: cancel──▶ Joining (asked again, attempt + 1)
+ *  Creating | Joining | Checking | Addressing ──group formed──▶ Formed
+ *  Formed ──group lost──▶ (target)
+ *  Formed ──hosting alone while the pair has it join: leave──▶ Joining
+ * ```
  */
 class WifiDirectTransport(
     private val context: Context,
@@ -58,24 +105,18 @@ class WifiDirectTransport(
     private val events = MutableSharedFlow<TransportEvent>(
         replay = 64, extraBufferCapacity = 256, onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
-    @Volatile private var running = false
-    @Volatile private var ready = false
-    @Volatile private var groupFormed = false
+    @Volatile private var state: GroupState = GroupState.Stopped
+    private val running get() = state != GroupState.Stopped
+    private val formed get() = state is GroupState.Formed
+    /** Last radio state reported, so READY / LINK_DOWN go out once per change. */
+    @Volatile private var reported: RadioState? = null
     @Volatile private var preferOwner = false
     @Volatile private var acceptLoopStarted = false
     private var startMs = 0L
     private var discoveryOkAtMs = 0L
     private var lastDiscoverAtMs = 0L
-    private var createPending = false
-    private var createRequestedAtMs = 0L
-    private var joinPending = false
-    private var joinRequestedAtMs = 0L
     /** Credentials of the group served now; null = no group to serve. */
     @Volatile private var creds: GroupCredentials? = null
-    /** Since when a create/join is under way with no group yet (0 = none). */
-    private var formingSinceMs = 0L
-    /** That attempt hosts (a create forms at once when it works) rather than joins (scans first). */
-    private var formingCreate = false
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var channel: WifiP2pManager.Channel? = null
@@ -83,20 +124,21 @@ class WifiDirectTransport(
     private var serverSocket: ServerSocket? = null
     private val sockets = ConcurrentHashMap<String, Socket>()
     private val connecting = ConcurrentHashMap.newKeySet<String>()
-    /** When each connect/create was requested: unanswered ones must expire. */
+    /** When each socket connect was requested: unanswered ones must expire. */
     private val requestedAt = ConcurrentHashMap<String, Long>()
 
     /** Host the group: this device owns 192.168.49.1 and peers join it. */
+    @Synchronized
     fun setPreferGroupOwner(v: Boolean) {
         preferOwner = v
-        if (v && running) formGroup()
+        if (v && running && state !is GroupState.Formed && state != GroupState.RadioOff) formTarget()
     }
 
     fun isGroupOwner(): Boolean = preferOwner
 
     /**
-     * P2P is usable (Wi-Fi on). Switched off outside the app, the group is gone and every
-     * request would only be refused: report the radio off and wait for it to come back.
+     * Wi-Fi (and with it P2P) is on, as last broadcast: an input remembered also while
+     * stopped, so a start knows whether to begin in [GroupState.RadioOff].
      */
     @Volatile private var p2pOn = true
 
@@ -120,23 +162,23 @@ class WifiDirectTransport(
         if (groups == plan) return
         val current = creds
         plan = groups
-        val keep = groups.indexOfFirst { GroupCredentials.from(it.secret) == current }
-        if (keep >= 0) {
-            val before = role
-            slot = keep
-            applySlotRole()
-            if (!running) return
-            if (groupFormed) {
-                yieldIdleHost()
-            } else if (role != before) {
-                // A new role for the group being formed: the pending request was the other one.
-                joinPending = false
-                createPending = false
-                formGroup()
-            }
-            return
+        val keep = groups.indexOfFirst { GroupCredentials.from(it.secret).networkName == current?.networkName }
+        if (keep < 0) return moveTo(0)
+        val before = role
+        val wanted = credsOf(groups[keep])
+        val st = state
+        // The group this phone hosts moves to the band its user chose now.
+        if (wanted.band != current?.band && st is GroupState.Formed && st.owner) return moveTo(keep)
+        creds = wanted
+        slot = keep
+        applySlotRole()
+        val changed = wanted != current || role != before
+        when {
+            !running || st == GroupState.RadioOff -> Unit
+            st is GroupState.Formed -> yieldIdleHost()
+            // A new role or band for the group being formed: the pending request was another.
+            changed || st == GroupState.Idle -> formTarget()
         }
-        moveTo(0)
     }
 
     /** Jump to the group at [index] now (its pair has something urgent). */
@@ -152,20 +194,17 @@ class WifiDirectTransport(
 
     /** Leaves the group served now (if any) and goes to the plan's group at [index]. */
     private fun moveTo(index: Int) {
-        if (running && (groupFormed || ready)) {
-            wiring.removeGroup(channel)
-            dropGroup()
-        }
-        joinPending = false
-        createPending = false
-        formingSinceMs = 0L
+        if (formed) leaveGroup()
         slot = index
         slotSinceMs = System.currentTimeMillis()
         linkedAtMs = 0L
-        creds = plan.getOrNull(index)?.let { GroupCredentials.from(it.secret) }
+        creds = plan.getOrNull(index)?.let { credsOf(it) }
         applySlotRole()
-        if (running) formGroup()
+        if (running && state != GroupState.RadioOff) formTarget()
     }
+
+    /** A host creates on its band; a joiner scans the host's band (any while unknown). */
+    private fun credsOf(p: GroupPlan) = GroupCredentials.from(p.secret, p.band)
 
     private fun applySlotRole() {
         role = plan.getOrNull(slot)?.role
@@ -182,41 +221,69 @@ class WifiDirectTransport(
         if (done) moveTo((slot + 1) % plan.size)
     }
 
+    /** The state for the slot served now (see the class comment). */
+    private fun target(attempt: Int = 1): GroupState {
+        val now = System.currentTimeMillis()
+        return when {
+            creds == null -> GroupState.Idle
+            preferOwner || role == GroupRole.HOST -> GroupState.Creating(now, askedAt = null)
+            else -> GroupState.Joining(now, askedAt = null, attempt = attempt)
+        }
+    }
+
+    /** The one place the group state changes. */
+    @Synchronized
+    private fun moveState(to: GroupState) {
+        val from = state
+        state = to
+        if (from::class != to::class) {
+            com.icegood.findmeinwood.transport.api.DebugLog.d { "wifi direct: $from -> $to" }
+        }
+    }
+
+    /** Into (target): Creating and Joining send their request at once. */
+    private fun formTarget(attempt: Int = 1) {
+        when (val to = target(attempt)) {
+            is GroupState.Creating -> askCreate(to)
+            is GroupState.Joining -> askJoin(to)
+            else -> moveState(to)
+        }
+    }
 
     /** Open peer sockets (diagnostics). */
     fun peerLinkCount(): Int = sockets.size
 
     override fun start(config: SessionConfig): Flow<TransportEvent> {
-        if (!running) {
-            running = true
+        synchronized(this) {
+            if (running) return events
             startMs = System.currentTimeMillis()
             slotSinceMs = startMs
+            reported = null
             try {
                 channel = wiring.initialize()
                 // No channel = no P2P (missing permission, Wi-Fi off, unsupported):
                 // say so instead of pretending to scan.
-                if (channel == null) emit(RadioState.LINK_DOWN)
+                if (channel == null) report(RadioState.LINK_DOWN)
                 registerReceiver()
+                // Running from here on (the accept loop and the callbacks check it).
+                moveState(if (p2pOn) GroupState.Idle else GroupState.RadioOff)
                 startAcceptLoop()
                 discover()
                 requestConnectionInfo()
-                formGroup()
+                if (p2pOn) formTarget()
                 startPoll()
                 emit(RadioState.SCANNING)
             } catch (e: Exception) {
-                emit(RadioState.LINK_DOWN)
+                report(RadioState.LINK_DOWN)
             }
         }
         return events
     }
 
     override suspend fun stop() {
-        running = false
-        ready = false
-        groupFormed = false
+        moveState(GroupState.Stopped)
         acceptLoopStarted = false
-        sockets.values.forEach { runCatching { it.close() } }
-        sockets.clear()
+        closeSockets()
         connecting.clear()
         runCatching { serverSocket?.close() }
         serverSocket = null
@@ -232,7 +299,7 @@ class WifiDirectTransport(
     override suspend fun relay(wireFrame: ByteArray, except: String): SendResult = write(wireFrame, except)
 
     private fun write(wireFrame: ByteArray, except: String?): SendResult {
-        if (!running || !ready) return SendResult.Failed("no p2p group")
+        if (!running || reported != RadioState.READY) return SendResult.Failed("no p2p group")
         val targets = sockets.filterKeys { it != except }
         if (targets.isEmpty()) return SendResult.Failed("no p2p peer")
         targets.values.forEach { s ->
@@ -258,23 +325,55 @@ class WifiDirectTransport(
 
     private fun emit(state: RadioState) = events.tryEmit(TransportEvent.StateChanged(state))
 
+    /** READY / LINK_DOWN for the app, once per change. */
+    private fun report(s: RadioState) {
+        if (reported == s) return
+        reported = s
+        emit(s)
+    }
+
     private fun registerReceiver() {
         if (receiver != null) return
         receiver = wiring.register(
             onWifiState = ::onP2pState,
-            onPeers = {},
+            onPeers = ::onPeersChanged,
             onConnection = { requestConnectionInfo() },
         )
     }
 
+    /** Group owners in sight at the last look. */
+    private var ownersSeen: Set<String> = emptySet()
+
+    /**
+     * The phones in sight changed. A group owner that was not there when the join was
+     * asked may be the host coming back: the pending join never finds a group that
+     * appeared after its scan, so it is asked again now instead of when it is overdue.
+     */
+    internal fun onPeersChanged() {
+        if (state !is GroupState.Joining) return
+        wiring.requestOwners(channel) { owners ->
+            synchronized(this@WifiDirectTransport) {
+                val appeared = owners - ownersSeen
+                ownersSeen = owners
+                val st = state as? GroupState.Joining ?: return@requestOwners
+                val asked = st.askedAt ?: return@requestOwners
+                if (appeared.isEmpty() || System.currentTimeMillis() - asked < REJOIN_MIN_MS) return@requestOwners
+                com.icegood.findmeinwood.transport.api.DebugLog.d { "wifi direct: a host appeared, joining again" }
+                checkGroup()
+            }
+        }
+    }
+
     /** Wi-Fi (and with it P2P) was switched on or off, in the app or outside it. */
+    @Synchronized
     internal fun onP2pState(on: Boolean) {
         if (on == p2pOn) return
         p2pOn = on
         if (!running) return
         if (!on) {
-            createPending = false
-            if (groupFormed || ready) dropGroup() else emit(RadioState.LINK_DOWN)
+            closeSockets()
+            moveState(GroupState.RadioOff)
+            report(RadioState.LINK_DOWN)
             return
         }
         // Back on: look for the members' group at once, as at start.
@@ -282,10 +381,11 @@ class WifiDirectTransport(
         startMs = System.currentTimeMillis()
         lastDiscoverAtMs = 0L
         discoveryOkAtMs = 0L
+        reported = null
         emit(RadioState.SCANNING)
         discover()
         requestConnectionInfo()
-        formGroup()
+        formTarget()
     }
 
     /**
@@ -299,7 +399,7 @@ class WifiDirectTransport(
         wiring.discoverPeers(channel) { result ->
             when (result) {
                 P2pResult.OK, P2pResult.BUSY -> discoveryOkAtMs = System.currentTimeMillis()
-                P2pResult.FAILED -> if (!groupFormed) emit(RadioState.LINK_DOWN)
+                P2pResult.FAILED -> if (!formed) report(RadioState.LINK_DOWN)
             }
         }
     }
@@ -310,23 +410,64 @@ class WifiDirectTransport(
             while (running) {
                 delay(pollMs)
                 if (!running) break
-                expirePending()
-                if (!p2pOn) continue
-                if (!groupFormed) {
+                expireConnects()
+                if (state == GroupState.RadioOff) continue
+                if (!formed) {
                     if (channel == null) channel = wiring.initialize() // self-heal
                     discover()
-                    formGroup()
-                } else {
-                    yieldIdleHost()
                 }
-                synchronized(this@WifiDirectTransport) { rotate() }
+                synchronized(this@WifiDirectTransport) {
+                    tick()
+                    rotate()
+                }
                 requestConnectionInfo()
                 // A disabled/ignoring P2P stack never answers: say so instead of
                 // advertising a scan that is not happening (FR-3.6a failover).
-                if (!groupFormed && (preferOwner || discoveryOkAtMs == 0L) &&
+                if (!formed && (preferOwner || discoveryOkAtMs == 0L) &&
                     System.currentTimeMillis() - startMs > 3 * pollMs
                 ) {
-                    emit(RadioState.LINK_DOWN)
+                    report(RadioState.LINK_DOWN)
+                }
+            }
+        }
+    }
+
+    /** The time-driven transitions, once a poll. */
+    private fun tick() {
+        val now = System.currentTimeMillis()
+        when (val st = state) {
+            is GroupState.Creating -> when {
+                // Seen for 30 s right after Wi-Fi came back: the P2P service sits on the
+                // request and refuses every new one until it is cancelled.
+                now - st.since > CREATE_TIMEOUT_MS -> { wiring.cancelConnect(channel); formTarget() }
+                st.askedAt == null || now - st.askedAt > PENDING_TIMEOUT_MS -> askCreate(st)
+            }
+            is GroupState.Joining -> when {
+                now - st.since > minOf(st.attempt * JOIN_STEP_MS, FORM_TIMEOUT_MS) -> checkGroup()
+                st.askedAt == null || now - st.askedAt > PENDING_TIMEOUT_MS -> askJoin(st)
+            }
+            is GroupState.Addressing ->
+                if (now - st.since > ADDRESS_WAIT_MS) { wiring.cancelConnect(channel); formTarget(st.attempt + 1) }
+            is GroupState.Formed -> yieldIdleHost()
+            else -> Unit
+        }
+    }
+
+    /**
+     * A join overdue: a joiner already in the group only waits for its address (DHCP, slow
+     * when its radio also serves a router on another channel) and must not be cancelled.
+     */
+    private fun checkGroup() {
+        val st = state as? GroupState.Joining ?: return
+        moveState(GroupState.Checking(st.since, st.attempt))
+        wiring.requestGroupName(channel) { name ->
+            synchronized(this@WifiDirectTransport) {
+                val checking = state as? GroupState.Checking ?: return@requestGroupName
+                if (name != null && name == creds?.networkName) {
+                    moveState(GroupState.Addressing(System.currentTimeMillis(), checking.attempt))
+                } else {
+                    wiring.cancelConnect(channel)
+                    formTarget(checking.attempt + 1)
                 }
             }
         }
@@ -349,32 +490,28 @@ class WifiDirectTransport(
         }
     }
 
-    /** Host or join the group served now, as its pair agreed. */
-    private fun formGroup() {
-        if (creds == null || groupFormed || !p2pOn) return
-        if (preferOwner || role == GroupRole.HOST) createGroup() else joinGroup()
-    }
-
-    private fun joinGroup() {
+    private fun askJoin(st: GroupState.Joining) {
         val c = creds ?: return
-        if (joinPending && System.currentTimeMillis() - joinRequestedAtMs < PENDING_TIMEOUT_MS) return
-        joinPending = true
-        joinRequestedAtMs = System.currentTimeMillis()
-        if (formingSinceMs == 0L) { formingSinceMs = joinRequestedAtMs; formingCreate = false }
+        moveState(st.copy(askedAt = System.currentTimeMillis()))
         wiring.join(channel, c) { result ->
-            if (result != P2pResult.OK) joinPending = false
+            synchronized(this@WifiDirectTransport) {
+                // Refused: asked again at the next poll.
+                val now = state
+                if (result != P2pResult.OK && now is GroupState.Joining) moveState(now.copy(askedAt = null))
+            }
             requestConnectionInfo()
         }
     }
 
-    private fun createGroup() {
+    private fun askCreate(st: GroupState.Creating) {
         val c = creds ?: return
-        if (createPending && System.currentTimeMillis() - createRequestedAtMs < PENDING_TIMEOUT_MS) return
-        createPending = true
-        createRequestedAtMs = System.currentTimeMillis()
-        if (formingSinceMs == 0L) { formingSinceMs = createRequestedAtMs; formingCreate = true }
+        moveState(st.copy(askedAt = System.currentTimeMillis()))
         wiring.createGroup(channel, c) {
-            createPending = false
+            synchronized(this@WifiDirectTransport) {
+                // Answered either way: the next poll asks again unless the group formed.
+                val now = state
+                if (now is GroupState.Creating) moveState(now.copy(askedAt = null))
+            }
             requestConnectionInfo()
         }
     }
@@ -384,78 +521,73 @@ class WifiDirectTransport(
      * from an earlier role): it gives the group up at once and joins. The host never does.
      */
     private fun yieldIdleHost() {
-        if (preferOwner || role != GroupRole.JOIN || !isOwnerNow || sockets.isNotEmpty()) return
-        wiring.removeGroup(channel)
-        dropGroup()
+        val st = state as? GroupState.Formed ?: return
+        if (preferOwner || role != GroupRole.JOIN || !st.owner || sockets.isNotEmpty()) return
+        leaveGroup()
+        formTarget()
     }
 
-    @Volatile private var isOwnerNow = false
+    /** Leaves the formed group: the radio removes it and its sockets close. */
+    private fun leaveGroup() {
+        wiring.removeGroup(channel)
+        closeSockets()
+        report(RadioState.LINK_DOWN)
+    }
 
-
-    private fun dropGroup() {
-        if (!groupFormed && !ready) return
-        joinPending = false
-        isOwnerNow = false
-        groupFormed = false
-        ready = false
+    private fun closeSockets() {
         sockets.values.forEach { runCatching { it.close() } }
         sockets.clear()
-        emit(RadioState.LINK_DOWN)
     }
 
     private fun requestConnectionInfo() {
-        wiring.requestConnectionInfo(channel) { info ->
-            if (!running) return@requestConnectionInfo
-            if (!info.formed) {
-                dropGroup()
-                return@requestConnectionInfo
+        wiring.requestConnectionInfo(channel) { info -> onConnectionInfo(info) }
+    }
+
+    @Synchronized
+    private fun onConnectionInfo(info: GroupInfo) {
+        val st = state
+        if (st == GroupState.Stopped || st == GroupState.RadioOff) return
+        if (!info.formed) {
+            if (st is GroupState.Formed) {
+                closeSockets()
+                report(RadioState.LINK_DOWN)
+                formTarget()
+            } else if (reported == RadioState.READY && sockets.isEmpty()) {
+                report(RadioState.LINK_DOWN)
             }
-            groupFormed = true
-            joinPending = false
-            formingSinceMs = 0L
-            isOwnerNow = info.isOwner
-            startAcceptLoop()
-            if (!ready) { ready = true; emit(RadioState.READY) }
-            if (!info.isOwner) {
-                val host = info.ownerHost ?: return@requestConnectionInfo
-                val key = "go:$host"
-                val linked = sockets.keys.any { it.startsWith("/$host:") }
-                if (!linked && !sockets.containsKey(key) && connecting.add(key)) {
-                    requestedAt[key] = System.currentTimeMillis()
-                    scope.launch {
-                        val s = wiring.connectSocket(host, port, CONNECT_TIMEOUT_MS)
-                        requestedAt.remove(key)
-                        connecting.remove(key)
-                        if (s == null) Unit else registerSocket(s)
-                    }
+            return
+        }
+        if (st == GroupState.Idle) return // a group left over: nothing to serve in it
+        moveState(GroupState.Formed(info.isOwner))
+        startAcceptLoop()
+        report(RadioState.READY)
+        if (!info.isOwner) {
+            val host = info.ownerHost ?: return
+            val key = "go:$host"
+            val linked = sockets.keys.any { it.startsWith("/$host:") }
+            if (!linked && !sockets.containsKey(key) && connecting.add(key)) {
+                requestedAt[key] = System.currentTimeMillis()
+                scope.launch {
+                    val s = wiring.connectSocket(host, port, CONNECT_TIMEOUT_MS)
+                    requestedAt.remove(key)
+                    connecting.remove(key)
+                    if (s == null) Unit else registerSocket(s)
                 }
             }
         }
     }
 
     /**
-     * A connect the framework never answers (peer needs to accept, radio busy, OEM
+     * A socket connect the framework never answers (peer needs to accept, radio busy, OEM
      * quirk) must not block that peer forever: drop it so the next poll retries.
      */
-    private fun expirePending() {
+    private fun expireConnects() {
         val now = System.currentTimeMillis()
         requestedAt.entries.removeIf { (key, at) ->
             val dead = now - at > PENDING_TIMEOUT_MS
             if (dead) connecting.remove(key)
             dead
         }
-        // A negotiation the P2P service sits on (seen for 30 s right after Wi-Fi came back)
-        // blocks every new request: abort it and let the next poll ask again.
-        val limit = if (formingCreate) CREATE_TIMEOUT_MS else FORM_TIMEOUT_MS
-        if (!groupFormed && formingSinceMs != 0L && now - formingSinceMs > limit) {
-            wiring.cancelConnect(channel)
-            formingSinceMs = 0L
-            createPending = false
-            joinPending = false
-            if (p2pOn) formGroup() // ask again at once, not a poll later
-        }
-        if (createPending && now - createRequestedAtMs > PENDING_TIMEOUT_MS) createPending = false
-        if (joinPending && now - joinRequestedAtMs > PENDING_TIMEOUT_MS) joinPending = false
     }
 
     private fun registerSocket(s: Socket) {
@@ -463,7 +595,7 @@ class WifiDirectTransport(
         sockets[key] = s
         if (linkedAtMs == 0L) linkedAtMs = System.currentTimeMillis()
         connecting.remove(key)
-        if (!ready) { ready = true; emit(RadioState.READY) }
+        report(RadioState.READY)
         events.tryEmit(TransportEvent.PeerRadioVisible(key, id))
         events.tryEmit(TransportEvent.LinkUp(key, id))
         // A peer gone without a FIN (Wi-Fi off, group dropped) leaves a socket that only
@@ -502,7 +634,7 @@ class WifiDirectTransport(
         const val MAX_FRAME = 65_507
         internal const val DISCOVER_INTERVAL_MS = 60_000L
         // FR-3.5c: a pair reconnects within 20 s whatever dropped it — a retry every poll,
-        // a stuck create aborted after 3 s and a join after 5 s, a dead socket noticed
+        // a stuck create aborted after 3 s and a join after 15 s, a dead socket noticed
         // after 15 s.
         internal const val PENDING_TIMEOUT_MS = 15_000L
         private const val POLL_MS = 2_000L
@@ -511,11 +643,27 @@ class WifiDirectTransport(
         /** A socket silent this long is dead (the peer left the group without closing it). */
         internal var SILENT_SOCKET_MS = 15_000L
         /**
-         * A join that formed no group by then is aborted and asked again: a scan and an
-         * association take 2-3 s, while a join started before the host was back keeps
-         * blacklisting it with growing back-off; a fresh request starts clean.
+         * A join that formed no group by then is aborted and asked again: a join started
+         * before the host was back keeps blacklisting it with growing back-off; a fresh
+         * request starts clean. Not shorter: far from the host a scan and an association
+         * take 6 s and more, and a join aborted at 5 s never got through beyond ~30 m.
          */
-        internal var FORM_TIMEOUT_MS = 5_000L
+        internal var FORM_TIMEOUT_MS = 15_000L
+        /**
+         * The first join in a row is given this long, each next one as much more (5, 10,
+         * 15 s): a join asked while the host was still away never finds its group, and a
+         * near host is joined in 3 s, so the first try must not hold up the second.
+         */
+        internal var JOIN_STEP_MS = 5_000L
+        /**
+         * A joiner in its group but without an address yet waits this long before the join
+         * is asked again. DHCP either answers in 1-2 s or stalls for good (offer heard, no
+         * ack, the radio shared with a router on another channel); a fresh join then got an
+         * address within 2 s, so waiting longer only delays that.
+         */
+        internal var ADDRESS_WAIT_MS = 8_000L
+        /** A join asked this recently has already seen an owner that shows up now. */
+        internal var REJOIN_MIN_MS = 2_000L
         /** A create forms its group in well under a second; one still pending is stuck. */
         internal var CREATE_TIMEOUT_MS = 3_000L
         /** Several groups: a slot ends this long after a member linked in it... */

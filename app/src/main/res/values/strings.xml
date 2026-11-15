@@ -193,6 +193,8 @@
     <string name="p2p_auto_hint">role negotiated by the system</string>
     <string name="p2p_host">Host</string>
     <string name="p2p_auto">Auto</string>
+    <string name="wd_band_24_hint">2.4 GHz: reaches furthest (default)</string>
+    <string name="wd_band_5_hint">5 GHz: faster, but shorter range</string>
     <string name="beacon_interval">Beacon interval</string>
     <string name="beacon_interval_hint">every %1$d s your position goes to members nearby; shorter = fresher, longer = less battery</string>
     <string name="seconds">seconds</string>

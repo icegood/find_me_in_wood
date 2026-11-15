@@ -692,4 +692,13 @@ class LinkDecisionsPrefsTest {
         Prefs.setActiveNetwork(ctx, null)
         assertEquals(null, Prefs.activeNetwork(ctx))
     }
+
+    @Test
+    fun `the wifi direct band is 2_4 GHz until the user picks another`() {
+        assertEquals(com.icegood.findmeinwood.core.model.WifiBand.GHZ_2_4, Prefs.wifiBand(ctx))
+        SessionService.setWifiBand(ctx, com.icegood.findmeinwood.core.model.WifiBand.GHZ_5)
+        assertEquals(com.icegood.findmeinwood.core.model.WifiBand.GHZ_5, Prefs.wifiBand(ctx))
+        ctx.getSharedPreferences("prefs", android.content.Context.MODE_PRIVATE).edit().putString("wifi_direct_band", "6GHZ").apply()
+        assertEquals(com.icegood.findmeinwood.core.model.WifiBand.GHZ_2_4, Prefs.wifiBand(ctx), "an unknown value falls back")
+    }
 }

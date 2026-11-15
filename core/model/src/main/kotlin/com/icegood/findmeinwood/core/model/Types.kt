@@ -137,7 +137,13 @@ data class LinkCtl(
     val name: String? = null,
     /** Wi-Fi Direct host picks made on this phone (repeated like selections). */
     val hosts: List<LinkHost> = emptyList(),
+    /** The band of the Wi-Fi Direct group this phone hosts: its joiners scan only that band. */
+    val band: WifiBand? = null,
 )
+
+/** Wi-Fi Direct group band, the user's choice: 2.4 GHz reaches further, 5 GHz is faster. */
+@kotlinx.serialization.Serializable
+enum class WifiBand(val label: String) { GHZ_2_4("2.4 GHz"), GHZ_5("5 GHz") }
 
 @kotlinx.serialization.Serializable
 data class HelloPayload(

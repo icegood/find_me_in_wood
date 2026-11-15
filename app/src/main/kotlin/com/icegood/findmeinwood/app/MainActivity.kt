@@ -727,6 +727,7 @@ class MainActivity : ComponentActivity() {
         var intervalInput by remember { mutableStateOf((Prefs.intervalMs(this@MainActivity) / 1000).toString()) }
         var intervalError by remember { mutableStateOf<String?>(null) }
         var p2pOwner by remember { mutableStateOf(Prefs.p2pGroupOwner(this@MainActivity)) }
+        var wifiBand by remember { mutableStateOf(Prefs.wifiBand(this@MainActivity)) }
         val snackbar = remember { SnackbarHostState() }
         val uiScope = rememberCoroutineScope()
         val diag by SessionBus.diagnostics.collectAsState()
@@ -855,6 +856,24 @@ class MainActivity : ComponentActivity() {
                                 p2pOwner = false
                                 SessionService.setP2pGroupOwner(this@MainActivity, false)
                             }) { Text(stringResource(R.string.p2p_auto)) }
+                        }
+                        // Band of the group this phone hosts; its joiners follow it.
+                        Text(
+                            stringResource(
+                                if (wifiBand == com.icegood.findmeinwood.core.model.WifiBand.GHZ_5) R.string.wd_band_5_hint
+                                else R.string.wd_band_24_hint,
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            com.icegood.findmeinwood.core.model.WifiBand.entries.forEach { band ->
+                                val label = band.label
+                                if (band == wifiBand) Button(onClick = { }) { Text(label) }
+                                else OutlinedButton(onClick = {
+                                    wifiBand = band
+                                    SessionService.setWifiBand(this@MainActivity, band)
+                                }) { Text(label) }
+                            }
                         }
                     }
                 }

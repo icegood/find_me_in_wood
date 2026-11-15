@@ -209,6 +209,38 @@ class WifiDirectRoleLogicTest {
     }
 
     @Test
+    fun `the hosted group moves to the band its user picks and a joiner scans the host's band`() = runBlocking<Unit> {
+        val w = FakeWiring()
+        val band24 = com.icegood.findmeinwood.core.model.WifiBand.GHZ_2_4
+        val band5 = com.icegood.findmeinwood.core.model.WifiBand.GHZ_5
+        val t = transport(w, pollMs = 30L, role = null)
+        t.setGroups(listOf(GroupPlan(secret, GroupRole.HOST, band = band24)))
+        t.start(cfg)
+        assertEquals(band24, w.created.last().band, "created on the chosen band")
+        w.answerInfo(formed = true, owner = true, host = "192.168.49.1")
+        delay(100)
+        t.setGroups(listOf(GroupPlan(secret, GroupRole.HOST, band = band5)))
+        assertEquals(1, w.removeGroupCalls, "the formed group is left for the new band")
+        assertEquals(band5, w.created.last().band)
+        t.stop()
+
+        // A joiner that has not heard the host's band scans all; once heard, only that band.
+        val j = FakeWiring()
+        val joiner = transport(j, pollMs = 30L, role = null)
+        joiner.setGroups(listOf(GroupPlan(secret, GroupRole.JOIN)))
+        joiner.start(cfg)
+        assertEquals(null, j.joins.last().band)
+        joiner.setGroups(listOf(GroupPlan(secret, GroupRole.JOIN, band = band5)))
+        assertEquals(band5, j.joins.last().band, "asked again with the host's band at once")
+        assertEquals(0, j.removeGroupCalls)
+        joiner.stop()
+        assertEquals(
+            listOf(android.net.wifi.p2p.WifiP2pConfig.GROUP_OWNER_BAND_AUTO, android.net.wifi.p2p.WifiP2pConfig.GROUP_OWNER_BAND_2GHZ, android.net.wifi.p2p.WifiP2pConfig.GROUP_OWNER_BAND_5GHZ),
+            listOf(null, band24, band5).map { GroupCredentials.from(secret, it).p2pBand },
+        )
+    }
+
+    @Test
     fun `a member told to join gives up a group it hosts alone at once and never hosts`() = runBlocking<Unit> {
         val w = FakeWiring().apply { failJoin = true }
         val t = transport(w, pollMs = 30L, role = GroupRole.HOST)
@@ -306,19 +338,111 @@ class WifiDirectRoleLogicTest {
     }
 
     @Test
+    fun `a joiner already in its group waits for its address instead of cancelling, for a while`() = runBlocking<Unit> {
+        val form = WifiDirectTransport.FORM_TIMEOUT_MS
+        val wait = WifiDirectTransport.ADDRESS_WAIT_MS
+        WifiDirectTransport.FORM_TIMEOUT_MS = 50
+        WifiDirectTransport.ADDRESS_WAIT_MS = 400
+        try {
+            val w = FakeWiring().apply { groupName = creds.networkName } // associated, no address
+            val t = transport(w, pollMs = 20)
+            t.start(cfg)
+            delay(250)
+            assertEquals(0, w.cancelCalls, "in the group: DHCP is waited for")
+            withTimeout(5_000) { while (w.cancelCalls == 0) delay(10) }
+            t.stop()
+
+            // In another group (or none): the stuck join is cancelled as before.
+            val other = FakeWiring().apply { groupName = "DIRECT-fm-other" }
+            val t2 = transport(other, pollMs = 20)
+            t2.start(cfg)
+            withTimeout(5_000) { while (other.cancelCalls == 0) delay(10) }
+            t2.stop()
+        } finally {
+            WifiDirectTransport.FORM_TIMEOUT_MS = form
+            WifiDirectTransport.ADDRESS_WAIT_MS = wait
+        }
+    }
+
+    @Test
+    fun `a host coming in sight makes a pending join ask again at once`() = runBlocking<Unit> {
+        val min = WifiDirectTransport.REJOIN_MIN_MS
+        WifiDirectTransport.REJOIN_MIN_MS = 50
+        try {
+            val w = FakeWiring()
+            val t = transport(w, pollMs = 10_000L)
+            t.start(cfg)
+            assertEquals(1, w.joins.size)
+            w.owners = setOf("aa:bb")
+            t.onPeersChanged() // too soon: this join's scan sees that owner itself
+            assertEquals(1, w.joins.size)
+            delay(100)
+            t.onPeersChanged() // the same owners: nothing new
+            w.owners = setOf("aa:bb", "cc:dd")
+            t.onPeersChanged()
+            assertEquals(2, w.joins.size, "asked again without waiting for the join to be overdue")
+            assertEquals(1, w.cancelCalls)
+            delay(100)
+            w.owners = emptySet()
+            t.onPeersChanged() // owners gone: nothing to join
+            assertEquals(2, w.joins.size)
+            w.answerInfo(formed = true, owner = false, host = null)
+            w.owners = setOf("ee:ff")
+            t.onPeersChanged() // linked: the group is kept
+            assertEquals(2, w.joins.size)
+            t.stop()
+        } finally {
+            WifiDirectTransport.REJOIN_MIN_MS = min
+        }
+    }
+
+    @Test
+    fun `each join in a row is given longer than the one before, up to the limit`() = runBlocking<Unit> {
+        val step = WifiDirectTransport.JOIN_STEP_MS
+        val form = WifiDirectTransport.FORM_TIMEOUT_MS
+        WifiDirectTransport.JOIN_STEP_MS = 150
+        WifiDirectTransport.FORM_TIMEOUT_MS = 300
+        try {
+            val w = object : FakeWiring() {
+                val at = mutableListOf<Long>()
+                override fun join(channel: WifiP2pManager.Channel?, creds: GroupCredentials, done: (P2pResult) -> Unit) {
+                    at += System.currentTimeMillis() // never answered
+                }
+            }
+            val t = transport(w, pollMs = 10L)
+            t.start(cfg)
+            withTimeout(5_000) { while (w.at.size < 4) delay(10) }
+            t.stop()
+            val gaps = w.at.zipWithNext { a, b -> b - a }
+            assertTrue(gaps[0] in 150..280, "first try: one step, got ${gaps[0]}")
+            assertTrue(gaps[1] >= 300, "second try: two steps, got ${gaps[1]}")
+            assertTrue(gaps[2] in 300..450, "capped at the limit, got ${gaps[2]}")
+        } finally {
+            WifiDirectTransport.JOIN_STEP_MS = step
+            WifiDirectTransport.FORM_TIMEOUT_MS = form
+        }
+    }
+
+    @Test
     fun `a join that is never answered is retried after it expires`() = runBlocking<Unit> {
         val w = object : FakeWiring() {
             override fun join(channel: WifiP2pManager.Channel?, creds: GroupCredentials, done: (P2pResult) -> Unit) {
                 joins += creds // no callback: the framework never answers
             }
         }
-        val t = transport(w, pollMs = 30L)
-        t.start(cfg)
-        delay(100)
-        assertEquals(1, w.joins.size, "a pending join must not be spammed")
-        delay(WifiDirectTransport.FORM_TIMEOUT_MS + 200)
-        assertTrue(w.joins.size >= 2, "an unanswered join must be given up and asked again")
-        t.stop()
+        val limit = WifiDirectTransport.FORM_TIMEOUT_MS
+        WifiDirectTransport.FORM_TIMEOUT_MS = 300
+        try {
+            val t = transport(w, pollMs = 30L)
+            t.start(cfg)
+            delay(100)
+            assertEquals(1, w.joins.size, "a pending join must not be spammed")
+            delay(WifiDirectTransport.FORM_TIMEOUT_MS + 200)
+            assertTrue(w.joins.size >= 2, "an unanswered join must be given up and asked again")
+            t.stop()
+        } finally {
+            WifiDirectTransport.FORM_TIMEOUT_MS = limit
+        }
     }
 
     @Test

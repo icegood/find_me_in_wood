@@ -1048,7 +1048,13 @@ private fun LinkRow(
                                             color = Color.Gray,
                                         )
                                         // The pair's group as Wi-Fi lists it on the phones.
-                                        h.group?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = Color.Gray) }
+                                        h.group?.let { name ->
+                                            Text(
+                                                listOfNotNull(name, h.band?.label).joinToString(" · "),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.Gray,
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1130,14 +1136,20 @@ internal fun linkVerdict(peer: PeerState, nowMs: Long): LinkVerdict? {
  * Who hosts the pair's Wi-Fi Direct group: this phone, or the member named [host] (null name
  * = unnamed); [turns] = other groups the radio serves in turn with it.
  */
-internal data class WifiDirectHostLine(val byMe: Boolean, val host: String? = null, val turns: Int = 0, val group: String? = null)
+internal data class WifiDirectHostLine(
+    val byMe: Boolean,
+    val host: String? = null,
+    val turns: Int = 0,
+    val group: String? = null,
+    val band: com.icegood.findmeinwood.core.model.WifiBand? = null,
+)
 
 /** The Wi-Fi Direct host as shown for [peer]; null when Wi-Fi Direct is not agreed with it. */
 internal fun wifiDirectHostLine(peer: PeerState, peers: Map<MemberId, PeerState>): WifiDirectHostLine? {
     val host = peer.wifiDirectHost ?: return null
     if (com.icegood.findmeinwood.core.model.TransportId.WIFI_DIRECT !in peer.linkOptions) return null
-    val member = host.member ?: return WifiDirectHostLine(byMe = true, turns = host.turns, group = host.group)
-    return WifiDirectHostLine(byMe = false, host = peers[member]?.nickname, turns = host.turns, group = host.group)
+    val member = host.member ?: return WifiDirectHostLine(byMe = true, turns = host.turns, group = host.group, band = host.band)
+    return WifiDirectHostLine(byMe = false, host = peers[member]?.nickname, turns = host.turns, group = host.group, band = host.band)
 }
 
 /** Some member waits for this user to allow or turn down a link (marks the Members tab). */

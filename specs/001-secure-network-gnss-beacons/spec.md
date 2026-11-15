@@ -105,7 +105,13 @@ frame is encrypted and authenticated with the network's key.
   shared in time, FR-3.5b: within 20 s of its turn)
   (Wi-Fi off and on, a group lost, an app restart), also with a screen off: requests are
   retried every 5 s and given up after 15 s, and every socket carries a heartbeat every 5 s,
-  so one silent for 15 s is closed instead of being counted as a link. The network the user
+  so one silent for 15 s is closed instead of being counted as a link. A join is given 5 s, the
+  next one in a row 10 s, then 15 s (far from the host it takes 6 s and more; a join asked
+  while the host was away never finds it), and is asked again at once when a group owner
+  comes in sight; a joiner already in its group waits 8 s for its address. The band of the
+  group a phone hosts is its user's choice: 2.4 GHz (range, the default) or 5 GHz; the host
+  says it, its joiners follow. A pair keeps and regains its link at the distances it holds
+  one (field test: 274 m held). The network the user
   left active comes back by itself after an app update, a force stop or a process death;
   only the user's stop ends it. A member's row says "Connected via X" only while frames really come in over X;
   otherwise it names the radio that carries them, or that the member is heard only through

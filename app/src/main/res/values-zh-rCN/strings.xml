@@ -193,6 +193,8 @@
     <string name="p2p_auto_hint">由系统协商角色</string>
     <string name="p2p_host">主机</string>
     <string name="p2p_auto">自动</string>
+    <string name="wd_band_24_hint">2.4 GHz：覆盖距离最远（默认）</string>
+    <string name="wd_band_5_hint">5 GHz：更快，但距离更短</string>
     <string name="beacon_interval">信标间隔</string>
     <string name="beacon_interval_hint">每 %1$d 秒将你的位置发给附近成员；越短越新，越长越省电</string>
     <string name="seconds">秒</string>

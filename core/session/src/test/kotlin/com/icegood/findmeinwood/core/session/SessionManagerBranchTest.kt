@@ -209,7 +209,7 @@ class SessionManagerBranchTest {
     }
 
     @Test
-    fun `wifi direct groups reach the radio as soon as this phone offers it, not at the next beacon`() = runBlocking {
+    fun `wifi direct groups reach the radio as soon as this phone offers it, not at the next beacon`() = runBlocking<Unit> {
         val plans = mutableListOf<List<com.icegood.findmeinwood.transport.api.GroupPlan>>()
         val wd = object : com.icegood.findmeinwood.transport.api.Transport {
             override val id = TransportId.WIFI_DIRECT
@@ -228,11 +228,21 @@ class SessionManagerBranchTest {
             assertTrue(plans.lastOrNull().isNullOrEmpty(), "no offers yet: no group")
             m.setLinkOffers(listOf(LinkOffer(TransportId.WIFI_DIRECT)))
             assertEquals(1, plans.last().size, "the pair's group is served at once")
+            // Hosting: this user's band; joining: the host's, unknown until it is heard.
+            val hosting = plans.last().single().role == com.icegood.findmeinwood.transport.api.GroupRole.HOST
+            val band24 = com.icegood.findmeinwood.core.model.WifiBand.GHZ_2_4
+            val band5 = com.icegood.findmeinwood.core.model.WifiBand.GHZ_5
+            assertEquals(if (hosting) band24 else null, plans.last().single().band)
+            m.setWifiBand(band5)
+            assertEquals(if (hosting) band5 else null, plans.last().single().band, "a new band reaches the radio at once")
             val n = plans.size
             m.setLinkOffers(listOf(LinkOffer(TransportId.WIFI_DIRECT)))
             assertEquals(n, plans.size, "unchanged offers leave the radio alone")
         } finally { m.stop() }
-        SessionManager(profile, listOf(wd), flowOf(), { now }, scope = scope).setLinkOffers(emptyList())
+        SessionManager(profile, listOf(wd), flowOf(), { now }, scope = scope).apply {
+            setLinkOffers(emptyList())
+            setWifiBand(com.icegood.findmeinwood.core.model.WifiBand.GHZ_5) // no negotiator: nothing to do
+        }
     }
 
     @Test

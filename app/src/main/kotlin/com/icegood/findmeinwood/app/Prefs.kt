@@ -20,6 +20,7 @@ object Prefs {
     private const val KEY_MAP_OFFLINE = "map_offline"
     private const val KEY_TILE_OPTION_PREFIX = "tile_option_"
     private const val KEY_P2P_OWNER = "p2p_group_owner"
+    private const val KEY_WIFI_BAND = "wifi_direct_band"
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_MY_PHONE = "my_phone_number"
     private const val KEY_HOME_ICON_OFFERED = "home_icon_offered"
@@ -164,6 +165,16 @@ object Prefs {
 
     fun setP2pGroupOwner(ctx: Context, value: Boolean) {
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_P2P_OWNER, value).apply()
+    }
+
+    /** Band of the Wi-Fi Direct group this phone hosts; 2.4 GHz (longest range) unless chosen. */
+    fun wifiBand(ctx: Context): com.icegood.findmeinwood.core.model.WifiBand =
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).getString(KEY_WIFI_BAND, null)
+            ?.let { name -> com.icegood.findmeinwood.core.model.WifiBand.entries.firstOrNull { it.name == name } }
+            ?: com.icegood.findmeinwood.core.model.WifiBand.GHZ_2_4
+
+    fun setWifiBand(ctx: Context, band: com.icegood.findmeinwood.core.model.WifiBand) {
+        ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putString(KEY_WIFI_BAND, band.name).apply()
     }
 
     /** Explicit light/dark selection; SYSTEM follows the device setting. */

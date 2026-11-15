@@ -193,6 +193,8 @@
     <string name="p2p_auto_hint">улогу договара систем</string>
     <string name="p2p_host">Домаћин</string>
     <string name="p2p_auto">Ауто</string>
+    <string name="wd_band_24_hint">2,4 GHz: највећи домет (подразумевано)</string>
+    <string name="wd_band_5_hint">5 GHz: брже, али мањи домет</string>
     <string name="beacon_interval">Интервал светионика</string>
     <string name="beacon_interval_hint">на сваких %1$d с ваш положај иде члановима у близини; краће = свежије, дуже = мање батерије</string>
     <string name="seconds">секунде</string>

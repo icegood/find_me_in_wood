@@ -190,6 +190,8 @@ p2p_host_hint=šis telefonas yra grupės šeimininkas (serveris, 192.168.49.1)
 p2p_auto_hint=vaidmenį nustato sistema
 p2p_host=Šeimininkas
 p2p_auto=Auto
+wd_band_24_hint=2,4 GHz: didžiausias nuotolis (numatytasis)
+wd_band_5_hint=5 GHz: greičiau, bet mažesnis nuotolis
 beacon_interval=Švyturio intervalas
 beacon_interval_hint=kas %1$d s jūsų vieta siunčiama netoliese esantiems nariams; trumpiau = šviežiau, ilgiau = mažiau baterijos
 seconds=sekundės

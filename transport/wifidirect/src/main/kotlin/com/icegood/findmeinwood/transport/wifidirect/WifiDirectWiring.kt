@@ -1,5 +1,6 @@
 package com.icegood.findmeinwood.transport.wifidirect
 
+import com.icegood.findmeinwood.core.model.WifiBand
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -21,13 +22,25 @@ enum class P2pResult { OK, BUSY, FAILED }
  * Joining with them is a WPA2 login, not an invitation: neither phone shows a dialog, and
  * phones outside the network cannot join.
  */
-data class GroupCredentials(val networkName: String, val passphrase: String) {
+data class GroupCredentials(
+    val networkName: String,
+    val passphrase: String,
+    /** The host creates the group on it, a joiner scans only it; null = any band. */
+    val band: WifiBand? = null,
+) {
+    /** WifiP2pConfig's band for [band]. */
+    val p2pBand: Int get() = when (band) {
+        WifiBand.GHZ_2_4 -> WifiP2pConfig.GROUP_OWNER_BAND_2GHZ
+        WifiBand.GHZ_5 -> WifiP2pConfig.GROUP_OWNER_BAND_5GHZ
+        null -> WifiP2pConfig.GROUP_OWNER_BAND_AUTO
+    }
+
     companion object {
         /** Android requires "DIRECT-" + two characters; the passphrase must be 8–63 chars. */
-        fun from(secret: ByteArray): GroupCredentials {
+        fun from(secret: ByteArray, band: WifiBand? = null): GroupCredentials {
             require(secret.size >= 20) { "secret too short" }
             val pass = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(secret.copyOfRange(4, 20))
-            return GroupCredentials(com.icegood.findmeinwood.transport.api.groupNetworkName(secret), pass)
+            return GroupCredentials(com.icegood.findmeinwood.transport.api.groupNetworkName(secret), pass, band)
         }
     }
 }
@@ -73,6 +86,18 @@ open class WifiDirectWiring(private val context: Context) {
         }
     }
 
+    /** Device addresses of the group owners in sight (phones hosting a group now). */
+    @SuppressLint("MissingPermission")
+    open fun requestOwners(channel: WifiP2pManager.Channel?, owners: (Set<String>) -> Unit) {
+        val m = manager ?: return
+        val ch = channel ?: return
+        runCatching {
+            m.requestPeers(ch) { list ->
+                owners(list.deviceList.filter { it.isGroupOwner }.mapNotNull { it.deviceAddress }.toSet())
+            }
+        }
+    }
+
     open fun requestConnectionInfo(channel: WifiP2pManager.Channel?, info: (GroupInfo) -> Unit) {
         val m = manager ?: return
         val ch = channel ?: return
@@ -101,6 +126,9 @@ open class WifiDirectWiring(private val context: Context) {
             val config = WifiP2pConfig.Builder()
                 .setNetworkName(creds.networkName)
                 .setPassphrase(creds.passphrase)
+                // The host's band (the user's choice): a joiner that knows it scans only
+                // that band, so it joins sooner.
+                .setGroupOperatingBand(creds.p2pBand)
                 .build()
             m.connect(ch, config, action(done))
         }.onFailure { done(P2pResult.FAILED) }
@@ -118,9 +146,23 @@ open class WifiDirectWiring(private val context: Context) {
             val config = WifiP2pConfig.Builder()
                 .setNetworkName(creds.networkName)
                 .setPassphrase(creds.passphrase)
+                // The host's band (the user's choice): a joiner that knows it scans only
+                // that band, so it joins sooner.
+                .setGroupOperatingBand(creds.p2pBand)
                 .build()
             m.createGroup(ch, config, action(done))
         }.onFailure { done(P2pResult.FAILED) }
+    }
+
+    /**
+     * Name of the group this phone is in now, also while it still waits for its address
+     * (connection info says "not formed" until then); null = in none.
+     */
+    @SuppressLint("MissingPermission")
+    open fun requestGroupName(channel: WifiP2pManager.Channel?, name: (String?) -> Unit) {
+        val m = manager ?: return name(null)
+        val ch = channel ?: return name(null)
+        runCatching { m.requestGroupInfo(ch) { g -> name(g?.networkName) } }.onFailure { name(null) }
     }
 
     /** Aborts a group negotiation that hangs (the P2P service then refuses every new request). */

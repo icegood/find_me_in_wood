@@ -150,5 +150,8 @@ class MapMathTest {
         kotlin.test.assertNull(wifiDirectHostLine(p.copy(wifiDirectHost = byQ, linkOptions = emptyList()), peers), "not agreed with this one")
         val named = com.icegood.findmeinwood.core.session.WifiDirectHost(idQ, group = "DIRECT-fm-0a0b0c0d")
         kotlin.test.assertEquals("DIRECT-fm-0a0b0c0d", wifiDirectHostLine(p.copy(wifiDirectHost = named), peers)?.group, "the pair's group name is shown")
+        val banded = named.copy(band = com.icegood.findmeinwood.core.model.WifiBand.GHZ_5)
+        kotlin.test.assertEquals(com.icegood.findmeinwood.core.model.WifiBand.GHZ_5, wifiDirectHostLine(p.copy(wifiDirectHost = banded), peers)?.band)
+        kotlin.test.assertEquals(com.icegood.findmeinwood.core.model.WifiBand.GHZ_5, wifiDirectHostLine(p.copy(wifiDirectHost = banded.copy(member = null)), peers)?.band)
     }
 }

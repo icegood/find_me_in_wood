@@ -34,15 +34,22 @@ enum class GroupRole { HOST, JOIN }
 /**
  * One Wi-Fi Direct group this phone takes part in (FR-3.5b): its credentials come from
  * [secret]; [role] is this phone's in it, as its pairs agreed. [pairs] = how many members
- * this phone meets in it.
+ * this phone meets in it. [band]: the group's band (the host's choice); null = not known,
+ * a joiner then scans every band.
  */
-class GroupPlan(val secret: ByteArray, val role: GroupRole, val pairs: Int = 1) {
+class GroupPlan(
+    val secret: ByteArray,
+    val role: GroupRole,
+    val pairs: Int = 1,
+    val band: com.icegood.findmeinwood.core.model.WifiBand? = null,
+) {
     /** The group's Wi-Fi name, as phones nearby list it. */
     val networkName: String get() = groupNetworkName(secret)
 
     override fun equals(other: Any?) =
-        other is GroupPlan && secret.contentEquals(other.secret) && role == other.role && pairs == other.pairs
-    override fun hashCode() = (secret.contentHashCode() * 31 + role.hashCode()) * 31 + pairs
+        other is GroupPlan && secret.contentEquals(other.secret) && role == other.role && pairs == other.pairs &&
+            band == other.band
+    override fun hashCode() = ((secret.contentHashCode() * 31 + role.hashCode()) * 31 + pairs) * 31 + band.hashCode()
 }
 
 /** Wi-Fi name of the group made from [secret] (Android requires "DIRECT-" + two characters). */

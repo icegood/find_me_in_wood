@@ -190,6 +190,8 @@ p2p_host_hint=यह फ़ोन समूह को होस्ट करत�
 p2p_auto_hint=भूमिका सिस्टम तय करता है
 p2p_host=होस्ट
 p2p_auto=ऑटो
+wd_band_24_hint=2.4 GHz: सबसे अधिक दूरी (डिफ़ॉल्ट)
+wd_band_5_hint=5 GHz: तेज़, पर कम दूरी
 beacon_interval=बीकन अंतराल
 beacon_interval_hint=हर %1$d सेकंड में आपकी लोकेशन पास के सदस्यों को जाती है; कम = ताज़ा, ज़्यादा = कम बैटरी
 seconds=सेकंड

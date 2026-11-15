@@ -190,6 +190,8 @@ p2p_host_hint=ponsel ini menjadi host grup (server, 192.168.49.1)
 p2p_auto_hint=peran ditentukan sistem
 p2p_host=Host
 p2p_auto=Otomatis
+wd_band_24_hint=2,4 GHz: jangkauan terjauh (bawaan)
+wd_band_5_hint=5 GHz: lebih cepat, tapi jangkauan lebih pendek
 beacon_interval=Interval suar
 beacon_interval_hint=setiap %1$d dtk posisi Anda dikirim ke anggota di sekitar; lebih pendek = lebih baru, lebih panjang = hemat baterai
 seconds=detik

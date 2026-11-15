@@ -190,6 +190,8 @@ p2p_host_hint=telefonen är värd för gruppen (server, 192.168.49.1)
 p2p_auto_hint=rollen förhandlas av systemet
 p2p_host=Värd
 p2p_auto=Auto
+wd_band_24_hint=2,4 GHz: längst räckvidd (standard)
+wd_band_5_hint=5 GHz: snabbare, men kortare räckvidd
 beacon_interval=Fyrintervall
 beacon_interval_hint=var %1$d:e s går din position till medlemmar i närheten; kortare = färskare, längre = mindre batteri
 seconds=sekunder

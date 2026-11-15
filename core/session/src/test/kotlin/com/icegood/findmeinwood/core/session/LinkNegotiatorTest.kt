@@ -256,6 +256,19 @@ class LinkNegotiatorTest {
     }
 
     @Test
+    fun `each phone says the band of the group it hosts, 2_4 GHz unless its user picks 5`() {
+        handshake()
+        assertEquals(com.icegood.findmeinwood.core.model.WifiBand.GHZ_2_4, b.bandOf(idA), "the default reaches furthest")
+        assertNull(a.bandOf(MemberId(ByteArray(32) { 9 })), "not heard: unknown")
+        a.setBand(com.icegood.findmeinwood.core.model.WifiBand.GHZ_2_4) // unchanged: nothing to say
+        a.setBand(com.icegood.findmeinwood.core.model.WifiBand.GHZ_5)
+        assertEquals(com.icegood.findmeinwood.core.model.WifiBand.GHZ_5, a.outgoing()?.band, "said at once")
+        exchange()
+        assertEquals(com.icegood.findmeinwood.core.model.WifiBand.GHZ_5, b.bandOf(idA))
+        assertEquals(com.icegood.findmeinwood.core.model.WifiBand.GHZ_5, a.band())
+    }
+
+    @Test
     fun `either of the pair may swap the host, the newer pick wins`() {
         handshake()
         b.pickHost(idA, meHosts = true)

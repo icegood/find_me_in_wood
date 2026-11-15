@@ -193,6 +193,8 @@
     <string name="p2p_auto_hint">rol negociat de sistem</string>
     <string name="p2p_host">Gazdă</string>
     <string name="p2p_auto">Auto</string>
+    <string name="wd_band_24_hint">2,4 GHz: cea mai mare rază (implicit)</string>
+    <string name="wd_band_5_hint">5 GHz: mai rapid, dar rază mai mică</string>
     <string name="beacon_interval">Interval semnal</string>
     <string name="beacon_interval_hint">la fiecare %1$d s poziția dvs. ajunge la membrii din apropiere; mai scurt = mai proaspăt, mai lung = mai puțină baterie</string>
     <string name="seconds">secunde</string>

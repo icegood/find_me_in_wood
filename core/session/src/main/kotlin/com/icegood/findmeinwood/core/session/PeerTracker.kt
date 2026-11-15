@@ -36,9 +36,14 @@ data class PeerState(
 /**
  * The pair's Wi-Fi Direct host: [member], or this phone when that is null. [turns] = how
  * many other groups this phone's radio serves in turn with this one (0 = all its time).
- * [group] = the pair's group Wi-Fi name this hour.
+ * [group] = the pair's group Wi-Fi name this hour, [band] its band (null = not heard yet).
  */
-data class WifiDirectHost(val member: MemberId?, val turns: Int = 0, val group: String? = null)
+data class WifiDirectHost(
+    val member: MemberId?,
+    val turns: Int = 0,
+    val group: String? = null,
+    val band: com.icegood.findmeinwood.core.model.WifiBand? = null,
+)
 
 /** Pure-Kotlin peer table (FR-6.1/6.3): staleness + purge, injectable clock. */
 class PeerTracker(

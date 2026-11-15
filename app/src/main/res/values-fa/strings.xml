@@ -193,6 +193,8 @@
     <string name="p2p_auto_hint">نقش را سیستم تعیین می‌کند</string>
     <string name="p2p_host">میزبان</string>
     <string name="p2p_auto">خودکار</string>
+    <string name="wd_band_24_hint">۲٫۴ گیگاهرتز: بیشترین برد (پیش‌فرض)</string>
+    <string name="wd_band_5_hint">۵ گیگاهرتز: سریع‌تر، اما برد کمتر</string>
     <string name="beacon_interval">فاصلهٔ نشانگر</string>
     <string name="beacon_interval_hint">هر %1$d ثانیه مکان شما به اعضای نزدیک می‌رود؛ کوتاه‌تر = تازه‌تر، بلندتر = باتری کمتر</string>
     <string name="seconds">ثانیه</string>

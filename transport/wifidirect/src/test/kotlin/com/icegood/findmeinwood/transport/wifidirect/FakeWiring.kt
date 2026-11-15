@@ -56,6 +56,14 @@ internal open class FakeWiring : WifiDirectWiring(
     }
 
     var cancelCalls = 0
+    /** Group owners in sight. */
+    var owners: Set<String> = emptySet()
+
+    override fun requestOwners(channel: WifiP2pManager.Channel?, owners: (Set<String>) -> Unit) = owners(this.owners)
+    /** The group this phone is in (associated, maybe without an address yet). */
+    var groupName: String? = null
+
+    override fun requestGroupName(channel: WifiP2pManager.Channel?, name: (String?) -> Unit) = name(groupName)
 
     override fun cancelConnect(channel: WifiP2pManager.Channel?) {
         cancelCalls++

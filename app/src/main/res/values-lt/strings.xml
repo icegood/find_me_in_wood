@@ -193,6 +193,8 @@
     <string name="p2p_auto_hint">vaidmenį nustato sistema</string>
     <string name="p2p_host">Šeimininkas</string>
     <string name="p2p_auto">Auto</string>
+    <string name="wd_band_24_hint">2,4 GHz: didžiausias nuotolis (numatytasis)</string>
+    <string name="wd_band_5_hint">5 GHz: greičiau, bet mažesnis nuotolis</string>
     <string name="beacon_interval">Švyturio intervalas</string>
     <string name="beacon_interval_hint">kas %1$d s jūsų vieta siunčiama netoliese esantiems nariams; trumpiau = šviežiau, ilgiau = mažiau baterijos</string>
     <string name="seconds">sekundės</string>

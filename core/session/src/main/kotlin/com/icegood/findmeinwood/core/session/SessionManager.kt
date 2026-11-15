@@ -12,6 +12,7 @@ import com.icegood.findmeinwood.core.model.DecryptedBeacon
 import com.icegood.findmeinwood.core.model.EncryptedFrame
 import com.icegood.findmeinwood.core.model.GnssFix
 import com.icegood.findmeinwood.core.model.LinkOffer
+import com.icegood.findmeinwood.core.model.WifiBand
 import com.icegood.findmeinwood.core.model.MemberId
 import com.icegood.findmeinwood.core.model.NetworkProfile
 import com.icegood.findmeinwood.core.model.PayloadCodec
@@ -192,7 +193,8 @@ class SessionManager(
                 // How many other groups the radio takes turns with for this pair's one.
                 val turns = groups.size - 1
                 val name = groupNetworkName(wifiDirectSecret(keys.current(), h, clock() / HOUR_MS))
-                WifiDirectHost(h.takeIf { it != profile.myMemberId }, turns, name)
+                val band = if (h == profile.myMemberId) links.band() else links.bandOf(h)
+                WifiDirectHost(h.takeIf { it != profile.myMemberId }, turns, name, band)
             }
             tracker.setLinkInfo(
                 v.peer, v.link, v.agreed, v.suggestion,
@@ -235,6 +237,13 @@ class SessionManager(
     fun setLinkOffers(offers: List<LinkOffer>) {
         links?.setOffers(offers) ?: return
         applyWifiDirect()
+    }
+
+    /** This user's band for the Wi-Fi Direct group this phone hosts (FR-3.5c). */
+    fun setWifiBand(band: WifiBand) {
+        links?.setBand(band) ?: return
+        applyWifiDirect()
+        announce(emptyList())
     }
 
     /** This phone's user allows every transport common with [peer] (LNP/3 handshake). */
@@ -336,10 +345,13 @@ class SessionManager(
         val hour = clock() / HOUR_MS
         val key = keys.current()
         val plans = groups.map { g ->
+            val mine = g.host == profile.myMemberId
             GroupPlan(
                 wifiDirectSecret(key, g.host, hour),
-                if (g.host == profile.myMemberId) GroupRole.HOST else GroupRole.JOIN,
+                if (mine) GroupRole.HOST else GroupRole.JOIN,
                 pairs = g.members.size,
+                // Hosting: the band this user chose; joining: the one the host said.
+                band = if (mine) links?.band() else links?.bandOf(g.host),
             )
         }
         if (plans != groupPlans) {

@@ -193,6 +193,8 @@
     <string name="p2p_auto_hint">ролята се договаря от системата</string>
     <string name="p2p_host">Домакин</string>
     <string name="p2p_auto">Авто</string>
+    <string name="wd_band_24_hint">2,4 GHz: най-голям обхват (по подразбиране)</string>
+    <string name="wd_band_5_hint">5 GHz: по-бързо, но по-малък обхват</string>
     <string name="beacon_interval">Интервал на маяка</string>
     <string name="beacon_interval_hint">на всеки %1$d с позицията ви отива до членовете наблизо; по-кратко = по-свежо, по-дълго = по-малко батерия</string>
     <string name="seconds">секунди</string>

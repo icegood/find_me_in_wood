@@ -190,6 +190,8 @@ p2p_host_hint=dieses Telefon leitet die Gruppe (Server, 192.168.49.1)
 p2p_auto_hint=Rolle vom System ausgehandelt
 p2p_host=Host
 p2p_auto=Auto
+wd_band_24_hint=2,4 GHz: größte Reichweite (Standard)
+wd_band_5_hint=5 GHz: schneller, aber geringere Reichweite
 beacon_interval=Signalintervall
 beacon_interval_hint=alle %1$d s geht deine Position an Mitglieder in der Nähe; kürzer = aktueller, länger = weniger Akku
 seconds=Sekunden

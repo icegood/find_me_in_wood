@@ -228,5 +228,7 @@ class WifiDirectConstantsTest {
         // FR-3.5c: whatever dropped the link, the pair is back within 20 s.
         assertTrue(WifiDirectTransport.PENDING_TIMEOUT_MS + 5_000 <= 20_000)
         assertTrue(WifiDirectTransport.SILENT_SOCKET_MS + 5_000 <= 20_000)
+        // A join far from the host takes 6 s and more: aborting it sooner never lets it through.
+        assertTrue(WifiDirectTransport.FORM_TIMEOUT_MS in 10_000..15_000)
     }
 }

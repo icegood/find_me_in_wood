@@ -18,6 +18,7 @@ class DiscoveryApiTest {
         t.closeLink("AA:BB")
         assertEquals(GroupPlan(byteArrayOf(1), GroupRole.HOST, 2), GroupPlan(byteArrayOf(1), GroupRole.HOST, 2))
         assertTrue(GroupPlan(byteArrayOf(1), GroupRole.JOIN) != GroupPlan(byteArrayOf(2), GroupRole.JOIN))
+        assertTrue(GroupPlan(byteArrayOf(1), GroupRole.JOIN) != GroupPlan(byteArrayOf(1), GroupRole.JOIN, band = com.icegood.findmeinwood.core.model.WifiBand.GHZ_5), "the band is part of the plan")
         assertEquals(GroupPlan(byteArrayOf(1), GroupRole.JOIN).hashCode(), GroupPlan(byteArrayOf(1), GroupRole.JOIN).hashCode())
         t.setGroupSecrets(byteArrayOf(1), listOf(byteArrayOf(2)))
         assertEquals("DIRECT-fm-0a0b0c0d", GroupPlan(byteArrayOf(10, 11, 12, 13, 14), GroupRole.JOIN).networkName)

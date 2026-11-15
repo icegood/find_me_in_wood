@@ -171,6 +171,8 @@ class SessionService : Service() {
                 links.restore(
                     Prefs.linkDecisions(this, netHex).mapKeys { (hex, _) -> MemberId(hex.hex()) },
                 )
+                // The band this user chose for the group this phone hosts.
+                links.setBand(Prefs.wifiBand(this))
                 links.onDecided = {
                     Prefs.setLinkDecisions(this, netHex, links.decisions().mapKeys { (id, _) -> id.bytes.joinToString("") { "%02x".format(it) } })
                 }
@@ -594,6 +596,12 @@ class SessionService : Service() {
                 m.rekey()
             }
             return true
+        }
+
+        /** The band of the Wi-Fi Direct group this phone hosts, also while a session runs. */
+        fun setWifiBand(context: Context, band: com.icegood.findmeinwood.core.model.WifiBand) {
+            Prefs.setWifiBand(context, band)
+            activeManager?.setWifiBand(band)
         }
 
         /** Flip the Wi-Fi Direct role while a session is running (host = group owner). */
