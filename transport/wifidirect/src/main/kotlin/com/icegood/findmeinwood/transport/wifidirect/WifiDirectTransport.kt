@@ -111,7 +111,8 @@ internal sealed interface GroupState {
  *                                         (target)               Joining
  *
  *  (1) no group after CREATE_TIMEOUT_MS: cancel, ask again
- *  (2) overdue (attempt × JOIN_STEP_MS, at most FORM_TIMEOUT_MS), or a group owner
+ *  (2) overdue (JOIN_STEP_MS for the first SHORT_JOINS attempts, then a step more
+ *     each, at most FORM_TIMEOUT_MS), or a group owner
  *      came in sight
  *  (3) in no group or in another: cancel, ask again with attempt + 1
  *  (4) no address after ADDRESS_WAIT_MS: cancel, ask again with attempt + 1
@@ -458,6 +459,14 @@ class WifiDirectTransport(
         }
     }
 
+    /**
+     * How long join number [attempt] in a row may take: one step for the first
+     * [SHORT_JOINS] (a host that is back is joined in 3 s, one still away is never found),
+     * then a step more each time, up to the limit (far away a join takes longer).
+     */
+    private fun joinAllowance(attempt: Int): Long =
+        minOf(maxOf(1, attempt - SHORT_JOINS + 1) * JOIN_STEP_MS, FORM_TIMEOUT_MS)
+
     /** The time-driven transitions, once a poll. */
     private fun tick() {
         val now = System.currentTimeMillis()
@@ -469,7 +478,7 @@ class WifiDirectTransport(
                 st.askedAt == null || now - st.askedAt > PENDING_TIMEOUT_MS -> askCreate(st)
             }
             is GroupState.Joining -> when {
-                now - st.since > minOf(st.attempt * JOIN_STEP_MS, FORM_TIMEOUT_MS) -> checkGroup()
+                now - st.since > joinAllowance(st.attempt) -> checkGroup()
                 st.askedAt == null || now - st.askedAt > PENDING_TIMEOUT_MS -> askJoin(st)
             }
             is GroupState.Addressing ->
@@ -676,11 +685,13 @@ class WifiDirectTransport(
          */
         internal var FORM_TIMEOUT_MS = 15_000L
         /**
-         * The first join in a row is given this long, each next one as much more (5, 10,
-         * 15 s): a join asked while the host was still away never finds its group, and a
-         * near host is joined in 3 s, so the first try must not hold up the second.
+         * The first [SHORT_JOINS] joins in a row are given this long, each later one as
+         * much more (5, 5, 5, 10, 15 s): a join asked while the host was still away never
+         * finds its group, and a near host is joined in 3 s, so an early try must not hold
+         * up the next.
          */
         internal var JOIN_STEP_MS = 5_000L
+        internal const val SHORT_JOINS = 3
         /**
          * A joiner in its group but without an address yet waits this long before the join
          * is asked again. DHCP either answers in 1-2 s or stalls for good (offer heard, no

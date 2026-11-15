@@ -411,12 +411,12 @@ class WifiDirectRoleLogicTest {
             }
             val t = transport(w, pollMs = 10L)
             t.start(cfg)
-            withTimeout(5_000) { while (w.at.size < 4) delay(10) }
+            withTimeout(8_000) { while (w.at.size < 6) delay(10) }
             t.stop()
             val gaps = w.at.zipWithNext { a, b -> b - a }
-            assertTrue(gaps[0] in 150..280, "first try: one step, got ${gaps[0]}")
-            assertTrue(gaps[1] >= 300, "second try: two steps, got ${gaps[1]}")
-            assertTrue(gaps[2] in 300..450, "capped at the limit, got ${gaps[2]}")
+            repeat(3) { assertTrue(gaps[it] in 150..280, "the first three tries: one step each, got $gaps") }
+            assertTrue(gaps[3] >= 300, "the fourth: two steps, got $gaps")
+            assertTrue(gaps[4] in 300..450, "capped at the limit, got $gaps")
         } finally {
             WifiDirectTransport.JOIN_STEP_MS = step
             WifiDirectTransport.FORM_TIMEOUT_MS = form

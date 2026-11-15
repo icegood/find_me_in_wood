@@ -43,6 +43,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.put
 
@@ -382,7 +384,9 @@ class SessionService : Service() {
                         put("satellite", SmsSender.onSatellite(this@SessionService))
                     }
                 }
-                delay(3_000) // a fixed link (number set, radio on) shows up within seconds
+                // A radio switched on or off shows in the offers at once (a Wi-Fi Direct host
+                // re-creates its group without waiting); anything else within seconds.
+                kotlinx.coroutines.withTimeoutOrNull(3_000) { manager.radioStates.drop(1).first() }
             }
         }
     }
