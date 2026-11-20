@@ -23,6 +23,11 @@ local.properties
 *.keystore
 keystore.properties
 
+# Claude Code: personal notes and settings (signing, phone serials) — never commit
+CLAUDE.local.md
+**/CLAUDE.local.md
+.claude/settings.local.json
+
 # Logs & crash dumps
 *.log
 hs_err_pid*
