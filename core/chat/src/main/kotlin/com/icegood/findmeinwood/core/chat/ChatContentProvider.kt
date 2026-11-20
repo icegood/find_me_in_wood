@@ -34,7 +34,7 @@ class ChatContentProvider : ContentProvider() {
             timestamp = values.getAsLong(ChatStore.COL_TIMESTAMP) ?: System.currentTimeMillis(),
             isOwn = (values.getAsInteger(ChatStore.COL_IS_OWN) ?: 0) == 1,
         )
-        store.insert(msg)
+        store.insert(msg, values.getAsString(ChatStore.COL_NETWORK).orEmpty())
         return Uri.withAppendedPath(AUTH_URI, id)
     }
 

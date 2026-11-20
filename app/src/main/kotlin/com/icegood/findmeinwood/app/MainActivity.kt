@@ -239,6 +239,7 @@ class MainActivity : ComponentActivity() {
             val repo = ChatRepository(
                 this@MainActivity, manager, p.myMemberId, scope,
                 Prefs.currentDisplayName(this@MainActivity) ?: user.displayName,
+                network = p.networkId.bytes.joinToString("") { "%02x".format(it) },
             )
             chatRepo.value = repo
             // Collected inside the effect so it is cancelled with it; SessionBus.clear()
@@ -580,6 +581,12 @@ class MainActivity : ComponentActivity() {
                         if (runningId == p.networkIdHex) SessionService.stop(this@MainActivity)
                         runBlocking { ProfileStore.remove(this@MainActivity, p.networkIdHex) }
                         Prefs.setSecretFor(this@MainActivity, p.networkIdHex, null)
+                        // Its chat goes with it: a network made again later starts empty.
+                        com.icegood.findmeinwood.core.chat.ChatRepository.deleteNetwork(this@MainActivity, p.networkIdHex)
+                        MemberBookStore.delete(
+                            this@MainActivity,
+                            com.icegood.findmeinwood.core.model.NetworkId(p.networkIdHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()),
+                        )
                         profiles = ProfileStore.load(this@MainActivity)
                         deleting = null
                     }) { Text(stringResource(R.string.delete)) }

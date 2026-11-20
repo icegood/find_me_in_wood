@@ -24,28 +24,30 @@ class ChatRepository(
     private val scope: CoroutineScope,
     /** Name peers see on our messages. */
     private val myName: String = "me",
+    /** The network this chat belongs to (its id in hex): only its messages are stored and shown. */
+    private val network: String = "",
 ) {
     private val store by lazy { ChatStore(context) }
 
     val groupChannelId: String = "group"
 
     fun observeMessages(channelId: String): Flow<List<ChatMessage>> =
-        store.observe(channelId)
+        store.observe(channelId, network)
 
     /** The group channel exists as soon as a session runs, not only after a message. */
     fun observeChannelIds(): Flow<List<String>> =
-        store.observeChannelIds().map { withGroup(it) }
+        store.observeChannelIds(network).map { withGroup(it) }
 
     fun getMessages(channelId: String): List<ChatMessage> =
-        store.getMessages(channelId)
+        store.getMessages(channelId, network)
 
-    fun getChannelIds(): List<String> = withGroup(store.getChannelIds())
+    fun getChannelIds(): List<String> = withGroup(store.getChannelIds(network))
 
     private fun withGroup(ids: List<String>): List<String> =
         if (ids.contains(groupChannelId)) ids else listOf(groupChannelId) + ids
 
     fun getLatestMessage(channelId: String): ChatMessage? =
-        store.getLatestMessage(channelId)
+        store.getLatestMessage(channelId, network)
 
     suspend fun sendText(text: String, channelId: String = groupChannelId) {
         val msg = ChatMessage(
@@ -57,7 +59,7 @@ class ChatRepository(
             timestamp = System.currentTimeMillis(),
             isOwn = true,
         )
-        store.insert(msg)
+        store.insert(msg, network)
 
         val payload = ChatPayload(
             id = msg.id,
@@ -81,7 +83,7 @@ class ChatRepository(
             timestamp = System.currentTimeMillis(),
             isOwn = true,
         )
-        store.insert(msg)
+        store.insert(msg, network)
 
         // The photo could not be encoded small enough: peers would only get an empty bubble.
         if (bytes == null) return
@@ -111,7 +113,7 @@ class ChatRepository(
             isOwn = false,
         )
         scope.launch {
-            store.insert(msg)
+            store.insert(msg, network)
         }
     }
 
@@ -162,6 +164,16 @@ class ChatRepository(
     companion object {
         /** Chat photos (sent and received); every file in it is sealed by the Keystore key. */
         fun photoDir(context: Context): File = File(context.filesDir, "chat_photos").apply { mkdirs() }
+
+        /** The network [network] (id in hex) was deleted: its messages and their stored photos go too. */
+        fun deleteNetwork(context: Context, network: String) {
+            val dir = photoDir(context).canonicalFile
+            ChatStore(context).deleteNetwork(network).forEach { ref ->
+                if (!ref.startsWith("file://")) return@forEach
+                val f = File(ref.removePrefix("file://")).canonicalFile
+                if (f.parentFile == dir) f.delete()
+            }
+        }
     }
 
     fun handleIncomingPayload(rawPayload: ByteArray, senderId: MemberId) {

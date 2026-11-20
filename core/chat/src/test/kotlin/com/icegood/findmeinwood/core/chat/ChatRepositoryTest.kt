@@ -35,6 +35,7 @@ class ChatRepositoryTest {
 
     private lateinit var repo: ChatRepository
     private lateinit var testMemberId: MemberId
+    private lateinit var sessionManager: com.icegood.findmeinwood.core.session.SessionManager
     private val scope = CoroutineScope(Dispatchers.Default)
 
     private class FakeTransport : Transport {
@@ -80,7 +81,7 @@ class ChatRepositoryTest {
             policy = JoinPolicy.PRIVATE,
         )
         testMemberId = memberId
-        val sessionManager = com.icegood.findmeinwood.core.session.SessionManager(
+        sessionManager = com.icegood.findmeinwood.core.session.SessionManager(
             profile = profile,
             transports = listOf(fakeTransport),
             fixes = flowOf(),
@@ -188,6 +189,31 @@ class ChatRepositoryTest {
         repo.sendText("test")
         val channels = repo.observeChannelIds().first()
         assertTrue(channels.contains("group"))
+    }
+
+    @Test
+    fun `a chat shows only its network, and deleting the network removes its messages and photos`() = runTest {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val old = ChatRepository(ctx, sessionManager, testMemberId, scope, network = "aa")
+        val fresh = ChatRepository(ctx, sessionManager, testMemberId, scope, network = "bb")
+        old.sendText("from the deleted network")
+        val photo = java.io.File(ChatRepository.photoDir(ctx), "in_x.jpg").apply { writeBytes(byteArrayOf(1)) }
+        val outside = java.io.File(ctx.filesDir, "keep.jpg").apply { writeBytes(byteArrayOf(1)) }
+        old.handleIncomingChatPayload(
+            com.icegood.findmeinwood.core.model.ChatPayload(id = "p", senderName = "B", text = "", timestamp = 1L),
+            testMemberId,
+        )
+        withTimeout(5_000) { while (old.getMessages(old.groupChannelId).size < 2) delay(20) }
+        // Refs a deleted network may hold: one of ours, one outside the photo folder, a content uri.
+        old.sendPhoto("file://${photo.absolutePath}")
+        old.sendPhoto("file://${outside.absolutePath}")
+        old.sendPhoto("content://photo/1")
+        assertTrue(fresh.getMessages(fresh.groupChannelId).isEmpty(), "another network's chat never shows")
+
+        ChatRepository.deleteNetwork(ctx, "aa")
+        assertTrue(old.getMessages(old.groupChannelId).isEmpty())
+        assertTrue(!photo.exists(), "its photos go too")
+        assertTrue(outside.exists(), "nothing outside the chat photo folder is touched")
     }
 
     @Test

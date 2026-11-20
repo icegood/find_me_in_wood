@@ -102,4 +102,39 @@ class ChatStoreTest {
         val messages = store.getMessages("ch1")
         assertEquals("content://photo/1", messages[0].photoRef)
     }
+
+    @Test
+    fun `each network sees only its own messages, and deleting one drops only its history`() {
+        store.insert(ChatMessage("a1", "group", "p1", "A", "old net", photoRef = "file:///x/in_a1.jpg", timestamp = 1000L), "aa")
+        store.insert(ChatMessage("b1", "group", "p1", "A", "new net", timestamp = 2000L), "bb")
+        assertEquals(listOf("new net"), store.getMessages("group", "bb").map { it.text })
+        assertEquals(listOf("old net"), store.getMessages("group", "aa").map { it.text })
+        assertEquals("new net", store.getLatestMessage("group", "bb")?.text)
+        assertEquals(listOf("group"), store.getChannelIds("bb"))
+        assertTrue(store.getChannelIds("cc").isEmpty())
+
+        assertEquals(listOf("file:///x/in_a1.jpg"), store.deleteNetwork("aa"))
+        assertTrue(store.getMessages("group", "aa").isEmpty())
+        assertEquals(1, store.getMessages("group", "bb").size)
+        assertTrue(store.deleteNetwork("aa").isEmpty())
+    }
+
+    @Test
+    fun `a v1 database keeps its rows, outside every network`() {
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        ctx.deleteDatabase("chat.db")
+        android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(ctx.getDatabasePath("chat.db"), null).use { db ->
+            db.execSQL(
+                "CREATE TABLE messages (id TEXT PRIMARY KEY, channel TEXT NOT NULL, sender_id TEXT NOT NULL, " +
+                    "sender_name TEXT NOT NULL, text TEXT, photo_ref TEXT, timestamp INTEGER NOT NULL, is_own INTEGER NOT NULL DEFAULT 0)",
+            )
+            db.execSQL("INSERT INTO messages VALUES ('old', 'group', 'p', 'A', 'stale', NULL, 1, 0)")
+            db.version = 1
+        }
+        val upgraded = ChatStore(ctx)
+        assertTrue(upgraded.getMessages("group", "bb").isEmpty(), "an old message shows in no network")
+        assertEquals(listOf("stale"), upgraded.getMessages("group").map { it.text }, "but is kept")
+        assertTrue(upgraded.insert(ChatMessage("n", "group", "p", "A", "fresh", timestamp = 2L), "bb"))
+        assertEquals(listOf("fresh"), upgraded.getMessages("group", "bb").map { it.text })
+    }
 }
