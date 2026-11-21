@@ -43,10 +43,10 @@ Multi-choice settings (theme, Wi-Fi Direct band) are not on/off, so they move fr
 - Create: `app/src/main/kotlin/com/icegood/findmeinwood/app/RadioToggles.kt`
 - Create: `app/src/test/kotlin/com/icegood/findmeinwood/app/RadioTogglesTest.kt`
 
-- [ ] SwitchRow(title, hint, checked, onCheckedChange, enabled, hintColor): a Row with `Modifier.toggleable(role = Role.Switch)`, minimum height 48 dp, title and optional hint on the left, Material 3 Switch on the right with `onCheckedChange = null` so the row owns the click
-- [ ] RadioToggles (plain Kotlin): `enum Radio {WIFI, BLUETOOTH, LOCATION}`. One function picks the intent action for a radio and SDK level (BT: ACTION_REQUEST_ENABLE with fallback to Bluetooth settings; Wi-Fi: Settings.Panel.ACTION_WIFI on 29+, else Wi-Fi settings; Location: location source settings) as strings, with no Android types. A second function lists which rows to show for a screen (networks: all three; discovery blockers: Bluetooth and Location) and whether a radio is a blocker (state off, shown in error colour)
-- [ ] write RadioTogglesTest covering every radio, both SDK branches, the fallback and the rows per screen
-- [ ] run `./gradlew :app:testDebugUnitTest`; it must pass
+- [x] SwitchRow(title, hint, checked, onCheckedChange, enabled, hintColor): a Row with `Modifier.toggleable(role = Role.Switch)`, minimum height 48 dp, title and optional hint on the left, Material 3 Switch on the right with `onCheckedChange = null` so the row owns the click
+- [x] RadioToggles (plain Kotlin): `enum Radio {WIFI, BLUETOOTH, LOCATION}`. One function picks the intent action for a radio and SDK level (BT: ACTION_REQUEST_ENABLE with fallback to Bluetooth settings; Wi-Fi: Settings.Panel.ACTION_WIFI on 29+, else Wi-Fi settings; Location: location source settings) as strings, with no Android types. A second function lists which rows to show for a screen (networks: all three; discovery blockers: Bluetooth and Location) and whether a radio is a blocker (state off, shown in error colour)
+- [x] write RadioTogglesTest covering every radio, both SDK branches, the fallback and the rows per screen
+- [x] run `./gradlew :app:testDebugUnitTest`; it must pass
 
 ### Task 2: Wi-Fi / Bluetooth / Location as switches
 

@@ -171,6 +171,10 @@ val gateIncludes = listOf(
     "com/icegood/findmeinwood/app/IdentityHolder*",
     // Pure app logic (JVM-tested): link-loss detection and SMS link rules.
     "com/icegood/findmeinwood/app/LinkWatch*",
+    "com/icegood/findmeinwood/app/RadioToggles*",   // radio switch intents and rows
+    "com/icegood/findmeinwood/app/RadioScreen*",
+    "com/icegood/findmeinwood/app/RadioRow*",
+    "com/icegood/findmeinwood/app/Radio.class",
     "com/icegood/findmeinwood/app/SmsLogic*",
     "com/icegood/findmeinwood/app/SmsBudget*",
     "com/icegood/findmeinwood/app/UiText*",
