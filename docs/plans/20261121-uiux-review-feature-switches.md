@@ -118,8 +118,8 @@ Multi-choice settings (theme, Wi-Fi Direct band) are not on/off, so they move fr
 
 ### Task 8: Update documentation
 
-- [ ] `app/CLAUDE.md`: note that on/off features use SwitchRow, multi-choice uses segmented buttons, and radio switches show the system state without flipping themselves
-- [ ] update the RadioSwitches / DiscoveryBlockers class comments to the new behaviour
+- [x] `app/CLAUDE.md`: note that on/off features use SwitchRow, multi-choice uses segmented buttons, and radio switches show the system state without flipping themselves
+- [x] update the RadioSwitches / DiscoveryBlockers class comments to the new behaviour
 
 ## Post-Completion
 - On a phone (phone-testing skill, debug build), check each radio switch with the radio on and off; on Android 13+ make sure the Bluetooth switch follows once the system prompt is accepted
