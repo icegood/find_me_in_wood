@@ -16,6 +16,24 @@ Phone serials and models: `CLAUDE.local.md`. Always `source ./env.sh` first (adb
   without asking: it wipes the user's data.
 - The version on a phone: `adb shell dumpsys package com.icegood.findmeinwoods | grep -m2 -E "versionName|lastUpdateTime"`.
 
+## Before a test session: power saving off, screens awake
+
+Do this on every phone at the start (the user wants it for all tests); offer to restore
+afterwards.
+
+```sh
+adb -s <serial> shell cmd power set-mode 0                          # battery saver off
+adb -s <serial> shell settings put global low_power 0
+adb -s <serial> shell settings put system SmartModeStatus 1         # Huawei only: 4 = EMUI power saving
+adb -s <serial> shell settings put global stay_on_while_plugged_in 7  # awake on AC|USB|wireless
+adb -s <serial> shell dumpsys power | grep -E "mStayOn=|mSettingBatterySaverEnabled="  # expect true / false
+```
+
+- EMUI power saving caps the screen timeout at 30 s (the user cannot raise it in Settings)
+  and throttles the app in the background: fewer beacons, late Bluetooth/Wi-Fi Direct.
+- Use 7, not `svc power stayon usb` (= 2): the JAD-LX9 reports the laptop's USB port as an
+  AC charger (`mPlugType=1`), so the USB-only value never keeps it on.
+
 ## Installing on Huawei (EMUI)
 
 - Newer EMUI asks on screen for every ADB install, and `adb install` waits until someone
@@ -47,7 +65,7 @@ Phone serials and models: `CLAUDE.local.md`. Always `source ./env.sh` first (adb
   A screenshot (`adb exec-out screencap -p`) only when the dump is not enough; a black
   screenshot means the screen is off or a secure window is showing.
 - Wake: `input keyevent KEYCODE_WAKEUP`; swipe to unlock works only without a PIN. Keep the
-  screen on while on USB: `svc power stayon usb` (the user may need to set "Stay awake").
+  screen on: `stay_on_while_plugged_in 7` (see "Before a test session").
 - Turn radios on: `svc wifi enable`, `cmd location set-location-enabled true`; Bluetooth
   through the app's "Bluetooth" switch (Networks tab Radios card, or under the red blocker
   sentence on Discover; system dialog → Allow).
