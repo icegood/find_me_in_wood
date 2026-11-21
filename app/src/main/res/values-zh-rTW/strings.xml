@@ -87,8 +87,6 @@
     <string name="not_let_in">未獲准加入：%1$s</string>
     <string name="join_named">加入「%1$s」</string>
     <string name="network">網路</string>
-    <string name="turn_on_bluetooth">開啟藍牙</string>
-    <string name="turn_on_location">開啟定位</string>
     <string name="qr_not_invite">這個 QR 碼不是網路邀請。</string>
     <string name="network_name_label">網路名稱（你的標籤）</string>
     <string name="hide">隱藏</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">未運作</string>
     <string name="position_paused">我的位置：已暫停 — 成員看到我沒有位置</string>
     <string name="position_shared">我的位置：分享中</string>
-    <string name="share_again">重新分享</string>
-    <string name="pause">暫停</string>
     <string name="only_master_lets_in">只有網路管理員能讓新成員加入</string>
     <string name="joined_without_password">已在無密碼的情況下加入。讓你加入的成員應看到相同代碼：%1$s</string>
-    <string name="stop_discovery">停止可見</string>
-    <string name="start_discovery">設為可見</string>
     <string name="invite">邀請</string>
     <string name="members">成員</string>
     <string name="use_this_network">使用這個網路</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">這支手機會退出網路並忘記密碼。若要回來，需要再次輸入密碼或請成員讓你加入。</string>
     <string name="location_off_explain">定位已關閉：此時 Android 會在藍牙和 Wi-Fi Direct 搜尋中隱藏其他手機，所以找不到任何人 — 你自己的位置也不明。</string>
     <string name="wifi_off_explain">Wi-Fi 已關閉：Wi-Fi Direct（距離更遠、可傳相片）無法運作。不需要 Wi-Fi 網路，只要開啟 Wi-Fi。</string>
-    <string name="turn_on_wifi">開啟 Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">定位</string>
     <string name="share_my_position">分享我的位置</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">選擇節點…</string>
     <string name="p2p_host_hint">這支手機擔任群組主機（伺服器，192.168.49.1）</string>
     <string name="p2p_auto_hint">由系統協調角色</string>
-    <string name="p2p_host">主機</string>
-    <string name="p2p_auto">自動</string>
     <string name="wd_band_24_hint">2.4 GHz：涵蓋距離最遠（預設）</string>
     <string name="wd_band_5_hint">5 GHz：更快，但距離更短</string>
     <string name="beacon_interval">信標間隔</string>

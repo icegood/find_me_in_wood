@@ -87,8 +87,6 @@
     <string name="not_let_in">Нисте пуштени: %1$s</string>
     <string name="join_named">Придружи се „%1$s“</string>
     <string name="network">мрежа</string>
-    <string name="turn_on_bluetooth">Укључи Bluetooth</string>
-    <string name="turn_on_location">Укључи локацију</string>
     <string name="qr_not_invite">Тај QR код није позивница у мрежу.</string>
     <string name="network_name_label">Назив мреже (ваша ознака)</string>
     <string name="hide">Сакриј</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">неактивна</string>
     <string name="position_paused">мој положај: паузиран — чланови ме виде без локације</string>
     <string name="position_shared">мој положај: дели се</string>
-    <string name="share_again">Поново дели</string>
-    <string name="pause">Паузирај</string>
     <string name="only_master_lets_in">само администратор мреже може да пушта нове људе</string>
     <string name="joined_without_password">Придружили сте се без лозинке. Члан који вас је пустио мора да види исти код: %1$s</string>
-    <string name="stop_discovery">Престани да будеш видљива</string>
-    <string name="start_discovery">Учини видљивом</string>
     <string name="invite">Позови</string>
     <string name="members">Чланови</string>
     <string name="use_this_network">Користи ову мрежу</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Овај телефон напушта мрежу и заборавља њену лозинку. За повратак вам треба поново лозинка или члан који ће вас пустити.</string>
     <string name="location_off_explain">Локација је искључена: Android тада крије друге телефоне од тражења преко Bluetooth-а и Wi-Fi Direct-а, па нико не може бити пронађен — а ваш положај је непознат.</string>
     <string name="wifi_off_explain">Wi-Fi је искључен: Wi-Fi Direct (већи домет, фотографије) не може да ради. Не треба Wi-Fi мрежа, само укључен Wi-Fi.</string>
-    <string name="turn_on_wifi">Укључи Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Локација</string>
     <string name="share_my_position">Дели мој положај</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Изабери чвор…</string>
     <string name="p2p_host_hint">овај телефон је домаћин групе (сервер, 192.168.49.1)</string>
     <string name="p2p_auto_hint">улогу договара систем</string>
-    <string name="p2p_host">Домаћин</string>
-    <string name="p2p_auto">Ауто</string>
     <string name="wd_band_24_hint">2,4 GHz: највећи домет (подразумевано)</string>
     <string name="wd_band_5_hint">5 GHz: брже, али мањи домет</string>
     <string name="beacon_interval">Интервал светионика</string>

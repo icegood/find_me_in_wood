@@ -87,8 +87,6 @@
     <string name="not_let_in">Neįleista: %1$s</string>
     <string name="join_named">Prisijungti prie „%1$s“</string>
     <string name="network">tinklas</string>
-    <string name="turn_on_bluetooth">Įjungti Bluetooth</string>
-    <string name="turn_on_location">Įjungti vietovę</string>
     <string name="qr_not_invite">Šis QR kodas nėra kvietimas į tinklą.</string>
     <string name="network_name_label">Tinklo pavadinimas (jūsų žymė)</string>
     <string name="hide">Slėpti</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">neaktyvus</string>
     <string name="position_paused">mano vieta: pristabdyta — nariai mato mane be vietos</string>
     <string name="position_shared">mano vieta: bendrinama</string>
-    <string name="share_again">Bendrinti vėl</string>
-    <string name="pause">Pristabdyti</string>
     <string name="only_master_lets_in">naujus žmones įleisti gali tik tinklo administratorius</string>
     <string name="joined_without_password">Prisijungėte be slaptažodžio. Jus įleidęs narys turi matyti tą patį kodą: %1$s</string>
-    <string name="stop_discovery">Nebebūti matomam</string>
-    <string name="start_discovery">Padaryti matomą</string>
     <string name="invite">Pakviesti</string>
     <string name="members">Nariai</string>
     <string name="use_this_network">Naudoti šį tinklą</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Šis telefonas palieka tinklą ir pamiršta jo slaptažodį. Norėdami grįžti, vėl turėsite turėti slaptažodį arba narį, kuris jus įleis.</string>
     <string name="location_off_explain">Vietovė išjungta: tada „Android“ slepia kitus telefonus nuo paieškų per Bluetooth ir Wi-Fi Direct, todėl nieko negalima rasti — o jūsų pačių vieta nežinoma.</string>
     <string name="wifi_off_explain">Wi-Fi išjungtas: Wi-Fi Direct (didesnis atstumas, nuotraukos) negali veikti. Wi-Fi tinklo nereikia, tik įjungto Wi-Fi.</string>
-    <string name="turn_on_wifi">Įjungti Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Vietovė</string>
     <string name="share_my_position">Bendrinti mano vietą</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Pasirinkti mazgą…</string>
     <string name="p2p_host_hint">šis telefonas yra grupės šeimininkas (serveris, 192.168.49.1)</string>
     <string name="p2p_auto_hint">vaidmenį nustato sistema</string>
-    <string name="p2p_host">Šeimininkas</string>
-    <string name="p2p_auto">Auto</string>
     <string name="wd_band_24_hint">2,4 GHz: didžiausias nuotolis (numatytasis)</string>
     <string name="wd_band_5_hint">5 GHz: greičiau, bet mažesnis nuotolis</string>
     <string name="beacon_interval">Švyturio intervalas</string>

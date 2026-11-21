@@ -95,10 +95,10 @@ Multi-choice settings (theme, Wi-Fi Direct band) are not on/off, so they move fr
 **Files:**
 - Modify: `scripts/l10n/app.*.txt` (all 41), `scripts/l10n/map.*.txt` if new map content descriptions are added
 
-- [ ] add the new keys (radios card title, switch titles wifi / bluetooth / location, share_my_position, discoverable, p2p_always_host, FAB content descriptions) to app.en.txt and every translation, with matching placeholders
-- [ ] remove keys that are no longer used (turn_on_*, share_again, pause, start_discovery, stop_discovery, p2p_host, p2p_auto) if nothing references them any more
-- [ ] run `python3 scripts/l10n/gen.py`; it must succeed and regenerate strings.xml
-- [ ] run `./gradlew :app:testDebugUnitTest` (EnglishTexts checks); it must pass
+- [x] add the new keys (radios card title, switch titles wifi / bluetooth / location, share_my_position, discoverable, p2p_always_host, FAB content descriptions) to app.en.txt and every translation, with matching placeholders (already added in Tasks 2–4; all 41 app and map files have them)
+- [x] remove keys that are no longer used (turn_on_*, share_again, pause, start_discovery, stop_discovery, p2p_host, p2p_auto) if nothing references them any more
+- [x] run `python3 scripts/l10n/gen.py`; it must succeed and regenerate strings.xml
+- [x] run `./gradlew :app:testDebugUnitTest` (EnglishTexts checks); it must pass
 
 ### Task 6: Designs and spec
 

@@ -87,8 +87,6 @@
     <string name="not_let_in">לא הוכנסתם: %1$s</string>
     <string name="join_named">הצטרפות ל„%1$s”</string>
     <string name="network">רשת</string>
-    <string name="turn_on_bluetooth">הפעלת Bluetooth</string>
-    <string name="turn_on_location">הפעלת מיקום</string>
     <string name="qr_not_invite">קוד ה-QR הזה אינו הזמנה לרשת.</string>
     <string name="network_name_label">שם הרשת (התווית שלך)</string>
     <string name="hide">הסתרה</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">לא פעילה</string>
     <string name="position_paused">המיקום שלי: מושהה — החברים רואים אותי בלי מיקום</string>
     <string name="position_shared">המיקום שלי: משותף</string>
-    <string name="share_again">שיתוף מחדש</string>
-    <string name="pause">השהיה</string>
     <string name="only_master_lets_in">רק מנהל הרשת יכול להכניס אנשים חדשים</string>
     <string name="joined_without_password">הצטרפתם בלי סיסמה. החבר שהכניס אתכם צריך לראות את אותו קוד: %1$s</string>
-    <string name="stop_discovery">הפסקת הגלוי</string>
-    <string name="start_discovery">הפוך לגלויה</string>
     <string name="invite">הזמנה</string>
     <string name="members">חברים</string>
     <string name="use_this_network">שימוש ברשת הזו</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">הטלפון הזה עוזב את הרשת ושוכח את הסיסמה שלה. כדי לחזור תצטרכו שוב את הסיסמה או חבר שיכניס אתכם.</string>
     <string name="location_off_explain">המיקום כבוי: אז Android מסתיר טלפונים אחרים מחיפושי Bluetooth ו-Wi-Fi Direct, כך שאי אפשר למצוא אף אחד — והמיקום שלכם לא ידוע.</string>
     <string name="wifi_off_explain">Wi-Fi כבוי: Wi-Fi Direct (טווח ארוך יותר, תמונות) לא יכול לעבוד. לא צריך רשת Wi-Fi, רק Wi-Fi פועל.</string>
-    <string name="turn_on_wifi">הפעלת Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">מיקום</string>
     <string name="share_my_position">שיתוף המיקום שלי</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">בחירת צומת…</string>
     <string name="p2p_host_hint">הטלפון הזה מארח את הקבוצה (שרת, 192.168.49.1)</string>
     <string name="p2p_auto_hint">המערכת קובעת את התפקיד</string>
-    <string name="p2p_host">מארח</string>
-    <string name="p2p_auto">אוטומטי</string>
     <string name="wd_band_24_hint">2.4 GHz: הטווח הארוך ביותר (ברירת מחדל)</string>
     <string name="wd_band_5_hint">5 GHz: מהיר יותר, אבל טווח קצר יותר</string>
     <string name="beacon_interval">מרווח משואה</string>

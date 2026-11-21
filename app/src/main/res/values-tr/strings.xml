@@ -87,8 +87,6 @@
     <string name="not_let_in">Alınmadınız: %1$s</string>
     <string name="join_named">“%1$s” ağına katıl</string>
     <string name="network">ağ</string>
-    <string name="turn_on_bluetooth">Bluetooth\'u aç</string>
-    <string name="turn_on_location">Konumu aç</string>
     <string name="qr_not_invite">Bu QR kodu bir ağ daveti değil.</string>
     <string name="network_name_label">Ağ adı (sizin etiketiniz)</string>
     <string name="hide">Gizle</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">etkin değil</string>
     <string name="position_paused">konumum: duraklatıldı — üyeler beni konumsuz görür</string>
     <string name="position_shared">konumum: paylaşılıyor</string>
-    <string name="share_again">Yeniden paylaş</string>
-    <string name="pause">Duraklat</string>
     <string name="only_master_lets_in">yeni kişileri yalnızca ağın yöneticisi alabilir</string>
     <string name="joined_without_password">Şifresiz katıldınız. Sizi alan üye aynı kodu görmeli: %1$s</string>
-    <string name="stop_discovery">Görünürlüğü kapat</string>
-    <string name="start_discovery">Görünür yap</string>
     <string name="invite">Davet et</string>
     <string name="members">Üyeler</string>
     <string name="use_this_network">Bu ağı kullan</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Bu telefon ağdan çıkar ve şifresini unutur. Geri dönmek için yine şifre ya da sizi alacak bir üye gerekir.</string>
     <string name="location_off_explain">Konum kapalı: Android bu durumda diğer telefonları Bluetooth ve Wi-Fi Direct aramalarından gizler, kimse bulunamaz — ve kendi konumunuz da bilinmez.</string>
     <string name="wifi_off_explain">Wi-Fi kapalı: Wi-Fi Direct (daha uzun menzil, fotoğraflar) çalışamaz. Wi-Fi ağı gerekmez, yalnızca Wi-Fi\'ın açık olması yeter.</string>
-    <string name="turn_on_wifi">Wi-Fi\'ı aç</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Konum</string>
     <string name="share_my_position">Konumumu paylaş</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Düğüm seç…</string>
     <string name="p2p_host_hint">grubu bu telefon barındırıyor (sunucu, 192.168.49.1)</string>
     <string name="p2p_auto_hint">rolü sistem belirler</string>
-    <string name="p2p_host">Barındır</string>
-    <string name="p2p_auto">Otomatik</string>
     <string name="wd_band_24_hint">2,4 GHz: en uzun menzil (varsayılan)</string>
     <string name="wd_band_5_hint">5 GHz: daha hızlı, ama daha kısa menzil</string>
     <string name="beacon_interval">İşaret aralığı</string>

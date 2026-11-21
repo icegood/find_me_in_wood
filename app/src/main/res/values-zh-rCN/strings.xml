@@ -87,8 +87,6 @@
     <string name="not_let_in">未获准加入：%1$s</string>
     <string name="join_named">加入“%1$s”</string>
     <string name="network">网络</string>
-    <string name="turn_on_bluetooth">打开蓝牙</string>
-    <string name="turn_on_location">打开位置信息</string>
     <string name="qr_not_invite">此二维码不是网络邀请。</string>
     <string name="network_name_label">网络名称（你的标签）</string>
     <string name="hide">隐藏</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">未运行</string>
     <string name="position_paused">我的位置：已暂停 — 成员看到我没有位置</string>
     <string name="position_shared">我的位置：共享中</string>
-    <string name="share_again">重新共享</string>
-    <string name="pause">暂停</string>
     <string name="only_master_lets_in">只有网络管理员能放新成员进来</string>
     <string name="joined_without_password">已无密码加入。放你进来的成员看到的应是同一代码：%1$s</string>
-    <string name="stop_discovery">停止可见</string>
-    <string name="start_discovery">设为可见</string>
     <string name="invite">邀请</string>
     <string name="members">成员</string>
     <string name="use_this_network">使用此网络</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">此手机将退出网络并忘记其密码。若要返回，需要再次输入密码或请成员放你进来。</string>
     <string name="location_off_explain">位置信息已关闭：此时 Android 会对蓝牙和 WLAN 直连搜索隐藏其他手机，所以谁也找不到 — 你自己的位置也未知。</string>
     <string name="wifi_off_explain">WLAN 已关闭：WLAN 直连（距离更远、可传照片）无法工作。不需要 WLAN 网络，只要打开 WLAN。</string>
-    <string name="turn_on_wifi">打开 WLAN</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">位置信息</string>
     <string name="share_my_position">共享我的位置</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">选择节点…</string>
     <string name="p2p_host_hint">此手机作为群组主机（服务器，192.168.49.1）</string>
     <string name="p2p_auto_hint">由系统协商角色</string>
-    <string name="p2p_host">主机</string>
-    <string name="p2p_auto">自动</string>
     <string name="wd_band_24_hint">2.4 GHz：覆盖距离最远（默认）</string>
     <string name="wd_band_5_hint">5 GHz：更快，但距离更短</string>
     <string name="beacon_interval">信标间隔</string>

@@ -87,8 +87,6 @@
     <string name="not_let_in">Not let in: %1$s</string>
     <string name="join_named">Join “%1$s”</string>
     <string name="network">network</string>
-    <string name="turn_on_bluetooth">Turn on Bluetooth</string>
-    <string name="turn_on_location">Turn on Location</string>
     <string name="qr_not_invite">That QR code is not a network invite.</string>
     <string name="network_name_label">Network name (your label)</string>
     <string name="hide">Hide</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">not active</string>
     <string name="position_paused">my position: paused — members see me as unlocated</string>
     <string name="position_shared">my position: shared</string>
-    <string name="share_again">Share again</string>
-    <string name="pause">Pause</string>
     <string name="only_master_lets_in">only the network\'s master can let new people in</string>
     <string name="joined_without_password">Joined without a password. The member who let you in must see the same code: %1$s</string>
-    <string name="stop_discovery">Stop discovery</string>
-    <string name="start_discovery">Start discovery</string>
     <string name="invite">Invite</string>
     <string name="members">Members</string>
     <string name="use_this_network">Use this network</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">This phone leaves the network and forgets its password. To come back you need the password again or a member to let you in.</string>
     <string name="location_off_explain">Location is off: Android then hides other phones from Bluetooth and Wi-Fi Direct searches, so nobody can be found — and your own position is unknown.</string>
     <string name="wifi_off_explain">Wi-Fi is off: Wi-Fi Direct (longer range, photos) cannot work. No Wi-Fi network is needed, only Wi-Fi on.</string>
-    <string name="turn_on_wifi">Turn on Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Location</string>
     <string name="share_my_position">Share my position</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Choose node…</string>
     <string name="p2p_host_hint">this phone hosts the group (server, 192.168.49.1)</string>
     <string name="p2p_auto_hint">role negotiated by the system</string>
-    <string name="p2p_host">Host</string>
-    <string name="p2p_auto">Auto</string>
     <string name="wd_band_24_hint">2.4 GHz: reaches furthest (default)</string>
     <string name="wd_band_5_hint">5 GHz: faster, but shorter range</string>
     <string name="beacon_interval">Beacon interval</string>

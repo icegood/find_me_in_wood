@@ -87,8 +87,6 @@
     <string name="not_let_in">Δεν έγινε δεκτό: %1$s</string>
     <string name="join_named">Συμμετοχή στο «%1$s»</string>
     <string name="network">δίκτυο</string>
-    <string name="turn_on_bluetooth">Ενεργοποίηση Bluetooth</string>
-    <string name="turn_on_location">Ενεργοποίηση τοποθεσίας</string>
     <string name="qr_not_invite">Αυτός ο κωδικός QR δεν είναι πρόσκληση σε δίκτυο.</string>
     <string name="network_name_label">Όνομα δικτύου (δική σας ετικέτα)</string>
     <string name="hide">Απόκρυψη</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">ανενεργό</string>
     <string name="position_paused">η θέση μου: σε παύση — τα μέλη με βλέπουν χωρίς τοποθεσία</string>
     <string name="position_shared">η θέση μου: κοινοποιείται</string>
-    <string name="share_again">Κοινοποίηση ξανά</string>
-    <string name="pause">Παύση</string>
     <string name="only_master_lets_in">μόνο ο διαχειριστής του δικτύου μπορεί να δεχτεί νέα άτομα</string>
     <string name="joined_without_password">Μπήκατε χωρίς κωδικό. Το μέλος που σας δέχτηκε πρέπει να βλέπει τον ίδιο κωδικό: %1$s</string>
-    <string name="stop_discovery">Τέλος ορατότητας</string>
-    <string name="start_discovery">Κάνε ορατό</string>
     <string name="invite">Πρόσκληση</string>
     <string name="members">Μέλη</string>
     <string name="use_this_network">Χρήση αυτού του δικτύου</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Αυτό το τηλέφωνο φεύγει από το δίκτυο και ξεχνά τον κωδικό του. Για να επιστρέψετε θα χρειαστείτε ξανά τον κωδικό ή ένα μέλος να σας δεχτεί.</string>
     <string name="location_off_explain">Η τοποθεσία είναι απενεργοποιημένη: το Android τότε κρύβει τα άλλα τηλέφωνα από τις αναζητήσεις Bluetooth και Wi-Fi Direct, οπότε κανείς δεν βρίσκεται — και η δική σας θέση είναι άγνωστη.</string>
     <string name="wifi_off_explain">Το Wi-Fi είναι απενεργοποιημένο: το Wi-Fi Direct (μεγαλύτερη εμβέλεια, φωτογραφίες) δεν λειτουργεί. Δεν χρειάζεται δίκτυο Wi-Fi, μόνο ενεργό Wi-Fi.</string>
-    <string name="turn_on_wifi">Ενεργοποίηση Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Τοποθεσία</string>
     <string name="share_my_position">Κοινοποίηση της θέσης μου</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Επιλογή κόμβου…</string>
     <string name="p2p_host_hint">αυτό το τηλέφωνο φιλοξενεί την ομάδα (διακομιστής, 192.168.49.1)</string>
     <string name="p2p_auto_hint">τον ρόλο τον ορίζει το σύστημα</string>
-    <string name="p2p_host">Οικοδεσπότης</string>
-    <string name="p2p_auto">Αυτόματο</string>
     <string name="wd_band_24_hint">2,4 GHz: μεγαλύτερη εμβέλεια (προεπιλογή)</string>
     <string name="wd_band_5_hint">5 GHz: ταχύτερο, αλλά μικρότερη εμβέλεια</string>
     <string name="beacon_interval">Διάστημα σήματος</string>

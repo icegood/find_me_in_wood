@@ -87,8 +87,6 @@
     <string name="not_let_in">ไม่ได้รับอนุญาตให้เข้า: %1$s</string>
     <string name="join_named">เข้าร่วม “%1$s”</string>
     <string name="network">เครือข่าย</string>
-    <string name="turn_on_bluetooth">เปิดบลูทูธ</string>
-    <string name="turn_on_location">เปิดตำแหน่ง</string>
     <string name="qr_not_invite">QR โค้ดนี้ไม่ใช่คำเชิญเข้าเครือข่าย</string>
     <string name="network_name_label">ชื่อเครือข่าย (ป้ายของคุณ)</string>
     <string name="hide">ซ่อน</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">ไม่ได้ใช้งาน</string>
     <string name="position_paused">ตำแหน่งของฉัน: หยุดชั่วคราว — สมาชิกเห็นฉันโดยไม่มีตำแหน่ง</string>
     <string name="position_shared">ตำแหน่งของฉัน: กำลังแชร์</string>
-    <string name="share_again">แชร์อีกครั้ง</string>
-    <string name="pause">หยุดชั่วคราว</string>
     <string name="only_master_lets_in">มีเพียงผู้ดูแลเครือข่ายที่ให้คนใหม่เข้าได้</string>
     <string name="joined_without_password">เข้าร่วมโดยไม่ใช้รหัสผ่าน สมาชิกที่ให้คุณเข้าต้องเห็นรหัสเดียวกัน: %1$s</string>
-    <string name="stop_discovery">ปิดการมองเห็น</string>
-    <string name="start_discovery">เปิดให้มองเห็น</string>
     <string name="invite">เชิญ</string>
     <string name="members">สมาชิก</string>
     <string name="use_this_network">ใช้เครือข่ายนี้</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">โทรศัพท์เครื่องนี้จะออกจากเครือข่ายและลืมรหัสผ่าน หากจะกลับมาต้องใช้รหัสผ่านอีกครั้งหรือให้สมาชิกให้คุณเข้า</string>
     <string name="location_off_explain">ตำแหน่งปิดอยู่: Android จะซ่อนโทรศัพท์อื่นจากการค้นหาผ่านบลูทูธและ Wi-Fi Direct จึงหาใครไม่เจอ — และไม่รู้ตำแหน่งของคุณเอง</string>
     <string name="wifi_off_explain">Wi-Fi ปิดอยู่: Wi-Fi Direct (ระยะไกลกว่า รูปภาพ) ใช้ไม่ได้ ไม่ต้องมีเครือข่าย Wi-Fi แค่เปิด Wi-Fi ไว้</string>
-    <string name="turn_on_wifi">เปิด Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">ตำแหน่ง</string>
     <string name="share_my_position">แชร์ตำแหน่งของฉัน</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">เลือกโหนด…</string>
     <string name="p2p_host_hint">โทรศัพท์เครื่องนี้เป็นโฮสต์ของกลุ่ม (เซิร์ฟเวอร์, 192.168.49.1)</string>
     <string name="p2p_auto_hint">ระบบเป็นผู้กำหนดบทบาท</string>
-    <string name="p2p_host">โฮสต์</string>
-    <string name="p2p_auto">อัตโนมัติ</string>
     <string name="wd_band_24_hint">2.4 GHz: ระยะไกลที่สุด (ค่าเริ่มต้น)</string>
     <string name="wd_band_5_hint">5 GHz: เร็วกว่า แต่ระยะสั้นกว่า</string>
     <string name="beacon_interval">รอบบีคอน</string>

@@ -87,8 +87,6 @@
     <string name="not_let_in">नहीं जोड़ा गया: %1$s</string>
     <string name="join_named">“%1$s” से जुड़ें</string>
     <string name="network">नेटवर्क</string>
-    <string name="turn_on_bluetooth">ब्लूटूथ चालू करें</string>
-    <string name="turn_on_location">लोकेशन चालू करें</string>
     <string name="qr_not_invite">यह QR कोड नेटवर्क आमंत्रण नहीं है।</string>
     <string name="network_name_label">नेटवर्क का नाम (आपका लेबल)</string>
     <string name="hide">छिपाएँ</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">सक्रिय नहीं</string>
     <string name="position_paused">मेरी लोकेशन: रुकी हुई — सदस्य मुझे बिना लोकेशन देखते हैं</string>
     <string name="position_shared">मेरी लोकेशन: साझा हो रही है</string>
-    <string name="share_again">फिर से साझा करें</string>
-    <string name="pause">रोकें</string>
     <string name="only_master_lets_in">सिर्फ़ नेटवर्क एडमिन नए लोगों को जोड़ सकता है</string>
     <string name="joined_without_password">बिना पासवर्ड जुड़ गए। जिस सदस्य ने आपको जोड़ा, उसे यही कोड दिखना चाहिए: %1$s</string>
-    <string name="stop_discovery">दिखना बंद करें</string>
-    <string name="start_discovery">दिखने लायक बनाएँ</string>
     <string name="invite">आमंत्रित करें</string>
     <string name="members">सदस्य</string>
     <string name="use_this_network">यह नेटवर्क इस्तेमाल करें</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">यह फ़ोन नेटवर्क छोड़ देगा और उसका पासवर्ड भूल जाएगा। वापस आने के लिए फिर से पासवर्ड या आपको जोड़ने वाला सदस्य चाहिए होगा।</string>
     <string name="location_off_explain">लोकेशन बंद है: तब Android दूसरे फ़ोन को ब्लूटूथ और Wi-Fi Direct खोज से छिपा देता है, इसलिए कोई नहीं मिलता — और आपकी अपनी लोकेशन भी पता नहीं होती।</string>
     <string name="wifi_off_explain">Wi-Fi बंद है: Wi-Fi Direct (ज़्यादा रेंज, फ़ोटो) काम नहीं कर सकता। किसी Wi-Fi नेटवर्क की ज़रूरत नहीं, बस Wi-Fi चालू हो।</string>
-    <string name="turn_on_wifi">Wi-Fi चालू करें</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">लोकेशन</string>
     <string name="share_my_position">मेरी स्थिति साझा करें</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">नोड चुनें…</string>
     <string name="p2p_host_hint">यह फ़ोन समूह को होस्ट करता है (सर्वर, 192.168.49.1)</string>
     <string name="p2p_auto_hint">भूमिका सिस्टम तय करता है</string>
-    <string name="p2p_host">होस्ट</string>
-    <string name="p2p_auto">ऑटो</string>
     <string name="wd_band_24_hint">2.4 GHz: सबसे अधिक दूरी (डिफ़ॉल्ट)</string>
     <string name="wd_band_5_hint">5 GHz: तेज़, पर कम दूरी</string>
     <string name="beacon_interval">बीकन अंतराल</string>

@@ -87,8 +87,6 @@
     <string name="not_let_in">Nepustili vás: %1$s</string>
     <string name="join_named">Pripojiť k „%1$s“</string>
     <string name="network">sieť</string>
-    <string name="turn_on_bluetooth">Zapnúť Bluetooth</string>
-    <string name="turn_on_location">Zapnúť polohu</string>
     <string name="qr_not_invite">Tento QR kód nie je pozvánka do siete.</string>
     <string name="network_name_label">Názov siete (váš štítok)</string>
     <string name="hide">Skryť</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">neaktívna</string>
     <string name="position_paused">moja poloha: pozastavená — členovia ma vidia bez polohy</string>
     <string name="position_shared">moja poloha: zdieľaná</string>
-    <string name="share_again">Znova zdieľať</string>
-    <string name="pause">Pozastaviť</string>
     <string name="only_master_lets_in">nových ľudí môže púšťať len správca siete</string>
     <string name="joined_without_password">Pripojené bez hesla. Člen, ktorý vás pustil, musí vidieť rovnaký kód: %1$s</string>
-    <string name="stop_discovery">Skryť sieť</string>
-    <string name="start_discovery">Zviditeľniť</string>
     <string name="invite">Pozvať</string>
     <string name="members">Členovia</string>
     <string name="use_this_network">Použiť túto sieť</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Tento telefón opustí sieť a zabudne jej heslo. Na návrat budete potrebovať znova heslo alebo člena, ktorý vás pustí.</string>
     <string name="location_off_explain">Poloha je vypnutá: Android potom skrýva ostatné telefóny pred hľadaním cez Bluetooth a Wi-Fi Direct, takže nikoho nenájdete — a vaša vlastná poloha je neznáma.</string>
     <string name="wifi_off_explain">Wi-Fi je vypnutá: Wi-Fi Direct (väčší dosah, fotky) nemôže fungovať. Sieť Wi-Fi netreba, len zapnutú Wi-Fi.</string>
-    <string name="turn_on_wifi">Zapnúť Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Poloha</string>
     <string name="share_my_position">Zdieľať moju polohu</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Vybrať uzol…</string>
     <string name="p2p_host_hint">tento telefón hostí skupinu (server, 192.168.49.1)</string>
     <string name="p2p_auto_hint">rolu určí systém</string>
-    <string name="p2p_host">Hostiteľ</string>
-    <string name="p2p_auto">Auto</string>
     <string name="wd_band_24_hint">2,4 GHz: najväčší dosah (predvolené)</string>
     <string name="wd_band_5_hint">5 GHz: rýchlejšie, ale menší dosah</string>
     <string name="beacon_interval">Interval majáka</string>

@@ -87,8 +87,6 @@
     <string name="not_let_in">Sisse ei lastud: %1$s</string>
     <string name="join_named">Liitu võrguga „%1$s“</string>
     <string name="network">võrk</string>
-    <string name="turn_on_bluetooth">Lülita Bluetooth sisse</string>
-    <string name="turn_on_location">Lülita asukoht sisse</string>
     <string name="qr_not_invite">See QR-kood pole võrgukutse.</string>
     <string name="network_name_label">Võrgu nimi (teie silt)</string>
     <string name="hide">Peida</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">pole aktiivne</string>
     <string name="position_paused">minu asukoht: peatatud — liikmed näevad mind asukohata</string>
     <string name="position_shared">minu asukoht: jagatakse</string>
-    <string name="share_again">Jaga uuesti</string>
-    <string name="pause">Peata</string>
     <string name="only_master_lets_in">uusi inimesi saab sisse lasta ainult võrgu haldaja</string>
     <string name="joined_without_password">Liitusite paroolita. Teid sisse lasknud liige peab nägema sama koodi: %1$s</string>
-    <string name="stop_discovery">Lõpeta nähtavus</string>
-    <string name="start_discovery">Tee nähtavaks</string>
     <string name="invite">Kutsu</string>
     <string name="members">Liikmed</string>
     <string name="use_this_network">Kasuta seda võrku</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">See telefon lahkub võrgust ja unustab selle parooli. Tagasi tulemiseks on vaja uuesti parooli või liiget, kes teid sisse laseb.</string>
     <string name="location_off_explain">Asukoht on väljas: Android peidab siis teised telefonid Bluetoothi ja Wi-Fi Directi otsingute eest, nii et kedagi ei leita — ja teie enda asukoht on teadmata.</string>
     <string name="wifi_off_explain">Wi-Fi on väljas: Wi-Fi Direct (suurem levi, fotod) ei tööta. Wi-Fi võrku pole vaja, ainult sisselülitatud Wi-Fi.</string>
-    <string name="turn_on_wifi">Lülita Wi-Fi sisse</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Asukoht</string>
     <string name="share_my_position">Jaga minu asukohta</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Vali sõlm…</string>
     <string name="p2p_host_hint">see telefon majutab gruppi (server, 192.168.49.1)</string>
     <string name="p2p_auto_hint">rolli lepib kokku süsteem</string>
-    <string name="p2p_host">Host</string>
-    <string name="p2p_auto">Auto</string>
     <string name="wd_band_24_hint">2,4 GHz: suurim leviala (vaikimisi)</string>
     <string name="wd_band_5_hint">5 GHz: kiirem, kuid väiksem leviala</string>
     <string name="beacon_interval">Majaka intervall</string>

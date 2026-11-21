@@ -87,8 +87,6 @@
     <string name="not_let_in">Không được cho vào: %1$s</string>
     <string name="join_named">Tham gia “%1$s”</string>
     <string name="network">mạng</string>
-    <string name="turn_on_bluetooth">Bật Bluetooth</string>
-    <string name="turn_on_location">Bật vị trí</string>
     <string name="qr_not_invite">Mã QR đó không phải lời mời vào mạng.</string>
     <string name="network_name_label">Tên mạng (nhãn của bạn)</string>
     <string name="hide">Ẩn</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">không hoạt động</string>
     <string name="position_paused">vị trí của tôi: tạm dừng — thành viên thấy tôi không có vị trí</string>
     <string name="position_shared">vị trí của tôi: đang chia sẻ</string>
-    <string name="share_again">Chia sẻ lại</string>
-    <string name="pause">Tạm dừng</string>
     <string name="only_master_lets_in">chỉ quản trị viên mạng mới cho người mới vào được</string>
     <string name="joined_without_password">Đã tham gia không cần mật khẩu. Thành viên cho bạn vào phải thấy cùng mã: %1$s</string>
-    <string name="stop_discovery">Tắt hiển thị</string>
-    <string name="start_discovery">Bật hiển thị</string>
     <string name="invite">Mời</string>
     <string name="members">Thành viên</string>
     <string name="use_this_network">Dùng mạng này</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Điện thoại này rời mạng và quên mật khẩu. Để quay lại bạn cần lại mật khẩu hoặc một thành viên cho bạn vào.</string>
     <string name="location_off_explain">Vị trí đang tắt: khi đó Android ẩn các điện thoại khác khỏi tìm kiếm Bluetooth và Wi-Fi Direct, nên không tìm thấy ai — và vị trí của chính bạn cũng không rõ.</string>
     <string name="wifi_off_explain">Wi-Fi đang tắt: Wi-Fi Direct (tầm xa hơn, ảnh) không hoạt động. Không cần mạng Wi-Fi, chỉ cần bật Wi-Fi.</string>
-    <string name="turn_on_wifi">Bật Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Vị trí</string>
     <string name="share_my_position">Chia sẻ vị trí của tôi</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Chọn nút…</string>
     <string name="p2p_host_hint">điện thoại này làm chủ nhóm (máy chủ, 192.168.49.1)</string>
     <string name="p2p_auto_hint">vai trò do hệ thống quyết định</string>
-    <string name="p2p_host">Chủ</string>
-    <string name="p2p_auto">Tự động</string>
     <string name="wd_band_24_hint">2,4 GHz: phạm vi xa nhất (mặc định)</string>
     <string name="wd_band_5_hint">5 GHz: nhanh hơn, nhưng phạm vi ngắn hơn</string>
     <string name="beacon_interval">Chu kỳ đèn hiệu</string>

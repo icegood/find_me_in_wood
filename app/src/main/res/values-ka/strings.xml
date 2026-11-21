@@ -87,8 +87,6 @@
     <string name="not_let_in">არ შემოგიშვეს: %1$s</string>
     <string name="join_named">„%1$s“-ს შეერთება</string>
     <string name="network">ქსელი</string>
-    <string name="turn_on_bluetooth">Bluetooth-ის ჩართვა</string>
-    <string name="turn_on_location">მდებარეობის ჩართვა</string>
     <string name="qr_not_invite">ეს QR კოდი ქსელის მოწვევა არ არის.</string>
     <string name="network_name_label">ქსელის სახელი (თქვენი იარლიყი)</string>
     <string name="hide">დამალვა</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">არააქტიური</string>
     <string name="position_paused">ჩემი მდებარეობა: შეჩერებულია — წევრები მხედავენ მდებარეობის გარეშე</string>
     <string name="position_shared">ჩემი მდებარეობა: ზიარდება</string>
-    <string name="share_again">ხელახლა გაზიარება</string>
-    <string name="pause">შეჩერება</string>
     <string name="only_master_lets_in">ახალი ადამიანების შემოშვება მხოლოდ ქსელის ადმინისტრატორს შეუძლია</string>
     <string name="joined_without_password">შეუერთდით პაროლის გარეშე. წევრმა, რომელმაც შემოგიშვათ, იგივე კოდი უნდა დაინახოს: %1$s</string>
-    <string name="stop_discovery">ხილვადობის გამორთვა</string>
-    <string name="start_discovery">ხილულად ქცევა</string>
     <string name="invite">მოწვევა</string>
     <string name="members">წევრები</string>
     <string name="use_this_network">ამ ქსელის გამოყენება</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">ეს ტელეფონი ტოვებს ქსელს და ივიწყებს მის პაროლს. დასაბრუნებლად კვლავ დაგჭირდებათ პაროლი ან წევრი, რომელიც შემოგიშვებთ.</string>
     <string name="location_off_explain">მდებარეობა გამორთულია: მაშინ Android მალავს სხვა ტელეფონებს Bluetooth-ისა და Wi-Fi Direct-ის ძიებისგან, ამიტომ ვერავის იპოვით — და თქვენი მდებარეობაც უცნობია.</string>
     <string name="wifi_off_explain">Wi-Fi გამორთულია: Wi-Fi Direct (დიდი მანძილი, ფოტოები) ვერ იმუშავებს. Wi-Fi ქსელი არ არის საჭირო, მხოლოდ ჩართული Wi-Fi.</string>
-    <string name="turn_on_wifi">Wi-Fi-ის ჩართვა</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">მდებარეობა</string>
     <string name="share_my_position">ჩემი მდებარეობის გაზიარება</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">კვანძის არჩევა…</string>
     <string name="p2p_host_hint">ეს ტელეფონი ჯგუფის მასპინძელია (სერვერი, 192.168.49.1)</string>
     <string name="p2p_auto_hint">როლს სისტემა განსაზღვრავს</string>
-    <string name="p2p_host">მასპინძელი</string>
-    <string name="p2p_auto">ავტო</string>
     <string name="wd_band_24_hint">2,4 GHz: ყველაზე დიდი მანძილი (ნაგულისხმევი)</string>
     <string name="wd_band_5_hint">5 GHz: უფრო სწრაფი, მაგრამ მცირე მანძილი</string>
     <string name="beacon_interval">შუქურის ინტერვალი</string>

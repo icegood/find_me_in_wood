@@ -87,8 +87,6 @@
     <string name="not_let_in">No te dejaron entrar: %1$s</string>
     <string name="join_named">Unirse a «%1$s»</string>
     <string name="network">red</string>
-    <string name="turn_on_bluetooth">Activar Bluetooth</string>
-    <string name="turn_on_location">Activar ubicación</string>
     <string name="qr_not_invite">Ese código QR no es una invitación a una red.</string>
     <string name="network_name_label">Nombre de la red (tu etiqueta)</string>
     <string name="hide">Ocultar</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">inactiva</string>
     <string name="position_paused">mi posición: en pausa — los miembros me ven sin ubicación</string>
     <string name="position_shared">mi posición: compartida</string>
-    <string name="share_again">Compartir de nuevo</string>
-    <string name="pause">Pausar</string>
     <string name="only_master_lets_in">solo el administrador de la red puede dejar entrar a gente nueva</string>
     <string name="joined_without_password">Te uniste sin contraseña. El miembro que te dejó entrar debe ver el mismo código: %1$s</string>
-    <string name="stop_discovery">Dejar de ser visible</string>
-    <string name="start_discovery">Hacer visible</string>
     <string name="invite">Invitar</string>
     <string name="members">Miembros</string>
     <string name="use_this_network">Usar esta red</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Este teléfono sale de la red y olvida su contraseña. Para volver necesitarás la contraseña de nuevo o que un miembro te deje entrar.</string>
     <string name="location_off_explain">La ubicación está apagada: Android oculta entonces los demás teléfonos a las búsquedas por Bluetooth y Wi-Fi Direct, así que no se encuentra a nadie — y tu propia posición es desconocida.</string>
     <string name="wifi_off_explain">El Wi-Fi está apagado: Wi-Fi Direct (más alcance, fotos) no puede funcionar. No hace falta ninguna red Wi-Fi, solo el Wi-Fi encendido.</string>
-    <string name="turn_on_wifi">Activar Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Ubicación</string>
     <string name="share_my_position">Compartir mi posición</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Elegir nodo…</string>
     <string name="p2p_host_hint">este teléfono aloja el grupo (servidor, 192.168.49.1)</string>
     <string name="p2p_auto_hint">rol negociado por el sistema</string>
-    <string name="p2p_host">Anfitrión</string>
-    <string name="p2p_auto">Auto</string>
     <string name="wd_band_24_hint">2,4 GHz: mayor alcance (predeterminado)</string>
     <string name="wd_band_5_hint">5 GHz: más rápido, pero menor alcance</string>
     <string name="beacon_interval">Intervalo de baliza</string>

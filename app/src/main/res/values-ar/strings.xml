@@ -87,8 +87,6 @@
     <string name="not_let_in">لم يُسمح لك بالدخول: %1$s</string>
     <string name="join_named">الانضمام إلى «%1$s»</string>
     <string name="network">شبكة</string>
-    <string name="turn_on_bluetooth">تشغيل البلوتوث</string>
-    <string name="turn_on_location">تشغيل الموقع</string>
     <string name="qr_not_invite">رمز QR هذا ليس دعوة إلى شبكة.</string>
     <string name="network_name_label">اسم الشبكة (تسميتك)</string>
     <string name="hide">إخفاء</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">غير نشطة</string>
     <string name="position_paused">موقعي: متوقف مؤقتًا — يراني الأعضاء بلا موقع</string>
     <string name="position_shared">موقعي: تتم مشاركته</string>
-    <string name="share_again">المشاركة مجددًا</string>
-    <string name="pause">إيقاف مؤقت</string>
     <string name="only_master_lets_in">مسؤول الشبكة وحده يستطيع إدخال أشخاص جدد</string>
     <string name="joined_without_password">انضممت بلا كلمة مرور. يجب أن يرى العضو الذي أدخلك الرمز نفسه: %1$s</string>
-    <string name="stop_discovery">إيقاف الظهور</string>
-    <string name="start_discovery">اجعلها مرئية</string>
     <string name="invite">دعوة</string>
     <string name="members">الأعضاء</string>
     <string name="use_this_network">استخدام هذه الشبكة</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">يغادر هذا الهاتف الشبكة وينسى كلمة مرورها. للعودة ستحتاج إلى كلمة المرور مجددًا أو إلى عضو يدخلك.</string>
     <string name="location_off_explain">الموقع متوقف: عندها يخفي Android الهواتف الأخرى عن عمليات البحث عبر البلوتوث وWi-Fi Direct، فلا يمكن العثور على أحد — وموقعك أنت مجهول.</string>
     <string name="wifi_off_explain">Wi-Fi متوقف: لا يمكن أن يعمل Wi-Fi Direct (مدى أطول، صور). لا حاجة إلى شبكة Wi-Fi، فقط تشغيل Wi-Fi.</string>
-    <string name="turn_on_wifi">تشغيل Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">الموقع</string>
     <string name="share_my_position">مشاركة موقعي</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">اختيار عقدة…</string>
     <string name="p2p_host_hint">هذا الهاتف يستضيف المجموعة (خادم، 192.168.49.1)</string>
     <string name="p2p_auto_hint">يحدد النظام الدور</string>
-    <string name="p2p_host">مضيف</string>
-    <string name="p2p_auto">تلقائي</string>
     <string name="wd_band_24_hint">2.4 غيغاهرتز: أبعد مدى (افتراضي)</string>
     <string name="wd_band_5_hint">5 غيغاهرتز: أسرع، لكن مدى أقصر</string>
     <string name="beacon_interval">فاصل الإشارة</string>

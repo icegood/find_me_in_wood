@@ -87,8 +87,6 @@
     <string name="not_let_in">Tidak diizinkan masuk: %1$s</string>
     <string name="join_named">Gabung ke “%1$s”</string>
     <string name="network">jaringan</string>
-    <string name="turn_on_bluetooth">Nyalakan Bluetooth</string>
-    <string name="turn_on_location">Nyalakan lokasi</string>
     <string name="qr_not_invite">Kode QR itu bukan undangan jaringan.</string>
     <string name="network_name_label">Nama jaringan (label Anda)</string>
     <string name="hide">Sembunyikan</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">tidak aktif</string>
     <string name="position_paused">posisi saya: dijeda — anggota melihat saya tanpa lokasi</string>
     <string name="position_shared">posisi saya: dibagikan</string>
-    <string name="share_again">Bagikan lagi</string>
-    <string name="pause">Jeda</string>
     <string name="only_master_lets_in">hanya admin jaringan yang bisa memasukkan orang baru</string>
     <string name="joined_without_password">Bergabung tanpa sandi. Anggota yang memasukkan Anda harus melihat kode yang sama: %1$s</string>
-    <string name="stop_discovery">Berhenti terlihat</string>
-    <string name="start_discovery">Buat terlihat</string>
     <string name="invite">Undang</string>
     <string name="members">Anggota</string>
     <string name="use_this_network">Pakai jaringan ini</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Ponsel ini keluar dari jaringan dan melupakan sandinya. Untuk kembali, Anda perlu sandinya lagi atau anggota yang memasukkan Anda.</string>
     <string name="location_off_explain">Lokasi mati: Android lalu menyembunyikan ponsel lain dari pencarian Bluetooth dan Wi-Fi Direct, jadi tidak ada yang bisa ditemukan — dan posisi Anda sendiri tidak diketahui.</string>
     <string name="wifi_off_explain">Wi-Fi mati: Wi-Fi Direct (jangkauan lebih jauh, foto) tidak bisa bekerja. Tidak perlu jaringan Wi-Fi, cukup Wi-Fi menyala.</string>
-    <string name="turn_on_wifi">Nyalakan Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Lokasi</string>
     <string name="share_my_position">Bagikan posisi saya</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Pilih node…</string>
     <string name="p2p_host_hint">ponsel ini menjadi host grup (server, 192.168.49.1)</string>
     <string name="p2p_auto_hint">peran ditentukan sistem</string>
-    <string name="p2p_host">Host</string>
-    <string name="p2p_auto">Otomatis</string>
     <string name="wd_band_24_hint">2,4 GHz: jangkauan terjauh (bawaan)</string>
     <string name="wd_band_5_hint">5 GHz: lebih cepat, tapi jangkauan lebih pendek</string>
     <string name="beacon_interval">Interval suar</string>

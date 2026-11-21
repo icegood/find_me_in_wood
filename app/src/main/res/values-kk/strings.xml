@@ -87,8 +87,6 @@
     <string name="not_let_in">Кіргізбеді: %1$s</string>
     <string name="join_named">«%1$s» желісіне қосылу</string>
     <string name="network">желі</string>
-    <string name="turn_on_bluetooth">Bluetooth қосу</string>
-    <string name="turn_on_location">Орналасқан жерді қосу</string>
     <string name="qr_not_invite">Бұл QR коды желіге шақыру емес.</string>
     <string name="network_name_label">Желі атауы (сіздің белгіңіз)</string>
     <string name="hide">Жасыру</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">белсенді емес</string>
     <string name="position_paused">менің орным: кідіртілген — мүшелер мені орынсыз көреді</string>
     <string name="position_shared">менің орным: бөлісілуде</string>
-    <string name="share_again">Қайта бөлісу</string>
-    <string name="pause">Кідірту</string>
     <string name="only_master_lets_in">жаңа адамдарды тек желі әкімшісі кіргізе алады</string>
     <string name="joined_without_password">Құпиясөзсіз қосылдыңыз. Сізді кіргізген мүше дәл осы кодты көруі керек: %1$s</string>
-    <string name="stop_discovery">Көрінуді тоқтату</string>
-    <string name="start_discovery">Көрінетін ету</string>
     <string name="invite">Шақыру</string>
     <string name="members">Мүшелер</string>
     <string name="use_this_network">Осы желіні пайдалану</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Бұл телефон желіден шығып, оның құпиясөзін ұмытады. Қайту үшін қайтадан құпиясөз не сізді кіргізетін мүше керек.</string>
     <string name="location_off_explain">Орналасқан жер өшірулі: онда Android басқа телефондарды Bluetooth пен Wi-Fi Direct іздеуінен жасырады, сондықтан ешкім табылмайды — өз орныңыз да белгісіз.</string>
     <string name="wifi_off_explain">Wi-Fi өшірулі: Wi-Fi Direct (алысырақ, фото) жұмыс істей алмайды. Wi-Fi желісі керек емес, тек Wi-Fi қосулы болса болды.</string>
-    <string name="turn_on_wifi">Wi-Fi қосу</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Орналасқан жер</string>
     <string name="share_my_position">Орнымды бөлісу</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Түйін таңдау…</string>
     <string name="p2p_host_hint">топты осы телефон ұстайды (сервер, 192.168.49.1)</string>
     <string name="p2p_auto_hint">рөлді жүйе анықтайды</string>
-    <string name="p2p_host">Хост</string>
-    <string name="p2p_auto">Авто</string>
     <string name="wd_band_24_hint">2,4 ГГц: ең алыс жетеді (әдепкі)</string>
     <string name="wd_band_5_hint">5 ГГц: жылдамырақ, бірақ қашықтығы аз</string>
     <string name="beacon_interval">Маяк аралығы</string>

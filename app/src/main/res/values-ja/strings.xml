@@ -87,8 +87,6 @@
     <string name="not_let_in">参加できませんでした: %1$s</string>
     <string name="join_named">「%1$s」に参加</string>
     <string name="network">ネットワーク</string>
-    <string name="turn_on_bluetooth">Bluetooth をオン</string>
-    <string name="turn_on_location">位置情報をオン</string>
     <string name="qr_not_invite">この QR コードはネットワークの招待ではありません。</string>
     <string name="network_name_label">ネットワーク名（自分用のラベル）</string>
     <string name="hide">隠す</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">未使用</string>
     <string name="position_paused">自分の位置: 一時停止中 — メンバーには位置なしで表示</string>
     <string name="position_shared">自分の位置: 共有中</string>
-    <string name="share_again">共有を再開</string>
-    <string name="pause">一時停止</string>
     <string name="only_master_lets_in">新しい人を入れられるのはネットワークの管理者だけです</string>
     <string name="joined_without_password">パスワードなしで参加しました。入れてくれたメンバーにも同じコードが表示されるはずです: %1$s</string>
-    <string name="stop_discovery">公開を停止</string>
-    <string name="start_discovery">公開する</string>
     <string name="invite">招待</string>
     <string name="members">メンバー</string>
     <string name="use_this_network">このネットワークを使う</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">この電話はネットワークを離れ、パスワードを忘れます。戻るには再びパスワードか、入れてくれるメンバーが必要です。</string>
     <string name="location_off_explain">位置情報がオフです: Android は Bluetooth と Wi-Fi Direct の検索から他の電話を隠すため、誰も見つかりません — 自分の位置もわかりません。</string>
     <string name="wifi_off_explain">Wi-Fi がオフです: Wi-Fi Direct（長距離・写真）は使えません。Wi-Fi ネットワークは不要で、Wi-Fi をオンにするだけで十分です。</string>
-    <string name="turn_on_wifi">Wi-Fi をオン</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">位置情報</string>
     <string name="share_my_position">自分の位置を共有</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">ノードを選択…</string>
     <string name="p2p_host_hint">この電話がグループのホストです（サーバー、192.168.49.1）</string>
     <string name="p2p_auto_hint">役割はシステムが決定</string>
-    <string name="p2p_host">ホスト</string>
-    <string name="p2p_auto">自動</string>
     <string name="wd_band_24_hint">2.4 GHz：最も遠くまで届く（既定）</string>
     <string name="wd_band_5_hint">5 GHz：速いが届く距離は短い</string>
     <string name="beacon_interval">ビーコン間隔</string>

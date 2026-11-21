@@ -87,8 +87,6 @@
     <string name="not_let_in">Nicht eingelassen: %1$s</string>
     <string name="join_named">„%1$s“ beitreten</string>
     <string name="network">Netzwerk</string>
-    <string name="turn_on_bluetooth">Bluetooth einschalten</string>
-    <string name="turn_on_location">Standort einschalten</string>
     <string name="qr_not_invite">Dieser QR-Code ist keine Netzwerkeinladung.</string>
     <string name="network_name_label">Netzwerkname (deine Bezeichnung)</string>
     <string name="hide">Verbergen</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">nicht aktiv</string>
     <string name="position_paused">meine Position: pausiert — Mitglieder sehen mich ohne Ort</string>
     <string name="position_shared">meine Position: wird geteilt</string>
-    <string name="share_again">Wieder teilen</string>
-    <string name="pause">Pausieren</string>
     <string name="only_master_lets_in">nur der Verwalter des Netzwerks kann neue Personen einlassen</string>
     <string name="joined_without_password">Ohne Passwort beigetreten. Das Mitglied, das dich eingelassen hat, muss denselben Code sehen: %1$s</string>
-    <string name="stop_discovery">Nicht mehr auffindbar</string>
-    <string name="start_discovery">Auffindbar machen</string>
     <string name="invite">Einladen</string>
     <string name="members">Mitglieder</string>
     <string name="use_this_network">Dieses Netzwerk nutzen</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Dieses Telefon verlässt das Netzwerk und vergisst sein Passwort. Um zurückzukehren, brauchst du wieder das Passwort oder ein Mitglied, das dich einlässt.</string>
     <string name="location_off_explain">Der Standort ist aus: Android verbirgt dann andere Telefone vor Bluetooth- und Wi-Fi-Direct-Suchen, also wird niemand gefunden — und deine eigene Position ist unbekannt.</string>
     <string name="wifi_off_explain">WLAN ist aus: Wi-Fi Direct (größere Reichweite, Fotos) funktioniert nicht. Kein WLAN-Netz nötig, nur eingeschaltetes WLAN.</string>
-    <string name="turn_on_wifi">WLAN einschalten</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Standort</string>
     <string name="share_my_position">Meine Position teilen</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Knoten wählen…</string>
     <string name="p2p_host_hint">dieses Telefon leitet die Gruppe (Server, 192.168.49.1)</string>
     <string name="p2p_auto_hint">Rolle vom System ausgehandelt</string>
-    <string name="p2p_host">Host</string>
-    <string name="p2p_auto">Auto</string>
     <string name="wd_band_24_hint">2,4 GHz: größte Reichweite (Standard)</string>
     <string name="wd_band_5_hint">5 GHz: schneller, aber geringere Reichweite</string>
     <string name="beacon_interval">Signalintervall</string>

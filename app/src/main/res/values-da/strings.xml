@@ -87,8 +87,6 @@
     <string name="not_let_in">Ikke lukket ind: %1$s</string>
     <string name="join_named">Deltag i “%1$s”</string>
     <string name="network">netværk</string>
-    <string name="turn_on_bluetooth">Slå Bluetooth til</string>
-    <string name="turn_on_location">Slå lokation til</string>
     <string name="qr_not_invite">Den QR-kode er ikke en netværksinvitation.</string>
     <string name="network_name_label">Netværksnavn (din etiket)</string>
     <string name="hide">Skjul</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">ikke aktivt</string>
     <string name="position_paused">min position: sat på pause — medlemmer ser mig uden placering</string>
     <string name="position_shared">min position: deles</string>
-    <string name="share_again">Del igen</string>
-    <string name="pause">Pause</string>
     <string name="only_master_lets_in">kun netværkets administrator kan lukke nye folk ind</string>
     <string name="joined_without_password">Deltager uden adgangskode. Medlemmet der lukkede dig ind, skal se samme kode: %1$s</string>
-    <string name="stop_discovery">Stop synlighed</string>
-    <string name="start_discovery">Gør synligt</string>
     <string name="invite">Inviter</string>
     <string name="members">Medlemmer</string>
     <string name="use_this_network">Brug dette netværk</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Telefonen forlader netværket og glemmer adgangskoden. For at komme tilbage skal du bruge adgangskoden igen eller et medlem, der lukker dig ind.</string>
     <string name="location_off_explain">Lokation er slået fra: Android skjuler så andre telefoner for søgninger via Bluetooth og Wi-Fi Direct, så ingen kan findes — og din egen position er ukendt.</string>
     <string name="wifi_off_explain">Wi-Fi er slået fra: Wi-Fi Direct (længere rækkevidde, fotos) kan ikke fungere. Der kræves intet Wi-Fi-netværk, kun at Wi-Fi er tændt.</string>
-    <string name="turn_on_wifi">Slå Wi-Fi til</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Lokation</string>
     <string name="share_my_position">Del min position</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Vælg node…</string>
     <string name="p2p_host_hint">telefonen er vært for gruppen (server, 192.168.49.1)</string>
     <string name="p2p_auto_hint">rollen forhandles af systemet</string>
-    <string name="p2p_host">Vært</string>
-    <string name="p2p_auto">Auto</string>
     <string name="wd_band_24_hint">2,4 GHz: længst rækkevidde (standard)</string>
     <string name="wd_band_5_hint">5 GHz: hurtigere, men kortere rækkevidde</string>
     <string name="beacon_interval">Fyrinterval</string>

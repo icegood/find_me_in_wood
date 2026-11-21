@@ -87,8 +87,6 @@
     <string name="not_let_in">Не сте пуснати: %1$s</string>
     <string name="join_named">Присъединяване към „%1$s“</string>
     <string name="network">мрежа</string>
-    <string name="turn_on_bluetooth">Включи Bluetooth</string>
-    <string name="turn_on_location">Включи местоположението</string>
     <string name="qr_not_invite">Този QR код не е покана за мрежа.</string>
     <string name="network_name_label">Име на мрежата (ваш етикет)</string>
     <string name="hide">Скрий</string>
@@ -140,12 +138,8 @@
     <string name="net_not_active">неактивна</string>
     <string name="position_paused">моята позиция: на пауза — членовете ме виждат без местоположение</string>
     <string name="position_shared">моята позиция: споделя се</string>
-    <string name="share_again">Сподели отново</string>
-    <string name="pause">Пауза</string>
     <string name="only_master_lets_in">само администраторът на мрежата може да пуска нови хора</string>
     <string name="joined_without_password">Присъединихте се без парола. Членът, който ви е пуснал, трябва да вижда същия код: %1$s</string>
-    <string name="stop_discovery">Спри видимостта</string>
-    <string name="start_discovery">Направи видима</string>
     <string name="invite">Покани</string>
     <string name="members">Членове</string>
     <string name="use_this_network">Използвай тази мрежа</string>
@@ -161,7 +155,6 @@
     <string name="delete_explain">Този телефон напуска мрежата и забравя паролата ѝ. За да се върнете, ще ви трябва паролата или член, който да ви пусне.</string>
     <string name="location_off_explain">Местоположението е изключено: тогава Android скрива другите телефони от търсенето през Bluetooth и Wi-Fi Direct и никой не може да бъде намерен — а собствената ви позиция е неизвестна.</string>
     <string name="wifi_off_explain">Wi-Fi е изключен: Wi-Fi Direct (по-голям обхват, снимки) не може да работи. Не е нужна Wi-Fi мрежа, само включен Wi-Fi.</string>
-    <string name="turn_on_wifi">Включи Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Местоположение</string>
     <string name="share_my_position">Споделяне на позицията ми</string>
@@ -196,8 +189,6 @@
     <string name="choose_node">Избери възел…</string>
     <string name="p2p_host_hint">този телефон е домакин на групата (сървър, 192.168.49.1)</string>
     <string name="p2p_auto_hint">ролята се договаря от системата</string>
-    <string name="p2p_host">Домакин</string>
-    <string name="p2p_auto">Авто</string>
     <string name="wd_band_24_hint">2,4 GHz: най-голям обхват (по подразбиране)</string>
     <string name="wd_band_5_hint">5 GHz: по-бързо, но по-малък обхват</string>
     <string name="beacon_interval">Интервал на маяка</string>
