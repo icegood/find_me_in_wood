@@ -72,5 +72,13 @@ class FrameFramerTest {
         val c = FrameFramer.frameToChunks(fmFrame(8, 3), 64).single()
         assertContentEquals(fmFrame(8, 3), r.offer(c))
     }
-}
 
+    @Test
+    fun `chunks never exceed the GATT attribute limit, whatever the MTU`() {
+        assertEquals(20, BluetoothTransport.chunkSize(null))
+        assertEquals(244, BluetoothTransport.chunkSize(247))
+        assertEquals(512, BluetoothTransport.chunkSize(517))
+        val chunks = FrameFramer.frameToChunks(ByteArray(553), BluetoothTransport.chunkSize(517))
+        assertEquals(listOf(512, 43), chunks.map { it.size })
+    }
+}

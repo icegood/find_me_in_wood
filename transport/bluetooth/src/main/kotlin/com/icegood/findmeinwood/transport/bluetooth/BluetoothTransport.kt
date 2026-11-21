@@ -295,7 +295,7 @@ class BluetoothTransport internal constructor(
         if (hasClientLink) {
             synchronized(lock) {
                 clientLinks.values.forEach { g ->
-                    val mtu = (clientMtu[g.key()] ?: DEFAULT_MTU) - ATT_OVERHEAD
+                    val mtu = chunkSize(clientMtu[g.key()])
                     val q = clientQueues.getOrPut(g.key()) { ArrayDeque() }
                     FrameFramer.frameToChunks(wireFrame, mtu).forEach(q::add)
                 }
@@ -304,7 +304,7 @@ class BluetoothTransport internal constructor(
         }
         if (hasServerClients) {
             serverLinks.forEach { device ->
-                val mtu = (serverMtu[device.address] ?: DEFAULT_MTU) - ATT_OVERHEAD
+                val mtu = chunkSize(serverMtu[device.address])
                 FrameFramer.frameToChunks(wireFrame, mtu).forEach { chunk ->
                     notifyClient(device, chunk)
                 }
@@ -775,5 +775,15 @@ class BluetoothTransport internal constructor(
         private const val ADVERT_EVENT_MS = 5_000L
         private const val DEFAULT_MTU = 23
         private const val ATT_OVERHEAD = 3
+        /**
+         * Longest attribute value GATT carries (Core spec Vol 3 Part F 3.2.9). Android 14+
+         * negotiates MTU 517 whatever is asked for, so MTU - 3 = 514; a Pixel 7a (Android 17)
+         * dropped such notifications ("value.len larger than GATT_MAX_ATTR_LEN, discard"),
+         * which lost every frame over 510 B, a join acceptance among them.
+         */
+        internal const val MAX_ATTR_LEN = 512
+
+        /** Bytes per GATT write/notification on a link with [mtu] (null = not negotiated). */
+        internal fun chunkSize(mtu: Int?): Int = minOf((mtu ?: DEFAULT_MTU) - ATT_OVERHEAD, MAX_ATTR_LEN)
     }
 }
