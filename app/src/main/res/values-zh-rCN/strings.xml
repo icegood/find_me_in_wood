@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">打开 WLAN</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">位置信息</string>
+    <string name="share_my_position">共享我的位置</string>
+    <string name="discoverable">可被发现</string>
+    <string name="p2p_always_host">始终主持群组</string>
     <string name="invite_to">邀请加入“%1$s”</string>
     <string name="no_password_here">此手机没有该网络的密码。</string>
     <string name="invite_qr">邀请二维码</string>

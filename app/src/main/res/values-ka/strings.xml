@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Wi-Fi-ის ჩართვა</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">მდებარეობა</string>
+    <string name="share_my_position">ჩემი მდებარეობის გაზიარება</string>
+    <string name="discoverable">აღმოჩენადი</string>
+    <string name="p2p_always_host">ჯგუფის მასპინძლობა ყოველთვის</string>
     <string name="invite_to">„%1$s“-ში მოწვევა</string>
     <string name="no_password_here">ამ ტელეფონს არ აქვს ამ ქსელის პაროლი.</string>
     <string name="invite_qr">მოწვევის QR კოდი</string>

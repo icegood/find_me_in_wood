@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Wi-Fi қосу</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Орналасқан жер</string>
+    <string name="share_my_position">Орнымды бөлісу</string>
+    <string name="discoverable">Табылатын</string>
+    <string name="p2p_always_host">Топты әрқашан осы телефон жүргізеді</string>
     <string name="invite_to">«%1$s» желісіне шақыру</string>
     <string name="no_password_here">Бұл телефонда осы желінің құпиясөзі жоқ.</string>
     <string name="invite_qr">Шақыру QR коды</string>

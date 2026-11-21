@@ -68,11 +68,11 @@ Multi-choice settings (theme, Wi-Fi Direct band) are not on/off, so they move fr
 - Modify: `app/src/main/kotlin/com/icegood/findmeinwood/app/MainActivity.kt`
 - Modify: `app/src/test/kotlin/com/icegood/findmeinwood/app/AppPlainTest.kt` (or a new test file next to it)
 
-- [ ] network card: "Share my position" SwitchRow (checked = !sharingPaused), calls SessionService.setSharingPaused and bumps pausedTick; the shared/paused text becomes the hint
-- [ ] network card (master only): "Discoverable" SwitchRow (checked = findableUntil > now), calls SessionBus.setFindable; the UiText.findable countdown is the hint. When DiscoveryBlockers reports a blocker, the switch is disabled. Invite and Members stay buttons, because they are actions
-- [ ] Settings → Wi-Fi Direct: the Host / Auto pair becomes one SwitchRow "Always host the group" (Prefs.p2pGroupOwner); the p2p_host_hint / p2p_auto_hint texts follow the state
-- [ ] make sure SessionBus.setFindable and the setSharingPaused prefs path have tests: add or extend JVM tests where coverage is missing
-- [ ] run `./gradlew :app:testDebugUnitTest`; it must pass
+- [x] network card: "Share my position" SwitchRow (checked = !sharingPaused), calls SessionService.setSharingPaused and bumps pausedTick; the shared/paused text becomes the hint
+- [x] network card (master only): "Discoverable" SwitchRow (checked = findableUntil > now), calls SessionBus.setFindable; the UiText.findable countdown is the hint. When DiscoveryBlockers reports a blocker, the switch is disabled. Invite and Members stay buttons, because they are actions
+- [x] Settings → Wi-Fi Direct: the Host / Auto pair becomes one SwitchRow "Always host the group" (Prefs.p2pGroupOwner); the p2p_host_hint / p2p_auto_hint texts follow the state
+- [x] make sure SessionBus.setFindable and the setSharingPaused prefs path have tests: add or extend JVM tests where coverage is missing (FeatureSwitchesTest, FeatureSwitchPrefsTest; titles share_my_position / discoverable / p2p_always_host added to all languages already)
+- [x] run `./gradlew :app:testDebugUnitTest`; it must pass
 
 ### Task 4: Multi-choice settings as segmented buttons, plus a review pass
 

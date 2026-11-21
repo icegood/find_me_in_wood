@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Pornește Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Locație</string>
+    <string name="share_my_position">Partajează poziția mea</string>
+    <string name="discoverable">Vizibilă</string>
+    <string name="p2p_always_host">Găzduiește mereu grupul</string>
     <string name="invite_to">Invită în „%1$s”</string>
     <string name="no_password_here">Acest telefon nu are parola acestei rețele.</string>
     <string name="invite_qr">Cod QR de invitație</string>

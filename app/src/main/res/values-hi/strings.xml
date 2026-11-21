@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Wi-Fi चालू करें</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">लोकेशन</string>
+    <string name="share_my_position">मेरी स्थिति साझा करें</string>
+    <string name="discoverable">खोजने योग्य</string>
+    <string name="p2p_always_host">हमेशा समूह होस्ट करें</string>
     <string name="invite_to">“%1$s” में आमंत्रित करें</string>
     <string name="no_password_here">इस फ़ोन के पास इस नेटवर्क का पासवर्ड नहीं है।</string>
     <string name="invite_qr">आमंत्रण QR कोड</string>

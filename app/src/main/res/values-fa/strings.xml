@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">روشن کردن Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">مکان</string>
+    <string name="share_my_position">اشتراک موقعیت من</string>
+    <string name="discoverable">قابل کشف</string>
+    <string name="p2p_always_host">همیشه میزبان گروه باش</string>
     <string name="invite_to">دعوت به «%1$s»</string>
     <string name="no_password_here">این تلفن گذرواژهٔ این شبکه را ندارد.</string>
     <string name="invite_qr">کد QR دعوت</string>

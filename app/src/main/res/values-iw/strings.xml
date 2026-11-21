@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">הפעלת Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">מיקום</string>
+    <string name="share_my_position">שיתוף המיקום שלי</string>
+    <string name="discoverable">ניתן לגילוי</string>
+    <string name="p2p_always_host">תמיד לארח את הקבוצה</string>
     <string name="invite_to">הזמנה ל„%1$s”</string>
     <string name="no_password_here">לטלפון הזה אין את הסיסמה של הרשת.</string>
     <string name="invite_qr">קוד QR להזמנה</string>

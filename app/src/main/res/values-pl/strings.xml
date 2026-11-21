@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Włącz Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Lokalizacja</string>
+    <string name="share_my_position">Udostępniaj moją pozycję</string>
+    <string name="discoverable">Wykrywalna</string>
+    <string name="p2p_always_host">Zawsze hostuj grupę</string>
     <string name="invite_to">Zaproś do „%1$s”</string>
     <string name="no_password_here">Ten telefon nie ma hasła tej sieci.</string>
     <string name="invite_qr">Kod QR zaproszenia</string>

@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Укључи Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Локација</string>
+    <string name="share_my_position">Дели мој положај</string>
+    <string name="discoverable">Видљива</string>
+    <string name="p2p_always_host">Увек води групу</string>
     <string name="invite_to">Позови у „%1$s“</string>
     <string name="no_password_here">Овај телефон нема лозинку ове мреже.</string>
     <string name="invite_qr">QR код позивнице</string>

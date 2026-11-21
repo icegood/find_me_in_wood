@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Zapnout Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Poloha</string>
+    <string name="share_my_position">Sdílet mou polohu</string>
+    <string name="discoverable">Viditelná</string>
+    <string name="p2p_always_host">Vždy hostit skupinu</string>
     <string name="invite_to">Pozvat do „%1$s“</string>
     <string name="no_password_here">Tento telefon nemá heslo této sítě.</string>
     <string name="invite_qr">QR kód pozvánky</string>

@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Bật Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Vị trí</string>
+    <string name="share_my_position">Chia sẻ vị trí của tôi</string>
+    <string name="discoverable">Có thể khám phá</string>
+    <string name="p2p_always_host">Luôn làm chủ nhóm</string>
     <string name="invite_to">Mời vào “%1$s”</string>
     <string name="no_password_here">Điện thoại này không có mật khẩu của mạng này.</string>
     <string name="invite_qr">Mã QR mời</string>

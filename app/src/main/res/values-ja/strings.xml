@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Wi-Fi をオン</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">位置情報</string>
+    <string name="share_my_position">自分の位置を共有</string>
+    <string name="discoverable">検出可能</string>
+    <string name="p2p_always_host">常にグループをホストする</string>
     <string name="invite_to">「%1$s」に招待</string>
     <string name="no_password_here">この電話にはこのネットワークのパスワードがありません。</string>
     <string name="invite_qr">招待 QR コード</string>

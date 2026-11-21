@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Įjungti Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Vietovė</string>
+    <string name="share_my_position">Bendrinti mano vietą</string>
+    <string name="discoverable">Aptinkamas</string>
+    <string name="p2p_always_host">Visada būti grupės šeimininku</string>
     <string name="invite_to">Pakviesti į „%1$s“</string>
     <string name="no_password_here">Šis telefonas neturi šio tinklo slaptažodžio.</string>
     <string name="invite_qr">Kvietimo QR kodas</string>

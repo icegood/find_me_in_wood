@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.core.view.WindowCompat
+import com.icegood.findmeinwood.transport.api.DebugLog
 import com.icegood.findmeinwood.core.model.ThemeMode
 import com.icegood.findmeinwood.feature.map.OfflineRegion
 import com.icegood.findmeinwood.feature.map.OfflineRegions
@@ -437,24 +438,32 @@ class MainActivity : ComponentActivity() {
                                 )
                                 if (isRunning) {
                                     val paused = pausedTick >= 0 && Prefs.sharingPaused(this@MainActivity, p.networkIdHex)
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            stringResource(if (paused) R.string.position_paused else R.string.position_shared),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        TextButton(onClick = {
-                                            SessionService.setSharingPaused(this@MainActivity, p.networkIdHex, !paused)
+                                    SwitchRow(
+                                        title = stringResource(R.string.share_my_position),
+                                        hint = stringResource(if (paused) R.string.position_paused else R.string.position_shared),
+                                        checked = !paused,
+                                        onCheckedChange = { share ->
+                                            DebugLog.d { FeatureSwitches.tapLog(FeatureSwitches.SHARE_POSITION, share) }
+                                            SessionService.setSharingPaused(this@MainActivity, p.networkIdHex, !share)
                                             pausedTick++
-                                        }) { Text(stringResource(if (paused) R.string.share_again else R.string.pause)) }
-                                    }
+                                        },
+                                    )
                                 }
                                 // The master learns at once when radios stop new people from finding it.
                                 val blocked = isRunning && book?.iAmMaster == true &&
                                     nowMs >= 0 && DiscoveryBlockers(this@MainActivity, finding = false)
-                                if (isRunning && !blocked) Text(
-                                    if (book?.iAmMaster == true) UiText.findable(this@MainActivity, findableUntil, nowMs)
-                                    else stringResource(R.string.only_master_lets_in),
+                                // Discovery only: the network keeps running for its members either way.
+                                if (isRunning && book?.iAmMaster == true) SwitchRow(
+                                    title = stringResource(R.string.discoverable),
+                                    hint = UiText.findable(this@MainActivity, findableUntil, nowMs),
+                                    checked = FeatureSwitches.discoverable(findableUntil, nowMs),
+                                    enabled = !blocked,
+                                    onCheckedChange = { on ->
+                                        DebugLog.d { FeatureSwitches.tapLog(FeatureSwitches.DISCOVERABLE, on) }
+                                        SessionBus.setFindable(on)
+                                    },
+                                ) else if (isRunning) Text(
+                                    stringResource(R.string.only_master_lets_in),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                                 if (code != null) {
@@ -470,13 +479,7 @@ class MainActivity : ComponentActivity() {
                                 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
                                 androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     if (isRunning) {
-                                        // Discovery only: the network keeps running for its members either way.
                                         if (book?.iAmMaster == true) {
-                                            if (findableUntil > nowMs) {
-                                                OutlinedButton(onClick = { SessionBus.setFindable(false) }) { Text(stringResource(R.string.stop_discovery)) }
-                                            } else {
-                                                Button(onClick = { SessionBus.setFindable(true) }) { Text(stringResource(R.string.start_discovery)) }
-                                            }
                                             OutlinedButton(onClick = { sharing = p; SessionBus.setFindable(true) }) { Text(stringResource(R.string.invite)) }
                                         }
                                         OutlinedButton(onClick = onMembers) { Text(stringResource(R.string.members)) }
@@ -811,22 +814,16 @@ class MainActivity : ComponentActivity() {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(stringResource(R.string.transport_wifi_direct), style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            stringResource(if (p2pOwner) R.string.p2p_host_hint else R.string.p2p_auto_hint),
-                            style = MaterialTheme.typography.bodySmall,
+                        SwitchRow(
+                            title = stringResource(R.string.p2p_always_host),
+                            hint = stringResource(if (p2pOwner) R.string.p2p_host_hint else R.string.p2p_auto_hint),
+                            checked = p2pOwner,
+                            onCheckedChange = { host ->
+                                DebugLog.d { FeatureSwitches.tapLog(FeatureSwitches.ALWAYS_HOST, host) }
+                                p2pOwner = host
+                                SessionService.setP2pGroupOwner(this@MainActivity, host)
+                            },
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (p2pOwner) Button(onClick = { }) { Text(stringResource(R.string.p2p_host)) }
-                            else OutlinedButton(onClick = {
-                                p2pOwner = true
-                                SessionService.setP2pGroupOwner(this@MainActivity, true)
-                            }) { Text(stringResource(R.string.p2p_host)) }
-                            if (!p2pOwner) Button(onClick = { }) { Text(stringResource(R.string.p2p_auto)) }
-                            else OutlinedButton(onClick = {
-                                p2pOwner = false
-                                SessionService.setP2pGroupOwner(this@MainActivity, false)
-                            }) { Text(stringResource(R.string.p2p_auto)) }
-                        }
                         // Band of the group this phone hosts; its joiners follow it.
                         Text(
                             stringResource(

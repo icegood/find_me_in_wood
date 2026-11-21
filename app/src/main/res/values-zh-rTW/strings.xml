@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">開啟 Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">定位</string>
+    <string name="share_my_position">分享我的位置</string>
+    <string name="discoverable">可被發現</string>
+    <string name="p2p_always_host">一律主持群組</string>
     <string name="invite_to">邀請加入「%1$s」</string>
     <string name="no_password_here">這支手機沒有這個網路的密碼。</string>
     <string name="invite_qr">邀請 QR 碼</string>

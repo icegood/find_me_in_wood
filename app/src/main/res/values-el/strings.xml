@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Ενεργοποίηση Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Τοποθεσία</string>
+    <string name="share_my_position">Κοινοποίηση της θέσης μου</string>
+    <string name="discoverable">Ορατό</string>
+    <string name="p2p_always_host">Πάντα φιλοξενία της ομάδας</string>
     <string name="invite_to">Πρόσκληση στο «%1$s»</string>
     <string name="no_password_here">Αυτό το τηλέφωνο δεν έχει τον κωδικό αυτού του δικτύου.</string>
     <string name="invite_qr">Κωδικός QR πρόσκλησης</string>

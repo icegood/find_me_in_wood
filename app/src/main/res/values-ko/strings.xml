@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Wi-Fi 켜기</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">위치</string>
+    <string name="share_my_position">내 위치 공유</string>
+    <string name="discoverable">검색 허용</string>
+    <string name="p2p_always_host">항상 그룹 호스트</string>
     <string name="invite_to">“%1$s”에 초대</string>
     <string name="no_password_here">이 휴대전화에는 이 네트워크의 비밀번호가 없습니다.</string>
     <string name="invite_qr">초대 QR 코드</string>

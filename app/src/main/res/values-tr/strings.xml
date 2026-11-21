@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Wi-Fi\'ı aç</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Konum</string>
+    <string name="share_my_position">Konumumu paylaş</string>
+    <string name="discoverable">Bulunabilir</string>
+    <string name="p2p_always_host">Grubu her zaman barındır</string>
     <string name="invite_to">“%1$s” ağına davet et</string>
     <string name="no_password_here">Bu telefonda bu ağın şifresi yok.</string>
     <string name="invite_qr">Davet QR kodu</string>

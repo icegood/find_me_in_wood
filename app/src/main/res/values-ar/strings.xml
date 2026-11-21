@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">تشغيل Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">الموقع</string>
+    <string name="share_my_position">مشاركة موقعي</string>
+    <string name="discoverable">قابل للاكتشاف</string>
+    <string name="p2p_always_host">استضافة المجموعة دائمًا</string>
     <string name="invite_to">دعوة إلى «%1$s»</string>
     <string name="no_password_here">لا يملك هذا الهاتف كلمة مرور هذه الشبكة.</string>
     <string name="invite_qr">رمز QR للدعوة</string>

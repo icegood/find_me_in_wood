@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Ieslēgt Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Atrašanās vieta</string>
+    <string name="share_my_position">Kopīgot manu atrašanās vietu</string>
+    <string name="discoverable">Atrodams</string>
+    <string name="p2p_always_host">Vienmēr vadīt grupu</string>
     <string name="invite_to">Uzaicināt uz “%1$s”</string>
     <string name="no_password_here">Šajā tālrunī nav šī tīkla paroles.</string>
     <string name="invite_qr">Ielūguma QR kods</string>

@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Wifi aanzetten</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Locatie</string>
+    <string name="share_my_position">Mijn positie delen</string>
+    <string name="discoverable">Vindbaar</string>
+    <string name="p2p_always_host">Altijd de groep hosten</string>
     <string name="invite_to">Uitnodigen voor ‘%1$s’</string>
     <string name="no_password_here">Deze telefoon heeft het wachtwoord van dit netwerk niet.</string>
     <string name="invite_qr">Uitnodigings-QR-code</string>

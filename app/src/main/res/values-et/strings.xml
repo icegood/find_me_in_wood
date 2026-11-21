@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Lülita Wi-Fi sisse</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Asukoht</string>
+    <string name="share_my_position">Jaga minu asukohta</string>
+    <string name="discoverable">Leitav</string>
+    <string name="p2p_always_host">Ole alati grupi host</string>
     <string name="invite_to">Kutsu võrku „%1$s“</string>
     <string name="no_password_here">Selles telefonis pole selle võrgu parooli.</string>
     <string name="invite_qr">Kutse QR-kood</string>

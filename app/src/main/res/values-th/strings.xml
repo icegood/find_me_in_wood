@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">เปิด Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">ตำแหน่ง</string>
+    <string name="share_my_position">แชร์ตำแหน่งของฉัน</string>
+    <string name="discoverable">ค้นพบได้</string>
+    <string name="p2p_always_host">เป็นโฮสต์ของกลุ่มเสมอ</string>
     <string name="invite_to">เชิญเข้า “%1$s”</string>
     <string name="no_password_here">โทรศัพท์เครื่องนี้ไม่มีรหัสผ่านของเครือข่ายนี้</string>
     <string name="invite_qr">QR โค้ดคำเชิญ</string>

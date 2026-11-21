@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Включи Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Местоположение</string>
+    <string name="share_my_position">Споделяне на позицията ми</string>
+    <string name="discoverable">Откриваем</string>
+    <string name="p2p_always_host">Винаги домакин на групата</string>
     <string name="invite_to">Покани в „%1$s“</string>
     <string name="no_password_here">Този телефон няма паролата на тази мрежа.</string>
     <string name="invite_qr">QR код с покана</string>

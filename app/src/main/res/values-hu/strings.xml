@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Wi-Fi bekapcsolása</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Helymeghatározás</string>
+    <string name="share_my_position">Pozícióm megosztása</string>
+    <string name="discoverable">Felfedezhető</string>
+    <string name="p2p_always_host">Mindig én legyek a csoport gazdája</string>
     <string name="invite_to">Meghívás ide: „%1$s”</string>
     <string name="no_password_here">Ezen a telefonon nincs meg a hálózat jelszava.</string>
     <string name="invite_qr">Meghívó QR-kód</string>

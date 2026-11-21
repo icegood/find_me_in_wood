@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Slå Wi-Fi til</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Lokation</string>
+    <string name="share_my_position">Del min position</string>
+    <string name="discoverable">Synlig</string>
+    <string name="p2p_always_host">Vær altid vært for gruppen</string>
     <string name="invite_to">Inviter til “%1$s”</string>
     <string name="no_password_here">Telefonen har ikke netværkets adgangskode.</string>
     <string name="invite_qr">Invitationens QR-kode</string>

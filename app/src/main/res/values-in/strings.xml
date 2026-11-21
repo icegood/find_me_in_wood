@@ -164,6 +164,9 @@
     <string name="turn_on_wifi">Nyalakan Wi-Fi</string>
     <string name="radio_wifi">Wi-Fi</string>
     <string name="radio_location">Lokasi</string>
+    <string name="share_my_position">Bagikan posisi saya</string>
+    <string name="discoverable">Dapat ditemukan</string>
+    <string name="p2p_always_host">Selalu jadi host grup</string>
     <string name="invite_to">Undang ke “%1$s”</string>
     <string name="no_password_here">Ponsel ini tidak punya sandi jaringan ini.</string>
     <string name="invite_qr">Kode QR undangan</string>
