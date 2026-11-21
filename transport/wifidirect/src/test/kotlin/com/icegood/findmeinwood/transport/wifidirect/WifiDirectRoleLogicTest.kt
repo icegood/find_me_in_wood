@@ -196,6 +196,94 @@ class WifiDirectRoleLogicTest {
     }
 
     @Test
+    fun `the hourly rename keeps a linked group until its link ends, then forms the new name`() = runBlocking<Unit> {
+        val renamed = ByteArray(32) { (it + 3).toByte() }
+        val server = ServerSocket(0)
+        try {
+            val w = object : FakeWiring() {
+                override fun bind(port: Int): ServerSocket? = null
+            }
+            w.socketToReturn = Socket("127.0.0.1", server.localPort)
+            val t = transport(w, pollMs = 20L, role = null)
+            t.setGroups(listOf(GroupPlan(secret, GroupRole.JOIN, id = "host")))
+            t.start(cfg)
+            w.answerInfo(formed = true, owner = false, host = "127.0.0.1")
+            withTimeout(5_000) { while (t.peerLinkCount() == 0) delay(10) }
+            val joins = w.joins.size
+            t.setGroups(listOf(GroupPlan(renamed, GroupRole.JOIN, id = "host")))
+            delay(100)
+            assertEquals(0, w.removeGroupCalls, "a linked group is not left for its new name")
+            assertEquals(joins, w.joins.size)
+            assertEquals(1, t.peerLinkCount())
+            // The link ends: the group is left and joined under its new name.
+            t.closeLink(w.socketToReturn!!.let { it.remoteSocketAddress.toString() })
+            withTimeout(5_000) { while (w.joins.none { it == GroupCredentials.from(renamed) }) delay(10) }
+            assertEquals(1, w.removeGroupCalls)
+            // Another group (no shared id) is moved to at once, as before.
+            t.setGroups(listOf(GroupPlan(secret, GroupRole.JOIN, id = "other")))
+            assertEquals(creds, w.joins.last())
+            t.stop()
+        } finally {
+            server.close()
+        }
+    }
+
+    @Test
+    fun `a group has a channel from its secret, asked for by the host and scanned alone by the first joins`() = runBlocking<Unit> {
+        val band5 = com.icegood.findmeinwood.core.model.WifiBand.GHZ_5
+        assertTrue(creds.frequency in listOf(2412, 2437, 2462), "a 2.4 GHz social channel by default")
+        assertTrue(GroupCredentials.from(secret, band5).frequency in listOf(5180, 5200, 5220, 5240), "5 GHz without radar wait")
+        assertEquals(creds.frequency, GroupCredentials.from(secret.copyOf()).frequency, "every member derives the same")
+        val limit = WifiDirectTransport.CREATE_TIMEOUT_MS
+        WifiDirectTransport.CREATE_TIMEOUT_MS = 50
+        try {
+            val h = FakeWiring()
+            val host = transport(h, pollMs = 20L, role = GroupRole.HOST)
+            host.start(cfg)
+            withTimeout(5_000) { while (false !in h.createExact) delay(10) }
+            assertTrue(h.createExact.first(), "on its channel")
+            assertTrue(h.cancelCalls > 0, "anywhere only after a create that formed nothing")
+            host.stop()
+        } finally {
+            WifiDirectTransport.CREATE_TIMEOUT_MS = limit
+        }
+        val stepMs = WifiDirectTransport.JOIN_STEP_MS
+        WifiDirectTransport.JOIN_STEP_MS = 30
+        try {
+            val j = FakeWiring()
+            val joiner = transport(j, pollMs = 10L)
+            joiner.start(cfg)
+            withTimeout(5_000) { while (j.joinExact.size < 3) delay(5) }
+            assertEquals(listOf(true, true, false), j.joinExact.take(3), "two quick tries on the channel, then the band")
+            joiner.stop()
+        } finally {
+            WifiDirectTransport.JOIN_STEP_MS = stepMs
+        }
+    }
+
+    @Test
+    fun `the host reports the channel its group got, a joiner scans the channel its host said`() = runBlocking<Unit> {
+        val w = object : FakeWiring() {
+            override fun requestGroupFrequency(channel: WifiP2pManager.Channel?, mhz: (Int?) -> Unit) = mhz(2462)
+        }
+        val t = transport(w, pollMs = 30L, role = GroupRole.HOST)
+        val events = t.start(cfg)
+        w.answerInfo(formed = true, owner = true, host = "192.168.49.1")
+        fun hosted() = (events as kotlinx.coroutines.flow.SharedFlow<TransportEvent>).replayCache
+            .filterIsInstance<TransportEvent.HostedChannel>().map { it.mhz }
+        withTimeout(5_000) { while (2462 !in hosted()) delay(10) }
+        t.stop()
+
+        val j = FakeWiring()
+        val joiner = transport(j, pollMs = 30L, role = null)
+        joiner.setGroups(listOf(GroupPlan(secret, GroupRole.JOIN, frequency = 2462)))
+        joiner.start(cfg)
+        assertEquals(2462, j.joins.last().frequency)
+        assertTrue(j.joinExact.last())
+        joiner.stop()
+    }
+
+    @Test
     fun `agreed host creates the group at once and never gives it up`() = runBlocking<Unit> {
         val w = FakeWiring()
         val t = transport(w, pollMs = 30L, role = GroupRole.HOST)
@@ -405,7 +493,7 @@ class WifiDirectRoleLogicTest {
         try {
             val w = object : FakeWiring() {
                 val at = mutableListOf<Long>()
-                override fun join(channel: WifiP2pManager.Channel?, creds: GroupCredentials, done: (P2pResult) -> Unit) {
+                override fun join(channel: WifiP2pManager.Channel?, creds: GroupCredentials, exact: Boolean, done: (P2pResult) -> Unit) {
                     at += System.currentTimeMillis() // never answered
                 }
             }
@@ -426,7 +514,7 @@ class WifiDirectRoleLogicTest {
     @Test
     fun `a join that is never answered is retried after it expires`() = runBlocking<Unit> {
         val w = object : FakeWiring() {
-            override fun join(channel: WifiP2pManager.Channel?, creds: GroupCredentials, done: (P2pResult) -> Unit) {
+            override fun join(channel: WifiP2pManager.Channel?, creds: GroupCredentials, exact: Boolean, done: (P2pResult) -> Unit) {
                 joins += creds // no callback: the framework never answers
             }
         }
@@ -448,7 +536,7 @@ class WifiDirectRoleLogicTest {
     @Test
     fun `host keeps trying to create the group until it forms`() = runBlocking<Unit> {
         val w = object : FakeWiring() {
-            override fun createGroup(channel: WifiP2pManager.Channel?, creds: GroupCredentials, done: (P2pResult) -> Unit) {
+            override fun createGroup(channel: WifiP2pManager.Channel?, creds: GroupCredentials, exact: Boolean, done: (P2pResult) -> Unit) {
                 createGroupCalls++
                 done(P2pResult.FAILED) // refused: the next poll must retry
             }

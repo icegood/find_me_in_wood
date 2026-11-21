@@ -81,7 +81,8 @@ frame is encrypted and authenticated with the network's key.
   common transport undecided) frames go on every radio, so the handshake can get through.
   Management frames (discovery, joining) are not limited.
 - FR-3.5b Wi-Fi Direct roles are per pair, for every member this phone can pair with on it
-  (agreed, or not decided yet): of the two, the lower member id hosts, unless
+  (agreed, or not decided yet): of the two, the network's owner hosts, else the lower
+  member id, unless
   the pair picked the other way round in the link menu (either member may; the newer pick
   wins, as selections do). Computed from the pair alone, kept while the two are out of
   touch, so they rejoin the same group. Separate pairs run separate groups at the same
@@ -93,6 +94,16 @@ frame is encrypted and authenticated with the network's key.
   goes to a pair at once when that pair has something urgent (a handshake step, a chat
   message, a find request). Nothing waits for the user. The member row says when the
   pair's link is shared in time ("Wi-Fi Direct, in turn with 2 others").
+  Rendezvous without Bluetooth: the owner always hosts its group, named from the network
+  key alone, so a member that knows nobody yet (not even the owner's id, after a password
+  join) joins it; every group runs on a channel derived from its secret, which the host asks
+  for and the first two joins scan alone, so a pair meets within 10 s on Wi-Fi only. The host
+  says the channel its group really got (a router's channel may win) and joiners scan that.
+  One group per network where possible: while the owner reaches them, members meet only in
+  the owner's group (relayed by it) and no phone takes turns; two members other than the
+  owner form a group of their own when they picked a host for the pair, when they stop
+  hearing each other through the owner (3 beacons, at most 60 s), or when the owner is not
+  heard (after 15 s of looking for it first after a start).
 - FR-3.5d A host's group is shared only by the pairs that each chose it: every member in it
   joined by its own pair agreement with the host (and the host's pick, FR-3.5b), and the
   host closes the link of any member whose pair turned Wi-Fi Direct down (FR-8.7). Members

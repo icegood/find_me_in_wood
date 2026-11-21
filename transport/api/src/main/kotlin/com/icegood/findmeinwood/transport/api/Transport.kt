@@ -18,6 +18,8 @@ sealed interface TransportEvent {
     data class StateChanged(val state: RadioState) : TransportEvent
     /** A findable network's advertised info (BleAdvert.Info bytes) and the radio peer advertising it. */
     data class NetworkAdvertSeen(val radioPeerId: String, val info: ByteArray, val transport: TransportId) : TransportEvent
+    /** The group this phone hosts runs on [mhz] now (null: it hosts none): its joiners are told. */
+    data class HostedChannel(val mhz: Int?) : TransportEvent
 }
 
 sealed interface SendResult {
@@ -35,21 +37,27 @@ enum class GroupRole { HOST, JOIN }
  * One Wi-Fi Direct group this phone takes part in (FR-3.5b): its credentials come from
  * [secret]; [role] is this phone's in it, as its pairs agreed. [pairs] = how many members
  * this phone meets in it. [band]: the group's band (the host's choice); null = not known,
- * a joiner then scans every band.
+ * a joiner then scans every band. [id]: the same group across renames (its host); its
+ * credentials change every hour, and a group still linked keeps its old name until its
+ * link ends, so the hour does not drop a working link. Empty = no such identity.
  */
 class GroupPlan(
     val secret: ByteArray,
     val role: GroupRole,
     val pairs: Int = 1,
     val band: com.icegood.findmeinwood.core.model.WifiBand? = null,
+    val id: String = "",
+    /** The channel (MHz) the host says its group runs on; 0 = not known (the derived one is tried). */
+    val frequency: Int = 0,
 ) {
     /** The group's Wi-Fi name, as phones nearby list it. */
     val networkName: String get() = groupNetworkName(secret)
 
     override fun equals(other: Any?) =
         other is GroupPlan && secret.contentEquals(other.secret) && role == other.role && pairs == other.pairs &&
-            band == other.band
-    override fun hashCode() = ((secret.contentHashCode() * 31 + role.hashCode()) * 31 + pairs) * 31 + band.hashCode()
+            band == other.band && id == other.id && frequency == other.frequency
+    override fun hashCode() =
+        ((((secret.contentHashCode() * 31 + role.hashCode()) * 31 + pairs) * 31 + band.hashCode()) * 31 + id.hashCode()) * 31 + frequency
 }
 
 /** Wi-Fi name of the group made from [secret] (Android requires "DIRECT-" + two characters). */

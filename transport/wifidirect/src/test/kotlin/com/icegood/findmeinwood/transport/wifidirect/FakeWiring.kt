@@ -42,16 +42,21 @@ internal open class FakeWiring : WifiDirectWiring(
 
     val joins = mutableListOf<GroupCredentials>()
     val created = mutableListOf<GroupCredentials>()
+    /** Per request: on the group's channel only (true) or its band. */
+    val joinExact = mutableListOf<Boolean>()
+    val createExact = mutableListOf<Boolean>()
     var failJoin = false
 
-    override fun join(channel: WifiP2pManager.Channel?, creds: GroupCredentials, done: (P2pResult) -> Unit) {
+    override fun join(channel: WifiP2pManager.Channel?, creds: GroupCredentials, exact: Boolean, done: (P2pResult) -> Unit) {
         joins += creds
+        joinExact += exact
         done(if (failJoin) P2pResult.FAILED else P2pResult.OK)
     }
 
-    override fun createGroup(channel: WifiP2pManager.Channel?, creds: GroupCredentials, done: (P2pResult) -> Unit) {
+    override fun createGroup(channel: WifiP2pManager.Channel?, creds: GroupCredentials, exact: Boolean, done: (P2pResult) -> Unit) {
         createGroupCalls++
         created += creds
+        createExact += exact
         done(P2pResult.OK)
     }
 

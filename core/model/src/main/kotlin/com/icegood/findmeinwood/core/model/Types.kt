@@ -139,6 +139,12 @@ data class LinkCtl(
     val hosts: List<LinkHost> = emptyList(),
     /** The band of the Wi-Fi Direct group this phone hosts: its joiners scan only that band. */
     val band: WifiBand? = null,
+    /**
+     * The channel (MHz) the Wi-Fi Direct group this phone hosts really runs on: its joiners
+     * scan only it. Usually the one derived from the group's secret, unless the radio had to
+     * follow a router's channel. Null = not hosting.
+     */
+    val freq: Int? = null,
 )
 
 /** Wi-Fi Direct group band, the user's choice: 2.4 GHz reaches further, 5 GHz is faster. */

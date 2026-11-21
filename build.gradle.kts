@@ -45,6 +45,7 @@ val gateScopeExcludes = coverageExcludes + listOf(
     // Android framework glue (activities/services/providers):
     "**/ShareInboxActivity*",
     "**/MainActivity*", "**/SessionService*",
+    "**/ResumeReceiver*",           // system broadcast -> SessionService.resume
     "**/AndroidGnssSource*",        // LocationManager listener glue
     "**/Prefs*",                    // SharedPreferences glue
     "**/MapScreenKt*",              // Composable + MapLibre view wiring

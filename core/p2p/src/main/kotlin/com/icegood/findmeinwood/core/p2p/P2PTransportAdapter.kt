@@ -35,6 +35,7 @@ class P2PTransportAdapter(
                 is TransportEvent.StateChanged -> null
                 is TransportEvent.LinkUp -> null
                 is TransportEvent.NetworkAdvertSeen -> null
+                is TransportEvent.HostedChannel -> null
             }
         }
     }

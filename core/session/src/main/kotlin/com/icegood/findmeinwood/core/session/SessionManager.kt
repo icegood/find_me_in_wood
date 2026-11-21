@@ -88,6 +88,8 @@ class SessionManager(
             return com.icegood.findmeinwood.core.crypto.Hkdf.derive(key, salt, "fmiw-wifi-direct-host".toByteArray(), 32)
         }
         const val KEEP_ALIVE_MS = 60_000L
+        /** How often the Wi-Fi Direct plan is looked at again without any frame. */
+        const val PLAN_REFRESH_MS = 5_000L
         /** Minimum gap between extra (link-control) beacons. */
         const val REPLY_GAP_MS = 1_000L
         /** Minimum gap between member-list syncs sent by this phone. */
@@ -341,17 +343,24 @@ class SessionManager(
     private fun applyWifiDirect(): List<LinkNegotiator.WifiDirectGroup> {
         // Every member of the network can pair with this phone: the member list says who.
         book?.let { b -> links?.setMembers(b.members()) }
+        // The owner hosts the group newcomers look for (rendezvous without Bluetooth).
+        links?.setOwner(book?.masterId ?: profile.ownerMemberId)
         val groups = links?.wifiDirectGroups().orEmpty()
         val hour = clock() / HOUR_MS
         val key = keys.current()
         val plans = groups.map { g ->
             val mine = g.host == profile.myMemberId
             GroupPlan(
-                wifiDirectSecret(key, g.host, hour),
+                // The owner's group is named by the network key alone: a member that has not
+                // learned the owner's id yet (a password join) joins it all the same.
+                wifiDirectSecret(key, if (g.ownerGroup) LinkNegotiator.OWNER_UNKNOWN else g.host, hour),
                 if (mine) GroupRole.HOST else GroupRole.JOIN,
                 pairs = g.members.size,
                 // Hosting: the band this user chose; joining: the one the host said.
                 band = if (mine) links?.band() else links?.bandOf(g.host),
+                // The hourly rename keeps a linked group (see GroupPlan.id).
+                id = shortId(g.host),
+                frequency = if (mine) 0 else links?.frequencyOf(g.host) ?: 0,
             )
         }
         if (plans != groupPlans) {
@@ -366,7 +375,11 @@ class SessionManager(
 
     /** The Wi-Fi Direct groups this phone serves now, as the link log shows them: "host", "join <member>". */
     fun wifiDirectGroupNames(): List<String> = links?.wifiDirectGroups().orEmpty().map { g ->
-        if (g.host == profile.myMemberId) "host" else "join " + shortId(g.host)
+        when {
+            g.host == profile.myMemberId -> if (g.ownerGroup) "host (owner)" else "host"
+            g.host == LinkNegotiator.OWNER_UNKNOWN -> "join owner (not known yet)"
+            else -> "join " + shortId(g.host) + if (g.ownerGroup) " (owner)" else ""
+        }
     }
 
     private fun shortId(id: MemberId) = id.bytes.take(4).joinToString("") { "%02x".format(it) }
@@ -401,6 +414,11 @@ class SessionManager(
                         is TransportEvent.NetworkAdvertSeen -> onNetworkAdvert?.invoke(ev.info, ev.radioPeerId, ev.transport)
                         is TransportEvent.StateChanged ->
                             _radioStates.value = _radioStates.value + (t.id to ev.state)
+                        is TransportEvent.HostedChannel -> links?.let {
+                            it.setHostedFrequency(ev.mhz)
+                            it.announceNow()
+                            replyNow(force = true) // joiners scan the real channel at once
+                        }
                     }
                 }
             }
@@ -422,6 +440,13 @@ class SessionManager(
             }
         }        // Decisions kept from the last run may already fix the Wi-Fi Direct groups.
         applyWifiDirect()
+        // The plan depends on time too (who was heard lately, the owner looked for first).
+        jobs += scope.launch {
+            while (true) {
+                delay(PLAN_REFRESH_MS)
+                applyWifiDirect()
+            }
+        }
         // Group names change on the hour: every phone moves at the same moment.
         jobs += scope.launch {
             while (true) {

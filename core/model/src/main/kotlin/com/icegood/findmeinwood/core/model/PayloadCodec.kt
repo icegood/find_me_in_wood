@@ -3,11 +3,17 @@ package com.icegood.findmeinwood.core.model
 import kotlinx.serialization.cbor.Cbor
 
 object PayloadCodec {
+    /**
+     * Beacons from newer app versions may carry fields this one does not know (a new
+     * LinkCtl field): they are skipped, never a reason to drop the whole beacon.
+     */
+    private val lenient = Cbor { ignoreUnknownKeys = true }
+
     fun encode(payload: BeaconPayload): ByteArray =
         Cbor.encodeToByteArray(BeaconPayload.serializer(), payload)
 
     fun decode(bytes: ByteArray): BeaconPayload =
-        Cbor.decodeFromByteArray(BeaconPayload.serializer(), bytes)
+        lenient.decodeFromByteArray(BeaconPayload.serializer(), bytes)
 
     fun encodeHello(payload: HelloPayload): ByteArray = Cbor.encodeToByteArray(HelloPayload.serializer(), payload)
 

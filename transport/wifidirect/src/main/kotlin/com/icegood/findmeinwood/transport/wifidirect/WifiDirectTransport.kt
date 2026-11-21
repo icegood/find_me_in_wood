@@ -70,6 +70,10 @@ internal sealed interface GroupState {
  * with urgent traffic. Every group has its pair's role: the host hosts, the others only
  * join. No plan, no group. [setPreferGroupOwner] makes this phone always host.
  *
+ * Channel: a group runs on a channel derived from its secret ([GroupCredentials.frequency]);
+ * the host asks for it, and the first [EXACT_JOINS] joins in a row scan only it. A create
+ * that formed nothing drops the channel (anywhere in the band), as do later joins.
+ *
  * Group state machine ([GroupState]). (target) = the state for the slot served now:
  * no group → Idle, hosting → Creating, else Joining; Creating and Joining send their
  * request on entry, and again at a poll once it was refused or went unanswered.
@@ -106,7 +110,7 @@ internal sealed interface GroupState {
  *                                     ┌──────────────────────────────────────┐
  *                                     │                Formed                │
  *                                     └───────┬─────────────────────┬────────┘
- *                                             │ group lost          │ (5)
+ *                                             │ group lost, (6)     │ (5)
  *                                             ▼                     ▼
  *                                         (target)               Joining
  *
@@ -117,6 +121,8 @@ internal sealed interface GroupState {
  *  (3) in no group or in another: cancel, ask again with attempt + 1
  *  (4) no address after ADDRESS_WAIT_MS: cancel, ask again with attempt + 1
  *  (5) hosting alone while the pair has this phone join: leave the group
+ *  (6) the hour renamed the group while members were linked: it stays under its old name
+ *      (no slot change) until the last socket closes, then it is left and formed anew
  * ```
  */
 class WifiDirectTransport(
@@ -188,9 +194,20 @@ class WifiDirectTransport(
     override fun setGroups(groups: List<GroupPlan>) {
         if (groups == plan) return
         val current = creds
+        val servedId = plan.getOrNull(slot)?.id.orEmpty()
         plan = groups
         val keep = groups.indexOfFirst { GroupCredentials.from(it.secret).networkName == current?.networkName }
-        if (keep < 0) return moveTo(0)
+        if (keep < 0) {
+            // The hourly rename: a group with members linked carries on under its old name
+            // until its link ends; then (target) forms it under the new one.
+            val renamed = if (servedId.isEmpty()) -1 else groups.indexOfFirst { it.id == servedId && it.role == role }
+            if (renamed >= 0 && formed && sockets.isNotEmpty()) {
+                slot = renamed
+                renamePending = true
+                return
+            }
+            return moveTo(0)
+        }
         val before = role
         val wanted = credsOf(groups[keep])
         val st = state
@@ -222,6 +239,7 @@ class WifiDirectTransport(
     /** Leaves the group served now (if any) and goes to the plan's group at [index]. */
     private fun moveTo(index: Int) {
         if (formed) leaveGroup()
+        renamePending = false
         slot = index
         slotSinceMs = System.currentTimeMillis()
         linkedAtMs = 0L
@@ -230,8 +248,23 @@ class WifiDirectTransport(
         if (running && state != GroupState.RadioOff) formTarget()
     }
 
-    /** A host creates on its band; a joiner scans the host's band (any while unknown). */
-    private fun credsOf(p: GroupPlan) = GroupCredentials.from(p.secret, p.band)
+    /**
+     * A host creates on its band and the group's channel; a joiner scans the channel the
+     * host said (else the derived one), then the host's band (any while unknown).
+     */
+    private fun credsOf(p: GroupPlan) = GroupCredentials.from(p.secret, p.band).let { c ->
+        if (p.frequency > 0 && p.role == GroupRole.JOIN) c.copy(frequency = p.frequency) else c
+    }
+
+    /** Channel last told to the session for the group this phone hosts (null = none). */
+    private var hostedMhz: Int? = null
+
+    /** Tells the session the channel of the group this phone hosts, once per change. */
+    private fun reportHosted(mhz: Int?) {
+        if (mhz == hostedMhz) return
+        hostedMhz = mhz
+        events.tryEmit(TransportEvent.HostedChannel(mhz))
+    }
 
     private fun applySlotRole() {
         role = plan.getOrNull(slot)?.role
@@ -268,8 +301,21 @@ class WifiDirectTransport(
         }
     }
 
+    /**
+     * The group served now was renamed (the hour changed) while linked: it keeps its old
+     * credentials until it is formed again, then takes the plan's.
+     */
+    private var renamePending = false
+
+    /** Creates in a row that formed no group: after one, the channel is no longer insisted on. */
+    private var createMisses = 0
+
     /** Into (target): Creating and Joining send their request at once. */
     private fun formTarget(attempt: Int = 1) {
+        if (renamePending) {
+            renamePending = false
+            creds = plan.getOrNull(slot)?.let { credsOf(it) }
+        }
         when (val to = target(attempt)) {
             is GroupState.Creating -> askCreate(to)
             is GroupState.Joining -> askJoin(to)
@@ -474,7 +520,7 @@ class WifiDirectTransport(
             is GroupState.Creating -> when {
                 // Seen for 30 s right after Wi-Fi came back: the P2P service sits on the
                 // request and refuses every new one until it is cancelled.
-                now - st.since > CREATE_TIMEOUT_MS -> { wiring.cancelConnect(channel); formTarget() }
+                now - st.since > CREATE_TIMEOUT_MS -> { createMisses++; wiring.cancelConnect(channel); formTarget() }
                 st.askedAt == null || now - st.askedAt > PENDING_TIMEOUT_MS -> askCreate(st)
             }
             is GroupState.Joining -> when {
@@ -483,7 +529,8 @@ class WifiDirectTransport(
             }
             is GroupState.Addressing ->
                 if (now - st.since > ADDRESS_WAIT_MS) { wiring.cancelConnect(channel); formTarget(st.attempt + 1) }
-            is GroupState.Formed -> yieldIdleHost()
+            // A renamed group whose link ended: its members look for the new name now.
+            is GroupState.Formed -> if (renamePending && sockets.isEmpty()) { leaveGroup(); formTarget() } else yieldIdleHost()
             else -> Unit
         }
     }
@@ -528,7 +575,9 @@ class WifiDirectTransport(
     private fun askJoin(st: GroupState.Joining) {
         val c = creds ?: return
         moveState(st.copy(askedAt = System.currentTimeMillis()))
-        wiring.join(channel, c) { result ->
+        // The first joins scan only the group's channel (about a second); a host that could
+        // not get it (its radio tied to a router's channel) is found by the band sweep after.
+        wiring.join(channel, c, exact = st.attempt <= EXACT_JOINS) { result ->
             synchronized(this@WifiDirectTransport) {
                 // Refused: asked again at the next poll.
                 val now = state
@@ -541,7 +590,8 @@ class WifiDirectTransport(
     private fun askCreate(st: GroupState.Creating) {
         val c = creds ?: return
         moveState(st.copy(askedAt = System.currentTimeMillis()))
-        wiring.createGroup(channel, c) {
+        // On the group's channel, unless that already failed to form: then anywhere.
+        wiring.createGroup(channel, c, exact = createMisses == 0) {
             synchronized(this@WifiDirectTransport) {
                 // Answered either way: the next poll asks again unless the group formed.
                 val now = state
@@ -564,6 +614,7 @@ class WifiDirectTransport(
 
     /** Leaves the formed group: the radio removes it and its sockets close. */
     private fun leaveGroup() {
+        reportHosted(null)
         wiring.removeGroup(channel)
         closeSockets()
         report(RadioState.LINK_DOWN)
@@ -583,6 +634,7 @@ class WifiDirectTransport(
         val st = state
         if (st == GroupState.Stopped || st == GroupState.RadioOff) return
         if (!info.formed) {
+            reportHosted(null)
             if (st is GroupState.Formed) {
                 closeSockets()
                 report(RadioState.LINK_DOWN)
@@ -594,6 +646,15 @@ class WifiDirectTransport(
         }
         if (st == GroupState.Idle) return // a group left over: nothing to serve in it
         moveState(GroupState.Formed(info.isOwner))
+        if (info.isOwner) {
+            createMisses = 0
+            // Joiners scan only the channel the group really got (a router's may win).
+            if (st !is GroupState.Formed || hostedMhz == null) wiring.requestGroupFrequency(channel) { mhz ->
+                synchronized(this@WifiDirectTransport) { if ((state as? GroupState.Formed)?.owner == true) reportHosted(mhz) }
+            }
+        } else {
+            reportHosted(null)
+        }
         startAcceptLoop()
         report(RadioState.READY)
         if (!info.isOwner) {
@@ -692,6 +753,13 @@ class WifiDirectTransport(
          */
         internal var JOIN_STEP_MS = 5_000L
         internal const val SHORT_JOINS = 3
+        /**
+         * The first joins in a row scan only the group's channel. A full sweep took 9 s on the
+         * VOG-L29 (2.4 + 5 GHz, ~1.5 s per pass, the host missed on several); one channel is
+         * scanned in ~0.1 s. Two tries cover a join asked a moment before the host's group
+         * was up.
+         */
+        internal const val EXACT_JOINS = 2
         /**
          * A joiner in its group but without an address yet waits this long before the join
          * is asked again. DHCP either answers in 1-2 s or stalls for good (offer heard, no

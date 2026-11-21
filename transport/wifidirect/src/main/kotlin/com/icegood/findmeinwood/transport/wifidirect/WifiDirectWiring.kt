@@ -27,6 +27,12 @@ data class GroupCredentials(
     val passphrase: String,
     /** The host creates the group on it, a joiner scans only it; null = any band. */
     val band: WifiBand? = null,
+    /**
+     * The channel (MHz) the group is meant to run on, derived from the secret: the host asks
+     * for it and a joiner first scans only it, so a join takes about a second instead of a
+     * sweep over every channel (~9 s). 0 = none.
+     */
+    val frequency: Int = 0,
 ) {
     /** WifiP2pConfig's band for [band]. */
     val p2pBand: Int get() = when (band) {
@@ -40,8 +46,21 @@ data class GroupCredentials(
         fun from(secret: ByteArray, band: WifiBand? = null): GroupCredentials {
             require(secret.size >= 20) { "secret too short" }
             val pass = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(secret.copyOfRange(4, 20))
-            return GroupCredentials(com.icegood.findmeinwood.transport.api.groupNetworkName(secret), pass, band)
+            return GroupCredentials(com.icegood.findmeinwood.transport.api.groupNetworkName(secret), pass, band, channelOf(secret, band))
         }
+
+        /**
+         * The group's channel: one of the P2P social channels 1/6/11 on 2.4 GHz (the default
+         * band, also when the host's band is not known yet), one of the non-DFS channels
+         * 36–48 on 5 GHz (no radar wait), picked by the secret so groups nearby spread out.
+         */
+        fun channelOf(secret: ByteArray, band: WifiBand?): Int {
+            val pick = secret[20].toInt() and 0xff
+            return if (band == WifiBand.GHZ_5) FREQS_5[pick % FREQS_5.size] else FREQS_2_4[pick % FREQS_2_4.size]
+        }
+
+        private val FREQS_2_4 = listOf(2412, 2437, 2462)
+        private val FREQS_5 = listOf(5180, 5200, 5220, 5240)
     }
 }
 
@@ -114,45 +133,64 @@ open class WifiDirectWiring(private val context: Context) {
         }
     }
 
-    /** Joins the group with [creds] (no invitation, so no dialog on either phone). */
+    /**
+     * Joins the group with [creds] (no invitation, so no dialog on either phone). [exact]:
+     * scan only the group's channel ([GroupCredentials.frequency]), else its band.
+     */
     open fun join(
         channel: WifiP2pManager.Channel?,
         creds: GroupCredentials,
+        exact: Boolean,
         done: (P2pResult) -> Unit,
     ) {
         val m = manager ?: return
         val ch = channel ?: return
         runCatching {
-            val config = WifiP2pConfig.Builder()
-                .setNetworkName(creds.networkName)
-                .setPassphrase(creds.passphrase)
-                // The host's band (the user's choice): a joiner that knows it scans only
-                // that band, so it joins sooner.
-                .setGroupOperatingBand(creds.p2pBand)
-                .build()
-            m.connect(ch, config, action(done))
+            m.connect(ch, config(creds, exact), action(done))
         }.onFailure { done(P2pResult.FAILED) }
     }
 
-    /** Hosts the group under [creds], so members can join it without a dialog. */
+    /**
+     * Hosts the group under [creds], so members can join it without a dialog. [exact]: on
+     * the group's channel ([GroupCredentials.frequency]), else anywhere in its band.
+     */
     open fun createGroup(
         channel: WifiP2pManager.Channel?,
         creds: GroupCredentials,
+        exact: Boolean,
         done: (P2pResult) -> Unit,
     ) {
         val m = manager ?: return
         val ch = channel ?: return
         runCatching {
-            val config = WifiP2pConfig.Builder()
-                .setNetworkName(creds.networkName)
-                .setPassphrase(creds.passphrase)
-                // The host's band (the user's choice): a joiner that knows it scans only
-                // that band, so it joins sooner.
-                .setGroupOperatingBand(creds.p2pBand)
-                .build()
-            m.createGroup(ch, config, action(done))
+            m.createGroup(ch, config(creds, exact), action(done))
         }.onFailure { done(P2pResult.FAILED) }
     }
+
+    /**
+     * Band and channel are exclusive in WifiP2pConfig. A frequency in MHz reaches the
+     * supplicant correctly on Android 10 too ("for join with frequency 2437"), unlike the
+     * band constant (see [operatingBand]).
+     */
+    private fun config(creds: GroupCredentials, exact: Boolean): WifiP2pConfig {
+        val b = WifiP2pConfig.Builder()
+            .setNetworkName(creds.networkName)
+            .setPassphrase(creds.passphrase)
+        if (exact && creds.frequency > 0) b.setGroupOperatingFrequency(creds.frequency)
+        else b.setGroupOperatingBand(operatingBand(creds))
+        return b.build()
+    }
+
+    /**
+     * The band to ask for. Android 10 hands the band constant to the supplicant as is, and
+     * the supplicant reads it as a band of its own: GROUP_OWNER_BAND_5GHZ (2) means "2 GHz"
+     * there. A joiner then scans 2.4 GHz only and never finds a host on 5 GHz (seen on
+     * Huawei VOG-L29, minutes without a link until an unrelated scan covered 5 GHz).
+     * Android 11 maps the constants, so before it any band is asked for: every channel.
+     */
+    private fun operatingBand(creds: GroupCredentials): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) creds.p2pBand
+        else WifiP2pConfig.GROUP_OWNER_BAND_AUTO
 
     /**
      * Name of the group this phone is in now, also while it still waits for its address
@@ -163,6 +201,14 @@ open class WifiDirectWiring(private val context: Context) {
         val m = manager ?: return name(null)
         val ch = channel ?: return name(null)
         runCatching { m.requestGroupInfo(ch) { g -> name(g?.networkName) } }.onFailure { name(null) }
+    }
+
+    /** Channel (MHz) of the group this phone is in now; null = none or not reported. */
+    @SuppressLint("MissingPermission")
+    open fun requestGroupFrequency(channel: WifiP2pManager.Channel?, mhz: (Int?) -> Unit) {
+        val m = manager ?: return mhz(null)
+        val ch = channel ?: return mhz(null)
+        runCatching { m.requestGroupInfo(ch) { g -> mhz(g?.frequency?.takeIf { it > 0 }) } }.onFailure { mhz(null) }
     }
 
     /** Aborts a group negotiation that hangs (the P2P service then refuses every new request). */
