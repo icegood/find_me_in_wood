@@ -162,6 +162,8 @@
     <string name="location_off_explain">位置情報がオフです: Android は Bluetooth と Wi-Fi Direct の検索から他の電話を隠すため、誰も見つかりません — 自分の位置もわかりません。</string>
     <string name="wifi_off_explain">Wi-Fi がオフです: Wi-Fi Direct（長距離・写真）は使えません。Wi-Fi ネットワークは不要で、Wi-Fi をオンにするだけで十分です。</string>
     <string name="turn_on_wifi">Wi-Fi をオン</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">位置情報</string>
     <string name="invite_to">「%1$s」に招待</string>
     <string name="no_password_here">この電話にはこのネットワークのパスワードがありません。</string>
     <string name="invite_qr">招待 QR コード</string>

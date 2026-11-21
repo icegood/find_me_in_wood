@@ -61,4 +61,11 @@ class RadioTogglesTest {
         assertEquals(listOf(Radio.BLUETOOTH, Radio.LOCATION), blockers.map { it.radio })
         assertTrue(blockers.all { it.blocker && !it.on })
     }
+
+    @Test
+    fun tapLogNamesRadioAndState() {
+        assertEquals("ui: radio switch wifi tapped, state off", RadioToggles.tapLog(Radio.WIFI, on = false))
+        assertEquals("ui: radio switch bluetooth tapped, state on", RadioToggles.tapLog(Radio.BLUETOOTH, on = true))
+        assertEquals("ui: radio switch location tapped, state off", RadioToggles.tapLog(Radio.LOCATION, on = false))
+    }
 }

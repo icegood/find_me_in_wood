@@ -162,6 +162,8 @@
     <string name="location_off_explain">Lokacija je izklopljena: Android takrat skrije druge telefone pred iskanjem prek Bluetootha in Wi-Fi Direct, zato nikogar ni mogoče najti — vaš položaj pa je neznan.</string>
     <string name="wifi_off_explain">Wi-Fi je izklopljen: Wi-Fi Direct (večji doseg, fotografije) ne more delovati. Omrežje Wi-Fi ni potrebno, le vklopljen Wi-Fi.</string>
     <string name="turn_on_wifi">Vklopi Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Lokacija</string>
     <string name="invite_to">Povabi v »%1$s«</string>
     <string name="no_password_here">Ta telefon nima gesla tega omrežja.</string>
     <string name="invite_qr">Koda QR povabila</string>

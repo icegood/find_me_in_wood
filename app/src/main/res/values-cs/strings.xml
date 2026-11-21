@@ -162,6 +162,8 @@
     <string name="location_off_explain">Poloha je vypnutá: Android pak skrývá ostatní telefony před hledáním přes Bluetooth a Wi-Fi Direct, takže nikoho nenajdete — a vaše vlastní poloha je neznámá.</string>
     <string name="wifi_off_explain">Wi-Fi je vypnutá: Wi-Fi Direct (větší dosah, fotky) nemůže fungovat. Síť Wi-Fi není potřeba, jen zapnutá Wi-Fi.</string>
     <string name="turn_on_wifi">Zapnout Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Poloha</string>
     <string name="invite_to">Pozvat do „%1$s“</string>
     <string name="no_password_here">Tento telefon nemá heslo této sítě.</string>
     <string name="invite_qr">QR kód pozvánky</string>

@@ -162,6 +162,8 @@
     <string name="location_off_explain">Орналасқан жер өшірулі: онда Android басқа телефондарды Bluetooth пен Wi-Fi Direct іздеуінен жасырады, сондықтан ешкім табылмайды — өз орныңыз да белгісіз.</string>
     <string name="wifi_off_explain">Wi-Fi өшірулі: Wi-Fi Direct (алысырақ, фото) жұмыс істей алмайды. Wi-Fi желісі керек емес, тек Wi-Fi қосулы болса болды.</string>
     <string name="turn_on_wifi">Wi-Fi қосу</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Орналасқан жер</string>
     <string name="invite_to">«%1$s» желісіне шақыру</string>
     <string name="no_password_here">Бұл телефонда осы желінің құпиясөзі жоқ.</string>
     <string name="invite_qr">Шақыру QR коды</string>

@@ -162,6 +162,8 @@
     <string name="location_off_explain">המיקום כבוי: אז Android מסתיר טלפונים אחרים מחיפושי Bluetooth ו-Wi-Fi Direct, כך שאי אפשר למצוא אף אחד — והמיקום שלכם לא ידוע.</string>
     <string name="wifi_off_explain">Wi-Fi כבוי: Wi-Fi Direct (טווח ארוך יותר, תמונות) לא יכול לעבוד. לא צריך רשת Wi-Fi, רק Wi-Fi פועל.</string>
     <string name="turn_on_wifi">הפעלת Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">מיקום</string>
     <string name="invite_to">הזמנה ל„%1$s”</string>
     <string name="no_password_here">לטלפון הזה אין את הסיסמה של הרשת.</string>
     <string name="invite_qr">קוד QR להזמנה</string>

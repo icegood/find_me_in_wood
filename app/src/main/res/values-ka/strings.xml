@@ -162,6 +162,8 @@
     <string name="location_off_explain">მდებარეობა გამორთულია: მაშინ Android მალავს სხვა ტელეფონებს Bluetooth-ისა და Wi-Fi Direct-ის ძიებისგან, ამიტომ ვერავის იპოვით — და თქვენი მდებარეობაც უცნობია.</string>
     <string name="wifi_off_explain">Wi-Fi გამორთულია: Wi-Fi Direct (დიდი მანძილი, ფოტოები) ვერ იმუშავებს. Wi-Fi ქსელი არ არის საჭირო, მხოლოდ ჩართული Wi-Fi.</string>
     <string name="turn_on_wifi">Wi-Fi-ის ჩართვა</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">მდებარეობა</string>
     <string name="invite_to">„%1$s“-ში მოწვევა</string>
     <string name="no_password_here">ამ ტელეფონს არ აქვს ამ ქსელის პაროლი.</string>
     <string name="invite_qr">მოწვევის QR კოდი</string>

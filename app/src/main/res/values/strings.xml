@@ -162,6 +162,8 @@
     <string name="location_off_explain">Location is off: Android then hides other phones from Bluetooth and Wi-Fi Direct searches, so nobody can be found — and your own position is unknown.</string>
     <string name="wifi_off_explain">Wi-Fi is off: Wi-Fi Direct (longer range, photos) cannot work. No Wi-Fi network is needed, only Wi-Fi on.</string>
     <string name="turn_on_wifi">Turn on Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Location</string>
     <string name="invite_to">Invite to “%1$s”</string>
     <string name="no_password_here">This phone does not have the password of this network.</string>
     <string name="invite_qr">Invite QR code</string>

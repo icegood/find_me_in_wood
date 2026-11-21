@@ -162,6 +162,8 @@
     <string name="location_off_explain">Plats är av: Android döljer då andra telefoner för sökningar via Bluetooth och Wi-Fi Direct, så ingen kan hittas — och din egen position är okänd.</string>
     <string name="wifi_off_explain">Wi-Fi är av: Wi-Fi Direct (längre räckvidd, foton) fungerar inte. Inget Wi-Fi-nätverk behövs, bara Wi-Fi påslaget.</string>
     <string name="turn_on_wifi">Slå på Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Plats</string>
     <string name="invite_to">Bjud in till ”%1$s”</string>
     <string name="no_password_here">Telefonen har inte nätverkets lösenord.</string>
     <string name="invite_qr">Inbjudans QR-kod</string>

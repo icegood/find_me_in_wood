@@ -162,6 +162,8 @@
     <string name="location_off_explain">Posisjon er av: Android skjuler da andre telefoner for søk via Bluetooth og Wi-Fi Direct, så ingen kan finnes — og din egen posisjon er ukjent.</string>
     <string name="wifi_off_explain">Wi-Fi er av: Wi-Fi Direct (lengre rekkevidde, bilder) kan ikke fungere. Det trengs ikke noe Wi-Fi-nettverk, bare at Wi-Fi er på.</string>
     <string name="turn_on_wifi">Slå på Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Posisjon</string>
     <string name="invite_to">Inviter til «%1$s»</string>
     <string name="no_password_here">Telefonen har ikke passordet til dette nettverket.</string>
     <string name="invite_qr">Invitasjonens QR-kode</string>

@@ -58,4 +58,8 @@ internal object RadioToggles {
     /** The rows for [screen], given the polled system state of each radio. */
     fun rows(screen: RadioScreen, state: (Radio) -> Boolean): List<RadioRow> =
         radios(screen).map { r -> state(r).let { on -> RadioRow(r, on, isBlocker(on)) } }
+
+    /** The debug log line for a tap on [radio]'s row while the system state is [on]. */
+    fun tapLog(radio: Radio, on: Boolean): String =
+        "ui: radio switch ${radio.name.lowercase()} tapped, state ${if (on) "on" else "off"}"
 }

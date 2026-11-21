@@ -162,6 +162,8 @@
     <string name="location_off_explain">Lokalizacja jest wyłączona: Android ukrywa wtedy inne telefony przed wyszukiwaniem przez Bluetooth i Wi-Fi Direct, więc nikogo nie da się znaleźć — a twoja pozycja jest nieznana.</string>
     <string name="wifi_off_explain">Wi-Fi jest wyłączone: Wi-Fi Direct (większy zasięg, zdjęcia) nie zadziała. Sieć Wi-Fi nie jest potrzebna, tylko włączone Wi-Fi.</string>
     <string name="turn_on_wifi">Włącz Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Lokalizacja</string>
     <string name="invite_to">Zaproś do „%1$s”</string>
     <string name="no_password_here">Ten telefon nie ma hasła tej sieci.</string>
     <string name="invite_qr">Kod QR zaproszenia</string>

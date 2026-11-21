@@ -162,6 +162,8 @@
     <string name="location_off_explain">Lokasi dimatikan: Android kemudian menyembunyikan telefon lain daripada carian Bluetooth dan Wi-Fi Direct, jadi tiada siapa boleh ditemui — dan kedudukan anda sendiri tidak diketahui.</string>
     <string name="wifi_off_explain">Wi-Fi dimatikan: Wi-Fi Direct (jarak lebih jauh, foto) tidak boleh berfungsi. Tiada rangkaian Wi-Fi diperlukan, cuma Wi-Fi dihidupkan.</string>
     <string name="turn_on_wifi">Hidupkan Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Lokasi</string>
     <string name="invite_to">Jemput ke “%1$s”</string>
     <string name="no_password_here">Telefon ini tiada kata laluan rangkaian ini.</string>
     <string name="invite_qr">Kod QR jemputan</string>

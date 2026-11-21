@@ -162,6 +162,8 @@
     <string name="location_off_explain">La ubicación está apagada: Android oculta entonces los demás teléfonos a las búsquedas por Bluetooth y Wi-Fi Direct, así que no se encuentra a nadie — y tu propia posición es desconocida.</string>
     <string name="wifi_off_explain">El Wi-Fi está apagado: Wi-Fi Direct (más alcance, fotos) no puede funcionar. No hace falta ninguna red Wi-Fi, solo el Wi-Fi encendido.</string>
     <string name="turn_on_wifi">Activar Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Ubicación</string>
     <string name="invite_to">Invitar a «%1$s»</string>
     <string name="no_password_here">Este teléfono no tiene la contraseña de esta red.</string>
     <string name="invite_qr">Código QR de invitación</string>

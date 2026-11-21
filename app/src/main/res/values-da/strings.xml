@@ -162,6 +162,8 @@
     <string name="location_off_explain">Lokation er slået fra: Android skjuler så andre telefoner for søgninger via Bluetooth og Wi-Fi Direct, så ingen kan findes — og din egen position er ukendt.</string>
     <string name="wifi_off_explain">Wi-Fi er slået fra: Wi-Fi Direct (længere rækkevidde, fotos) kan ikke fungere. Der kræves intet Wi-Fi-netværk, kun at Wi-Fi er tændt.</string>
     <string name="turn_on_wifi">Slå Wi-Fi til</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Lokation</string>
     <string name="invite_to">Inviter til “%1$s”</string>
     <string name="no_password_here">Telefonen har ikke netværkets adgangskode.</string>
     <string name="invite_qr">Invitationens QR-kode</string>

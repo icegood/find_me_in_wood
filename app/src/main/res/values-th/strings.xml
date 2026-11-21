@@ -162,6 +162,8 @@
     <string name="location_off_explain">ตำแหน่งปิดอยู่: Android จะซ่อนโทรศัพท์อื่นจากการค้นหาผ่านบลูทูธและ Wi-Fi Direct จึงหาใครไม่เจอ — และไม่รู้ตำแหน่งของคุณเอง</string>
     <string name="wifi_off_explain">Wi-Fi ปิดอยู่: Wi-Fi Direct (ระยะไกลกว่า รูปภาพ) ใช้ไม่ได้ ไม่ต้องมีเครือข่าย Wi-Fi แค่เปิด Wi-Fi ไว้</string>
     <string name="turn_on_wifi">เปิด Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">ตำแหน่ง</string>
     <string name="invite_to">เชิญเข้า “%1$s”</string>
     <string name="no_password_here">โทรศัพท์เครื่องนี้ไม่มีรหัสผ่านของเครือข่ายนี้</string>
     <string name="invite_qr">QR โค้ดคำเชิญ</string>

@@ -162,6 +162,8 @@
     <string name="location_off_explain">Vietovė išjungta: tada „Android“ slepia kitus telefonus nuo paieškų per Bluetooth ir Wi-Fi Direct, todėl nieko negalima rasti — o jūsų pačių vieta nežinoma.</string>
     <string name="wifi_off_explain">Wi-Fi išjungtas: Wi-Fi Direct (didesnis atstumas, nuotraukos) negali veikti. Wi-Fi tinklo nereikia, tik įjungto Wi-Fi.</string>
     <string name="turn_on_wifi">Įjungti Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Vietovė</string>
     <string name="invite_to">Pakviesti į „%1$s“</string>
     <string name="no_password_here">Šis telefonas neturi šio tinklo slaptažodžio.</string>
     <string name="invite_qr">Kvietimo QR kodas</string>

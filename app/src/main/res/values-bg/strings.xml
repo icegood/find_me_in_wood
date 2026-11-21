@@ -162,6 +162,8 @@
     <string name="location_off_explain">Местоположението е изключено: тогава Android скрива другите телефони от търсенето през Bluetooth и Wi-Fi Direct и никой не може да бъде намерен — а собствената ви позиция е неизвестна.</string>
     <string name="wifi_off_explain">Wi-Fi е изключен: Wi-Fi Direct (по-голям обхват, снимки) не може да работи. Не е нужна Wi-Fi мрежа, само включен Wi-Fi.</string>
     <string name="turn_on_wifi">Включи Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Местоположение</string>
     <string name="invite_to">Покани в „%1$s“</string>
     <string name="no_password_here">Този телефон няма паролата на тази мрежа.</string>
     <string name="invite_qr">QR код с покана</string>

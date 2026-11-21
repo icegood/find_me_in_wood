@@ -318,10 +318,12 @@ class MainActivity : ComponentActivity() {
                         linkStatuses = SessionBus.linkStatuses.collectAsState().value,
                         onLinkFix = { fix ->
                             when (fix) {
-                                com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_BLUETOOTH -> turnOnBluetooth()
-                                com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_WIFI -> turnOnWifi()
+                                com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_BLUETOOTH ->
+                                    openRadioControl(this@MainActivity, Radio.BLUETOOTH)
+                                com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_WIFI ->
+                                    openRadioControl(this@MainActivity, Radio.WIFI)
                                 com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_LOCATION ->
-                                    startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                                    openRadioControl(this@MainActivity, Radio.LOCATION)
                                 com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER -> tab = "settings"
                                 com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS -> smsPermissionLauncher.launch(smsPermissions)
                             }
@@ -507,17 +509,21 @@ class MainActivity : ComponentActivity() {
                     enabled = lastWire != null && runningId != null,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.send_position_messenger)) }
-                Text(
+                if (runningId == null) Text(
                     when {
-                        runningId != null -> stringResource(R.string.radios)
                         listening -> stringResource(R.string.looking_see_discover)
                         profiles.isEmpty() -> stringResource(R.string.no_networks_yet)
                         else -> stringResource(R.string.no_network_active)
                     },
                     style = MaterialTheme.typography.labelMedium,
                 )
-                UiText.radios(this@MainActivity, radios).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
-                if (runningId != null || listening) RadioSwitches(radios)
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(stringResource(R.string.radios), style = MaterialTheme.typography.titleSmall)
+                        RadioSwitches()
+                        UiText.radios(this@MainActivity, radios).forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    }
+                }
             }
         }
 
@@ -600,59 +606,16 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * A radio that is switched off is the usual reason nobody is found: offer to turn it on
-     * right here. Re-checked every few seconds, since the user flips it in system UI.
+     * The "Radios" card body: Wi-Fi, Bluetooth and Location as switch rows that always show
+     * the system state, re-polled every 3 s since the user flips them in system UI. A tap opens
+     * the system control; the row follows once the radio really changes. A radio that is off
+     * is the usual reason nobody is found, so its explanation shows in error colour.
      */
     @Composable
-    private fun RadioSwitches(radios: Map<com.icegood.findmeinwood.core.model.TransportId, com.icegood.findmeinwood.transport.api.RadioState>) {
+    private fun RadioSwitches() {
         var tick by remember { mutableStateOf(0) }
         LaunchedEffect(Unit) { while (true) { delay(3_000); tick++ } }
-        val btOff = tick >= 0 && runCatching {
-            getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled == false
-        }.getOrDefault(false)
-        val wifiOff = tick >= 0 && runCatching {
-            getSystemService(android.net.wifi.WifiManager::class.java)?.isWifiEnabled == false
-        }.getOrDefault(false)
-        val locationOff = tick >= 0 && runCatching {
-            getSystemService(android.location.LocationManager::class.java)?.let {
-                !androidx.core.location.LocationManagerCompat.isLocationEnabled(it)
-            } ?: false
-        }.getOrDefault(false)
-        if (locationOff) {
-            Text(
-                stringResource(R.string.location_off_explain),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-            Button(onClick = {
-                startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-            }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.turn_on_location)) }
-        }
-        if (btOff) {
-            OutlinedButton(onClick = { turnOnBluetooth() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.turn_on_bluetooth)) }
-        }
-        if (wifiOff) {
-            Text(
-                stringResource(R.string.wifi_off_explain),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            OutlinedButton(onClick = { turnOnWifi() }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.turn_on_wifi)) }
-        }
-    }
-
-    private fun turnOnBluetooth() {
-        runCatching {
-            startActivity(android.content.Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE))
-        }.onFailure { startActivity(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)) }
-    }
-
-    private fun turnOnWifi() {
-        startActivity(
-            android.content.Intent(
-                if (Build.VERSION.SDK_INT >= 29) android.provider.Settings.Panel.ACTION_WIFI
-                else android.provider.Settings.ACTION_WIFI_SETTINGS,
-            ),
-        )
+        if (tick >= 0) RadioSwitchRows(this, RadioScreen.NETWORKS, withHints = true)
     }
 
     /** Shows a network's password, to read out or send to someone who should join. */

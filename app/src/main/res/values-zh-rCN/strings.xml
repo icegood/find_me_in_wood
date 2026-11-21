@@ -162,6 +162,8 @@
     <string name="location_off_explain">位置信息已关闭：此时 Android 会对蓝牙和 WLAN 直连搜索隐藏其他手机，所以谁也找不到 — 你自己的位置也未知。</string>
     <string name="wifi_off_explain">WLAN 已关闭：WLAN 直连（距离更远、可传照片）无法工作。不需要 WLAN 网络，只要打开 WLAN。</string>
     <string name="turn_on_wifi">打开 WLAN</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">位置信息</string>
     <string name="invite_to">邀请加入“%1$s”</string>
     <string name="no_password_here">此手机没有该网络的密码。</string>
     <string name="invite_qr">邀请二维码</string>

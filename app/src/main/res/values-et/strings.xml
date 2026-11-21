@@ -162,6 +162,8 @@
     <string name="location_off_explain">Asukoht on väljas: Android peidab siis teised telefonid Bluetoothi ja Wi-Fi Directi otsingute eest, nii et kedagi ei leita — ja teie enda asukoht on teadmata.</string>
     <string name="wifi_off_explain">Wi-Fi on väljas: Wi-Fi Direct (suurem levi, fotod) ei tööta. Wi-Fi võrku pole vaja, ainult sisselülitatud Wi-Fi.</string>
     <string name="turn_on_wifi">Lülita Wi-Fi sisse</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Asukoht</string>
     <string name="invite_to">Kutsu võrku „%1$s“</string>
     <string name="no_password_here">Selles telefonis pole selle võrgu parooli.</string>
     <string name="invite_qr">Kutse QR-kood</string>

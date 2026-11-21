@@ -162,6 +162,8 @@
     <string name="location_off_explain">مکان خاموش است: در این حالت Android تلفن‌های دیگر را از جستجوی بلوتوث و Wi-Fi Direct پنهان می‌کند، پس کسی پیدا نمی‌شود — و مکان خود شما هم نامعلوم است.</string>
     <string name="wifi_off_explain">Wi-Fi خاموش است: Wi-Fi Direct (برد بیشتر، عکس) کار نمی‌کند. شبکهٔ Wi-Fi لازم نیست، فقط Wi-Fi روشن باشد.</string>
     <string name="turn_on_wifi">روشن کردن Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">مکان</string>
     <string name="invite_to">دعوت به «%1$s»</string>
     <string name="no_password_here">این تلفن گذرواژهٔ این شبکه را ندارد.</string>
     <string name="invite_qr">کد QR دعوت</string>

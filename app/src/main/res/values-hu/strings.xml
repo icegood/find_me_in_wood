@@ -162,6 +162,8 @@
     <string name="location_off_explain">A helymeghatározás ki van kapcsolva: ilyenkor az Android elrejti a többi telefont a Bluetooth- és Wi-Fi Direct-keresések elől, így senki sem található — és a saját pozíciód is ismeretlen.</string>
     <string name="wifi_off_explain">A Wi-Fi ki van kapcsolva: a Wi-Fi Direct (nagyobb hatótáv, fotók) nem működik. Wi-Fi-hálózat nem kell, csak bekapcsolt Wi-Fi.</string>
     <string name="turn_on_wifi">Wi-Fi bekapcsolása</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Helymeghatározás</string>
     <string name="invite_to">Meghívás ide: „%1$s”</string>
     <string name="no_password_here">Ezen a telefonon nincs meg a hálózat jelszava.</string>
     <string name="invite_qr">Meghívó QR-kód</string>

@@ -162,6 +162,8 @@
     <string name="location_off_explain">Lokasi mati: Android lalu menyembunyikan ponsel lain dari pencarian Bluetooth dan Wi-Fi Direct, jadi tidak ada yang bisa ditemukan — dan posisi Anda sendiri tidak diketahui.</string>
     <string name="wifi_off_explain">Wi-Fi mati: Wi-Fi Direct (jangkauan lebih jauh, foto) tidak bisa bekerja. Tidak perlu jaringan Wi-Fi, cukup Wi-Fi menyala.</string>
     <string name="turn_on_wifi">Nyalakan Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Lokasi</string>
     <string name="invite_to">Undang ke “%1$s”</string>
     <string name="no_password_here">Ponsel ini tidak punya sandi jaringan ini.</string>
     <string name="invite_qr">Kode QR undangan</string>

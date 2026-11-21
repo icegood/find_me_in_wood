@@ -162,6 +162,8 @@
     <string name="location_off_explain">Atrašanās vieta ir izslēgta: tad Android paslēpj citus tālruņus no meklēšanas caur Bluetooth un Wi-Fi Direct, tāpēc nevienu nevar atrast — un jūsu pašu atrašanās vieta nav zināma.</string>
     <string name="wifi_off_explain">Wi-Fi ir izslēgts: Wi-Fi Direct (lielāks darbības attālums, fotoattēli) nevar darboties. Wi-Fi tīkls nav vajadzīgs, tikai ieslēgts Wi-Fi.</string>
     <string name="turn_on_wifi">Ieslēgt Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Atrašanās vieta</string>
     <string name="invite_to">Uzaicināt uz “%1$s”</string>
     <string name="no_password_here">Šajā tālrunī nav šī tīkla paroles.</string>
     <string name="invite_qr">Ielūguma QR kods</string>

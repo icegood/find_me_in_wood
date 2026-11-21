@@ -162,6 +162,8 @@
     <string name="location_off_explain">Sijainti on pois päältä: Android piilottaa silloin muut puhelimet Bluetooth- ja Wi-Fi Direct -hauilta, joten ketään ei löydy — eikä omaa sijaintiasi tiedetä.</string>
     <string name="wifi_off_explain">Wi-Fi on pois päältä: Wi-Fi Direct (pidempi kantama, kuvat) ei toimi. Wi-Fi-verkkoa ei tarvita, vain Wi-Fi päälle.</string>
     <string name="turn_on_wifi">Kytke Wi-Fi päälle</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Sijainti</string>
     <string name="invite_to">Kutsu verkkoon ”%1$s”</string>
     <string name="no_password_here">Tällä puhelimella ei ole tämän verkon salasanaa.</string>
     <string name="invite_qr">Kutsun QR-koodi</string>

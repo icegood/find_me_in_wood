@@ -162,6 +162,8 @@
     <string name="location_off_explain">Locația este oprită: Android ascunde atunci celelalte telefoane de căutările prin Bluetooth și Wi-Fi Direct, deci nimeni nu e găsit — iar poziția dvs. e necunoscută.</string>
     <string name="wifi_off_explain">Wi-Fi este oprit: Wi-Fi Direct (rază mai mare, fotografii) nu poate funcționa. Nu e nevoie de o rețea Wi-Fi, doar de Wi-Fi pornit.</string>
     <string name="turn_on_wifi">Pornește Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Locație</string>
     <string name="invite_to">Invită în „%1$s”</string>
     <string name="no_password_here">Acest telefon nu are parola acestei rețele.</string>
     <string name="invite_qr">Cod QR de invitație</string>

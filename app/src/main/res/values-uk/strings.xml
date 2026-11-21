@@ -162,6 +162,8 @@
     <string name="location_off_explain">Геолокацію вимкнено: тоді Android приховує інші телефони від пошуку через Bluetooth і Wi-Fi Direct, тож нікого не знайти — і ваша власна позиція невідома.</string>
     <string name="wifi_off_explain">Wi-Fi вимкнено: Wi-Fi Direct (більша дальність, фото) не працюватиме. Мережа Wi-Fi не потрібна, лише увімкнений Wi-Fi.</string>
     <string name="turn_on_wifi">Увімкнути Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Геолокація</string>
     <string name="invite_to">Запросити до «%1$s»</string>
     <string name="no_password_here">На цьому телефоні немає пароля цієї мережі.</string>
     <string name="invite_qr">QR-код запрошення</string>

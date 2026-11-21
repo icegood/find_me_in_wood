@@ -151,40 +151,20 @@ fun DiscoverScreen(
     }
 }
 
-private fun bluetoothOn(ctx: android.content.Context): Boolean = runCatching {
-    ctx.getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled != false
-}.getOrDefault(true)
-
 /**
- * FR-8.8: says in red what stops discovery here (Bluetooth or Location off), with buttons
- * to turn it on; true when something does. Called again every few seconds by its screen.
+ * FR-8.8: says in red what stops discovery here (Bluetooth or Location off), with switch
+ * rows that show those radios' system state and open the system control; true when
+ * something does. Called again every few seconds by its screen.
  */
 @Composable
 internal fun DiscoveryBlockers(ctx: android.content.Context, finding: Boolean): Boolean {
-    val bt = bluetoothOn(ctx)
-    val loc = locationOn(ctx)
+    val bt = radioOn(ctx, Radio.BLUETOOTH)
+    val loc = radioOn(ctx, Radio.LOCATION)
     val why = UiText.discoveryBlocked(ctx, bt, loc, finding) ?: return false
-    fun open(intent: android.content.Intent) = runCatching {
-        ctx.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
     Text(why, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (!bt) Button(onClick = {
-            open(android.content.Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE)).onFailure {
-                open(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
-            }
-        }) { Text(stringResource(R.string.turn_on_bluetooth)) }
-        if (!loc) Button(onClick = {
-            open(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-        }) { Text(stringResource(R.string.turn_on_location)) }
-    }
+    RadioSwitchRows(ctx, RadioScreen.DISCOVERY_BLOCKERS, withHints = false)
     return true
 }
-
-private fun locationOn(ctx: android.content.Context): Boolean = runCatching {
-    ctx.getSystemService(android.location.LocationManager::class.java)
-        ?.let { androidx.core.location.LocationManagerCompat.isLocationEnabled(it) } ?: true
-}.getOrDefault(true)
 
 /** Password entry; [onJoin] returns an error to show, or null when done. */
 @Composable

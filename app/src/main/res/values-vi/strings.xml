@@ -162,6 +162,8 @@
     <string name="location_off_explain">Vị trí đang tắt: khi đó Android ẩn các điện thoại khác khỏi tìm kiếm Bluetooth và Wi-Fi Direct, nên không tìm thấy ai — và vị trí của chính bạn cũng không rõ.</string>
     <string name="wifi_off_explain">Wi-Fi đang tắt: Wi-Fi Direct (tầm xa hơn, ảnh) không hoạt động. Không cần mạng Wi-Fi, chỉ cần bật Wi-Fi.</string>
     <string name="turn_on_wifi">Bật Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Vị trí</string>
     <string name="invite_to">Mời vào “%1$s”</string>
     <string name="no_password_here">Điện thoại này không có mật khẩu của mạng này.</string>
     <string name="invite_qr">Mã QR mời</string>

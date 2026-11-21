@@ -162,6 +162,8 @@
     <string name="location_off_explain">La localisation est désactivée : Android cache alors les autres téléphones aux recherches Bluetooth et Wi-Fi Direct, donc personne n\'est trouvé — et votre propre position est inconnue.</string>
     <string name="wifi_off_explain">Le Wi-Fi est désactivé : Wi-Fi Direct (portée plus longue, photos) ne peut pas fonctionner. Aucun réseau Wi-Fi n\'est nécessaire, seulement le Wi-Fi activé.</string>
     <string name="turn_on_wifi">Activer le Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Localisation</string>
     <string name="invite_to">Inviter dans « %1$s »</string>
     <string name="no_password_here">Ce téléphone n\'a pas le mot de passe de ce réseau.</string>
     <string name="invite_qr">QR code d\'invitation</string>

@@ -162,6 +162,8 @@
     <string name="location_off_explain">Der Standort ist aus: Android verbirgt dann andere Telefone vor Bluetooth- und Wi-Fi-Direct-Suchen, also wird niemand gefunden — und deine eigene Position ist unbekannt.</string>
     <string name="wifi_off_explain">WLAN ist aus: Wi-Fi Direct (größere Reichweite, Fotos) funktioniert nicht. Kein WLAN-Netz nötig, nur eingeschaltetes WLAN.</string>
     <string name="turn_on_wifi">WLAN einschalten</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Standort</string>
     <string name="invite_to">Zu „%1$s“ einladen</string>
     <string name="no_password_here">Dieses Telefon hat das Passwort dieses Netzwerks nicht.</string>
     <string name="invite_qr">Einladungs-QR-Code</string>

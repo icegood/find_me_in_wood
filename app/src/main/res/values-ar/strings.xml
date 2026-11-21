@@ -162,6 +162,8 @@
     <string name="location_off_explain">الموقع متوقف: عندها يخفي Android الهواتف الأخرى عن عمليات البحث عبر البلوتوث وWi-Fi Direct، فلا يمكن العثور على أحد — وموقعك أنت مجهول.</string>
     <string name="wifi_off_explain">Wi-Fi متوقف: لا يمكن أن يعمل Wi-Fi Direct (مدى أطول، صور). لا حاجة إلى شبكة Wi-Fi، فقط تشغيل Wi-Fi.</string>
     <string name="turn_on_wifi">تشغيل Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">الموقع</string>
     <string name="invite_to">دعوة إلى «%1$s»</string>
     <string name="no_password_here">لا يملك هذا الهاتف كلمة مرور هذه الشبكة.</string>
     <string name="invite_qr">رمز QR للدعوة</string>

@@ -55,12 +55,12 @@ Multi-choice settings (theme, Wi-Fi Direct band) are not on/off, so they move fr
 - Modify: `app/src/main/kotlin/com/icegood/findmeinwood/app/DiscoverScreen.kt`
 - Modify: `app/src/main/kotlin/com/icegood/findmeinwood/app/UiText.kt` (only if the blocker sentence changes)
 
-- [ ] RadioSwitches: always show a "Radios" card with three SwitchRows (Wi-Fi, Bluetooth, Location) whose checked state is the polled system state (keep the 3 s tick). The current explanation texts (wifi_off_explain, location_off_explain) become the hints, shown in error colour while that radio is off. A tap starts the intent from RadioToggles; the row never flips by itself
-- [ ] DiscoveryBlockers: keep the red sentence and replace the Turn on buttons with Bluetooth / Location SwitchRows
-- [ ] turnOnBluetooth / turnOnWifi move onto the RadioToggles action mapping, so the intent logic exists only once
-- [ ] add a `DebugLog.d` line "ui: radio switch <radio> tapped, state <on/off>"
-- [ ] update / add tests for any logic moved into UiText or RadioToggles
-- [ ] run `./gradlew :app:testDebugUnitTest`; it must pass
+- [x] RadioSwitches: always show a "Radios" card with three SwitchRows (Wi-Fi, Bluetooth, Location) whose checked state is the polled system state (keep the 3 s tick). The current explanation texts (wifi_off_explain, location_off_explain) become the hints, shown in error colour while that radio is off. A tap starts the intent from RadioToggles; the row never flips by itself
+- [x] DiscoveryBlockers: keep the red sentence and replace the Turn on buttons with Bluetooth / Location SwitchRows
+- [x] turnOnBluetooth / turnOnWifi move onto the RadioToggles action mapping, so the intent logic exists only once
+- [x] add a `DebugLog.d` line "ui: radio switch <radio> tapped, state <on/off>"
+- [x] update / add tests for any logic moved into UiText or RadioToggles (RadioToggles.tapLog; switch titles radio_wifi / radio_location added to all languages already)
+- [x] run `./gradlew :app:testDebugUnitTest`; it must pass
 
 ### Task 3: App features as switches (position sharing, discovery, Wi-Fi Direct host)
 

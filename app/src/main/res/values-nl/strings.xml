@@ -162,6 +162,8 @@
     <string name="location_off_explain">Locatie staat uit: Android verbergt dan andere telefoons voor zoekacties via Bluetooth en Wi-Fi Direct, dus niemand wordt gevonden — en je eigen positie is onbekend.</string>
     <string name="wifi_off_explain">Wifi staat uit: Wi-Fi Direct (groter bereik, foto\'s) werkt niet. Een wifinetwerk is niet nodig, alleen wifi aan.</string>
     <string name="turn_on_wifi">Wifi aanzetten</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Locatie</string>
     <string name="invite_to">Uitnodigen voor ‘%1$s’</string>
     <string name="no_password_here">Deze telefoon heeft het wachtwoord van dit netwerk niet.</string>
     <string name="invite_qr">Uitnodigings-QR-code</string>

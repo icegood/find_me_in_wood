@@ -162,6 +162,8 @@
     <string name="location_off_explain">Konum kapalı: Android bu durumda diğer telefonları Bluetooth ve Wi-Fi Direct aramalarından gizler, kimse bulunamaz — ve kendi konumunuz da bilinmez.</string>
     <string name="wifi_off_explain">Wi-Fi kapalı: Wi-Fi Direct (daha uzun menzil, fotoğraflar) çalışamaz. Wi-Fi ağı gerekmez, yalnızca Wi-Fi\'ın açık olması yeter.</string>
     <string name="turn_on_wifi">Wi-Fi\'ı aç</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">Konum</string>
     <string name="invite_to">“%1$s” ağına davet et</string>
     <string name="no_password_here">Bu telefonda bu ağın şifresi yok.</string>
     <string name="invite_qr">Davet QR kodu</string>

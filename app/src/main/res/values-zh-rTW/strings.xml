@@ -162,6 +162,8 @@
     <string name="location_off_explain">定位已關閉：此時 Android 會在藍牙和 Wi-Fi Direct 搜尋中隱藏其他手機，所以找不到任何人 — 你自己的位置也不明。</string>
     <string name="wifi_off_explain">Wi-Fi 已關閉：Wi-Fi Direct（距離更遠、可傳相片）無法運作。不需要 Wi-Fi 網路，只要開啟 Wi-Fi。</string>
     <string name="turn_on_wifi">開啟 Wi-Fi</string>
+    <string name="radio_wifi">Wi-Fi</string>
+    <string name="radio_location">定位</string>
     <string name="invite_to">邀請加入「%1$s」</string>
     <string name="no_password_here">這支手機沒有這個網路的密碼。</string>
     <string name="invite_qr">邀請 QR 碼</string>
