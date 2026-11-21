@@ -61,6 +61,23 @@ data class GroupCredentials(
 
         private val FREQS_2_4 = listOf(2412, 2437, 2462)
         private val FREQS_5 = listOf(5180, 5200, 5220, 5240)
+
+        /**
+         * The channel a host asks for: its Wi-Fi's channel ([stationMhz]) when that is in the
+         * group's band and a group may run there (2.4 GHz 1-13; 5 GHz 36-48 and 149-165,
+         * no radar wait), else [GroupCredentials.frequency]. Two channels in one band make
+         * the radio hop between them (MCC): the group and the Wi-Fi each get half the time,
+         * and a joiner's scan misses the host. Another band runs alongside on a dual-band
+         * radio, and the band is the user's choice: then the group keeps its own channel.
+         */
+        fun hostChannel(creds: GroupCredentials, stationMhz: Int?): Int {
+            val sta = stationMhz ?: return creds.frequency
+            val ok = when (creds.band ?: WifiBand.GHZ_2_4) {
+                WifiBand.GHZ_2_4 -> sta in 2412..2472
+                WifiBand.GHZ_5 -> sta in 5180..5240 || sta in 5745..5825
+            }
+            return if (ok) sta else creds.frequency
+        }
     }
 }
 
@@ -92,6 +109,12 @@ open class WifiDirectWiring(private val context: Context) {
         runCatching {
             m.discoverPeers(ch, action(done))
         }.onFailure { done(P2pResult.FAILED) }
+    }
+
+    open fun stopPeerDiscovery(channel: WifiP2pManager.Channel?) {
+        val m = manager ?: return
+        val ch = channel ?: return
+        runCatching { m.stopPeerDiscovery(ch, null) }
     }
 
     /** Visible peers as device addresses (MAC). */
@@ -149,6 +172,13 @@ open class WifiDirectWiring(private val context: Context) {
             m.connect(ch, config(creds, exact), action(done))
         }.onFailure { done(P2pResult.FAILED) }
     }
+
+    /** Channel (MHz) of the Wi-Fi network this phone is connected to; null = none. */
+    @Suppress("DEPRECATION") // connectionInfo: the replacement needs a network callback
+    open fun stationMhz(): Int? = runCatching {
+        val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+        wm?.connectionInfo?.takeIf { it.networkId != -1 }?.frequency?.takeIf { it > 0 }
+    }.getOrNull()
 
     /**
      * Hosts the group under [creds], so members can join it without a dialog. [exact]: on

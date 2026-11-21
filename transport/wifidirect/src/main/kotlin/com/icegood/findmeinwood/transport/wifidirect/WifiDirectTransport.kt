@@ -68,7 +68,7 @@ internal sealed interface GroupState {
  * served in turn: each for a few seconds once a member is linked (both sides send a beacon
  * at once), or until a group nobody showed up in has had its slot; [serveNow] jumps to one
  * with urgent traffic. Every group has its pair's role: the host hosts, the others only
- * join. No plan, no group. [setPreferGroupOwner] makes this phone always host.
+ * join. No plan, no group, and no discovery (Idle). [setPreferGroupOwner] makes this phone always host.
  *
  * Channel: a group runs on a channel derived from its secret ([GroupCredentials.frequency]);
  * the host asks for it, and the first [EXACT_JOINS] joins in a row scan only it. A create
@@ -277,7 +277,8 @@ class WifiDirectTransport(
     private fun rotate() {
         if (plan.size < 2 || preferOwner) return
         val now = System.currentTimeMillis()
-        val done = if (linkedAtMs != 0L) now - linkedAtMs >= LINKED_DWELL_MS else now - slotSinceMs >= SLOT_MS
+        val wait = if (role == GroupRole.HOST) HOST_SLOT_MS else SLOT_MS
+        val done = if (linkedAtMs != 0L) now - linkedAtMs >= LINKED_DWELL_MS else now - slotSinceMs >= wait
         if (done) moveTo((slot + 1) % plan.size)
     }
 
@@ -298,6 +299,12 @@ class WifiDirectTransport(
         state = to
         if (from::class != to::class) {
             com.icegood.findmeinwood.transport.api.DebugLog.d { "wifi direct: $from -> $to" }
+            // Nothing to serve: stop the scan now (it would run its full window), and look
+            // again at once when a group comes.
+            if (to == GroupState.Idle && from != GroupState.Stopped) {
+                wiring.stopPeerDiscovery(channel)
+                lastDiscoverAtMs = 0L
+            }
         }
     }
 
@@ -341,9 +348,9 @@ class WifiDirectTransport(
                 // Running from here on (the accept loop and the callbacks check it).
                 moveState(if (p2pOn) GroupState.Idle else GroupState.RadioOff)
                 startAcceptLoop()
-                discover()
                 requestConnectionInfo()
                 if (p2pOn) formTarget()
+                discover()
                 startPoll()
                 emit(RadioState.SCANNING)
             } catch (e: Exception) {
@@ -456,16 +463,18 @@ class WifiDirectTransport(
         discoveryOkAtMs = 0L
         reported = null
         emit(RadioState.SCANNING)
-        discover()
         requestConnectionInfo()
         formTarget()
+        discover()
     }
 
     /**
      * A discovery window lasts ~120 s: re-arming it every poll only yields BUSY,
-     * which used to be reported as a dead link.
+     * which used to be reported as a dead link. Idle (no group to serve) discovers nothing:
+     * the radio would scan nonstop for nobody, away from the phone's Wi-Fi.
      */
     private fun discover() {
+        if (state == GroupState.Idle) return
         val now = System.currentTimeMillis()
         if (now - lastDiscoverAtMs < DISCOVER_INTERVAL_MS) return
         lastDiscoverAtMs = now
@@ -496,7 +505,7 @@ class WifiDirectTransport(
                 requestConnectionInfo()
                 // A disabled/ignoring P2P stack never answers: say so instead of
                 // advertising a scan that is not happening (FR-3.6a failover).
-                if (!formed && (preferOwner || discoveryOkAtMs == 0L) &&
+                if (!formed && state != GroupState.Idle && (preferOwner || discoveryOkAtMs == 0L) &&
                     System.currentTimeMillis() - startMs > 3 * pollMs
                 ) {
                     report(RadioState.LINK_DOWN)
@@ -588,9 +597,12 @@ class WifiDirectTransport(
     }
 
     private fun askCreate(st: GroupState.Creating) {
-        val c = creds ?: return
+        val planned = creds ?: return
+        // On the Wi-Fi's channel when it is in the group's band (no hopping), else the
+        // group's own; joiners hear the real one (HostedChannel).
+        val c = planned.copy(frequency = GroupCredentials.hostChannel(planned, wiring.stationMhz()))
         moveState(st.copy(askedAt = System.currentTimeMillis()))
-        // On the group's channel, unless that already failed to form: then anywhere.
+        // On that channel, unless that already failed to form: then anywhere.
         wiring.createGroup(channel, c, exact = createMisses == 0) {
             synchronized(this@WifiDirectTransport) {
                 // Answered either way: the next poll asks again unless the group formed.
@@ -771,10 +783,22 @@ class WifiDirectTransport(
         internal var REJOIN_MIN_MS = 2_000L
         /** A create forms its group in well under a second; one still pending is stuck. */
         internal var CREATE_TIMEOUT_MS = 3_000L
-        /** Several groups: a slot ends this long after a member linked in it... */
-        internal var LINKED_DWELL_MS = 5_000L
-        /** ...or after this long when nobody did (time for a join: scan, associate, connect). */
+        /**
+         * Several groups: a slot ends this long after a member linked in it. Not 5 s: that
+         * swapped one beacon each way and left, so the pair's link was up 5 s in 16.
+         */
+        internal var LINKED_DWELL_MS = 15_000L
+        /**
+         * ...or, joining, after this long when nobody linked (time for a join: scan,
+         * associate, connect; a host that is there is joined in 1-5 s).
+         */
         internal var SLOT_MS = 12_000L
+        /**
+         * ...or, hosting, after this long: the joiner may be a slow one. The JAD-LX9 (EMUI)
+         * took 6-16 s to join and get an address, and a 12 s slot ended just before it got
+         * in, nearly every time (it joined 5 times in 5 min). The other groups wait as long.
+         */
+        internal var HOST_SLOT_MS = 25_000L
         private const val CONNECT_TIMEOUT_MS = 5_000
     }
 }

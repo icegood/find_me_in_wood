@@ -97,8 +97,19 @@ import kotlinx.coroutines.channels.BufferOverflow
  *  (2) not Ready within CONNECT_TIMEOUT_MS of connecting
  *  (3) our service found and notifications switched on
  *  (4) not a member's phone: our service is missing
- *  (5) disconnected, or nothing heard for linkTimeoutMs
+ *  (5) disconnected, nothing heard for linkTimeoutMs, or a newer link this phone opened
+ *      reaches the same phone (see below)
  * ```
+ *
+ * One outgoing link per phone: a phone changes its random Bluetooth address now and then,
+ * and the scan then finds it again as a new device, so a second link to it opens while the
+ * first still carries traffic (seen: 7 links on a phone with 2 members). The session says
+ * which member each link reaches ([linkHeard], from authenticated frames); of the links
+ * this phone opened to one member, the newest ready one stays and the others close. The
+ * newest, since the old address is no longer advertised: closing the newer one would
+ * reconnect at the next scan result. Only links this phone opened: a pair has one link in
+ * each direction, under different addresses, and closing the other phone's link made it
+ * reconnect at once, which closed ours in turn (seen: links swapped every 2 s).
  */
 @SuppressLint("MissingPermission")
 class BluetoothTransport internal constructor(
@@ -155,6 +166,10 @@ class BluetoothTransport internal constructor(
     private val clientMtu = ConcurrentHashMap<String, Int>()
     private val clientReady = ConcurrentHashMap.newKeySet<String>()
     private val lastInbound = ConcurrentHashMap<String, Long>()
+    /** Member (hex id) each link reaches, as the session reported it ([linkHeard]). */
+    private val memberOf = ConcurrentHashMap<String, String>()
+    /** When each link this phone opened came up: of two to one phone the older goes. */
+    private val clientSince = ConcurrentHashMap<String, Long>()
     /** Last signal strength per peer address (scan results + periodic readRemoteRssi). */
     private val rssi = ConcurrentHashMap<String, RssiSample>()
     private val lock = Any()
@@ -269,6 +284,7 @@ class BluetoothTransport internal constructor(
         advertisedWindow = Long.MIN_VALUE
         clients.values.forEach { g -> try { g.disconnect(); g.close() } catch (_: Exception) {} }
         clients.clear(); clientMtu.clear(); clientReady.clear(); lastInbound.clear(); connecting.clear()
+        memberOf.clear(); clientSince.clear()
         try { gattServer?.close() } catch (_: Exception) {}
         gattServer = null
         synchronized(lock) { clientQueues.clear(); clientWriting.clear() }
@@ -323,6 +339,7 @@ class BluetoothTransport internal constructor(
                     try { g.disconnect() } catch (_: Exception) {}
                     try { g.close() } catch (_: Exception) {}
                 }
+                forgetIfGone(address)
             }
         }
     }
@@ -353,6 +370,53 @@ class BluetoothTransport internal constructor(
             }
             dead
         }
+        memberOf.keys.toList().forEach(::forgetIfGone)
+    }
+
+    override fun linkHeard(link: String, member: ByteArray) {
+        val who = member.joinToString("") { "%02x".format(it) }
+        memberOf[link] = who
+        val mine = clients.keys.filter { memberOf[it] == who }
+        if (mine.size < 2) return
+        // The newest replaces the others once it can send; until then nothing changes.
+        val keep = mine.maxByOrNull { clientSince[it] ?: 0L } ?: return
+        if (!clientReady.contains(keep)) return
+        mine.filter { it != keep }.forEach { old ->
+            DebugLog.d { "Bluetooth links $old and $keep reach the same phone (${who.take(8)}): $old closed" }
+            closeClient(old)
+        }
+    }
+
+    /** Drops the link this phone opened to [address]; a link that phone opened stays. */
+    private fun closeClient(address: String) {
+        synchronized(lock) { clientWriting.remove(address); clientQueues.remove(address) }
+        clients.remove(address)?.let { g ->
+            try { g.disconnect() } catch (_: Exception) {}
+            try { g.close() } catch (_: Exception) {}
+        }
+        clientMtu.remove(address); clientReady.remove(address); clientFramers.remove(address)
+        clientSince.remove(address)
+        forgetIfGone(address)
+    }
+
+    /** Drops both directions of the link to [link] (an address). */
+    override fun closeLink(link: String) {
+        closeClient(link)
+        serverDevices.filter { it.address == link }.forEach { d ->
+            serverDevices.remove(d)
+            try { gattServer?.cancelConnection(d) } catch (_: Exception) {}
+        }
+        serverFramers.remove(link); serverMtu.remove(link)
+        lastInbound.remove(link); memberOf.remove(link)
+    }
+
+    private fun isLinked(address: String) =
+        clients.containsKey(address) || serverDevices.any { it.address == address }
+
+    /** Forgets who [address] reached and since when, once neither direction is left. */
+    private fun forgetIfGone(address: String) {
+        if (!isLinked(address)) memberOf.remove(address)
+        if (!clients.containsKey(address)) clientSince.remove(address)
     }
 
     /** Identity of a link; falls back to the gatt handle when the device is stubbed. */
@@ -408,6 +472,7 @@ class BluetoothTransport internal constructor(
                 serverDevices.remove(device)
                 serverFramers.remove(device.address)
                 serverMtu.remove(device.address)
+                forgetIfGone(device.address)
             }
         }
 
@@ -597,6 +662,7 @@ class BluetoothTransport internal constructor(
                 }
                 clients[address] = g
                 lastInbound[address] = clock()
+                clientSince[address] = clock()
                 DebugLog.d { "Bluetooth client link $address up" }
                 try { g.requestMtu(MTU_REQUEST) } catch (_: SecurityException) {}
                 // if this peer never completes discovery, free the slot so the scan retries
@@ -615,6 +681,7 @@ class BluetoothTransport internal constructor(
                 // once it reconnects (no onCharacteristicWrite ever comes for it).
                 synchronized(lock) { clientWriting.remove(address); clientQueues.remove(address) }
                 try { g.close() } catch (_: Exception) {}
+                forgetIfGone(address)
                 ready = running || serverDevices.isNotEmpty()
             }
         }

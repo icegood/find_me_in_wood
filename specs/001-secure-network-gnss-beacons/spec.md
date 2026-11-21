@@ -94,16 +94,21 @@ frame is encrypted and authenticated with the network's key.
   goes to a pair at once when that pair has something urgent (a handshake step, a chat
   message, a find request). Nothing waits for the user. The member row says when the
   pair's link is shared in time ("Wi-Fi Direct, in turn with 2 others").
-  Rendezvous without Bluetooth: the owner always hosts its group, named from the network
-  key alone, so a member that knows nobody yet (not even the owner's id, after a password
-  join) joins it; every group runs on a channel derived from its secret, which the host asks
-  for and the first two joins scan alone, so a pair meets within 10 s on Wi-Fi only. The host
-  says the channel its group really got (a router's channel may win) and joiners scan that.
-  One group per network where possible: while the owner reaches them, members meet only in
-  the owner's group (relayed by it) and no phone takes turns; two members other than the
-  owner form a group of their own when they picked a host for the pair, when they stop
-  hearing each other through the owner (3 beacons, at most 60 s), or when the owner is not
-  heard (after 15 s of looking for it first after a start).
+  Wi-Fi Direct is only for links between members that agreed on it: pairs, and subgroups
+  (every pair that picks one host shares its group, the host relays between them). It is no
+  meeting point: joining and the first link handshake (offers, acknowledgements) run over
+  Bluetooth only (or, for joining, an invite QR / the password, FR-2.6); once a pair agreed
+  on something, Bluetooth may be off and its link control goes over any agreed radio.
+  Every group runs on a channel derived from its secret, which the host asks for and the
+  first two joins scan alone, so a pair meets within 10 s; the host says the channel its
+  group really got (a router's channel may win) and joiners scan that.
+  As few groups as the pairs allow: two members both surely in one host's group (a picked
+  host, or the owner by default; each member announces those) meet there, relayed by it,
+  and no phone takes turns; a picked host wins over the owner's default, so when the owner
+  and another member pick member X, all three are in X's group and the owner hosts none.
+  Two members get a group of their own when they picked a host for the pair, when no
+  group holds both, or when they stop hearing each other through the shared host
+  (3 beacons, at most 60 s).
 - FR-3.5d A host's group is shared only by the pairs that each chose it: every member in it
   joined by its own pair agreement with the host (and the host's pick, FR-3.5b), and the
   host closes the link of any member whose pair turned Wi-Fi Direct down (FR-8.7). Members
@@ -233,8 +238,8 @@ frame is encrypted and authenticated with the network's key.
   closes a socket whose first authenticated frame comes from a member without such an
   agreement. Being a member of the network means being able to pair with every other member,
   nothing more: there is no group of the network as a whole. Two members that have not
-  decided on Wi-Fi Direct yet meet in their pair's group (host as FR-3.5b) and run the
-  handshake there; a member that turned it down, or does not offer it, gets no group.
+  agreed on Wi-Fi Direct yet get no group (their handshake runs over Bluetooth, FR-3.5b);
+  neither does a member that turned it down or does not offer it.
 - FR-8.9 Removing a member re-salts the network key: the master draws a new random salt
   (epoch n+1; traffic key = HKDF(epoch-0 key, salt)) and seals it to every remaining
   member's box key (EC P-256, published on its signed card) in a master-signed rekey that

@@ -53,9 +53,16 @@ class FakeTransport(override val id: TransportId) : Transport {
         events.emit(TransportEvent.LinkUp(peer, id))
     }
 
-    /** Test helper: inject a frame as if received over this transport. */
-    suspend fun deliver(frame: EncryptedFrame) {
-        events.emit(TransportEvent.FrameReceived(frame, id))
+    /** Test helper: inject a frame as if received over this transport, on [link]. */
+    suspend fun deliver(frame: EncryptedFrame, link: String? = null) {
+        events.emit(TransportEvent.FrameReceived(frame, id, link))
+    }
+
+    /** Every [linkHeard] call: link to member id (hex). */
+    val heardLinks: ConcurrentLinkedQueue<Pair<String, String>> = ConcurrentLinkedQueue()
+
+    override fun linkHeard(link: String, member: ByteArray) {
+        heardLinks.add(link to member.joinToString("") { "%02x".format(it) })
     }
 
     /** Test helper: inject raw wire bytes (used for signed/management frame tests). */

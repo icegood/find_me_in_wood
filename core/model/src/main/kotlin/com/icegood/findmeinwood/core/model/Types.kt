@@ -145,6 +145,20 @@ data class LinkCtl(
      * follow a router's channel. Null = not hosting.
      */
     val freq: Int? = null,
+    /**
+     * The Wi-Fi Direct groups this phone is surely in (FR-3.5b): two members both in one
+     * host's group meet there, relayed by the host, and need no group of their own.
+     */
+    val hubs: List<LinkHub> = emptyList(),
+)
+
+/** A Wi-Fi Direct group the sender is in for sure: a pair whose host was picked, or an owner's pair. */
+@kotlinx.serialization.Serializable
+data class LinkHub(
+    /** First 4 bytes of the host's member id (the sender's own when it hosts). */
+    val p: ByteArray,
+    /** A user picked this host for the pair (else it is the owner, by default). */
+    val picked: Boolean,
 )
 
 /** Wi-Fi Direct group band, the user's choice: 2.4 GHz reaches further, 5 GHz is faster. */

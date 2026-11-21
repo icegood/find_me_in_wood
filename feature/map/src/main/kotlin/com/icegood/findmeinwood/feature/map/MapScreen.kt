@@ -1134,12 +1134,14 @@ internal fun linkVerdict(peer: PeerState, nowMs: Long): LinkVerdict? {
     val open = peer.linkCommon.filter { it !in peer.linkAllowedByMe && it !in peer.linkDeniedByMe }
         .sortedBy { it !in peer.linkAllowedByPeer }
     val waiting = peer.linkCommon.filter { linkDecision(peer, it) == LinkDecision.WAITING }
-    val heard = peer.transport
+    // Every radio that heard the peer lately, not just the one whose copy came first: the
+    // selected link works when its radio is among them, also while another one is faster.
+    val heard = peer.linkHeard
     return when {
         peer.link != null && nowMs - peer.lastSeenMs > SILENT_AFTER_MS -> LinkVerdict(LinkVerdict.Kind.SILENT)
-        peer.link != null && heard == null -> LinkVerdict(LinkVerdict.Kind.RELAYED)
-        peer.link != null && heard != peer.link -> LinkVerdict(LinkVerdict.Kind.OTHER_RADIO, listOf(heard!!))
-        peer.link != null -> LinkVerdict(LinkVerdict.Kind.CONNECTED, listOf(heard!!))
+        peer.link != null && peer.link in heard -> LinkVerdict(LinkVerdict.Kind.CONNECTED, listOf(peer.link!!))
+        peer.link != null && heard.isNotEmpty() -> LinkVerdict(LinkVerdict.Kind.OTHER_RADIO, heard)
+        peer.link != null -> LinkVerdict(LinkVerdict.Kind.RELAYED)
         open.isNotEmpty() -> LinkVerdict(LinkVerdict.Kind.DECIDE, open)
         waiting.isNotEmpty() -> LinkVerdict(LinkVerdict.Kind.WAIT_PEER, waiting)
         else -> LinkVerdict(LinkVerdict.Kind.ALL_OFF)

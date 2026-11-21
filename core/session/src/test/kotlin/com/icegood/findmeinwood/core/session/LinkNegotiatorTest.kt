@@ -256,71 +256,113 @@ class LinkNegotiatorTest {
     }
 
     @Test
-    fun `the owner hosts its pairs and always has a group, where a newcomer finds it over Wi-Fi alone`() {
+    fun `the owner hosts its pairs, and nobody hosts a group for members not agreed yet`() {
         // B is the owner although A has the lower id: the owner hosts the pair.
         a.setOwner(idB); b.setOwner(idB)
         b.setOffers(listOf(LinkOffer(WIFI_DIRECT)))
-        assertEquals(listOf(LinkNegotiator.WifiDirectGroup(idB, emptyList(), ownerGroup = true)), b.wifiDirectGroups(), "hosts with nobody known yet")
+        assertEquals(emptyList(), b.wifiDirectGroups(), "no rendezvous group: joining runs over Bluetooth")
         handshake()
         assertEquals(idB, a.wifiDirectHostOf(idB))
         assertEquals(idB, b.wifiDirectHostOf(idA))
-        assertEquals(listOf(LinkNegotiator.WifiDirectGroup(idB, listOf(idB), ownerGroup = true)), a.wifiDirectGroups())
-        assertEquals(listOf(LinkNegotiator.WifiDirectGroup(idB, listOf(idA), ownerGroup = true)), b.wifiDirectGroups())
-        // A password join knows neither the owner nor anyone: it looks for the owner's group.
-        val idN = MemberId(ByteArray(32) { 3 })
-        val n = LinkNegotiator(idN, { now }, beacon, sms).apply { setOffers(listOf(LinkOffer(WIFI_DIRECT))) }
+        assertEquals(listOf(LinkNegotiator.WifiDirectGroup(idB, listOf(idB))), a.wifiDirectGroups())
+        assertEquals(listOf(LinkNegotiator.WifiDirectGroup(idB, listOf(idA))), b.wifiDirectGroups())
+        // A password join knows nobody: no group to look for over Wi-Fi.
+        val n = LinkNegotiator(MemberId(ByteArray(32) { 3 }), { now }, beacon, sms).apply { setOffers(listOf(LinkOffer(WIFI_DIRECT))) }
         n.setOwner(LinkNegotiator.OWNER_UNKNOWN)
-        assertEquals(
-            listOf(LinkNegotiator.WifiDirectGroup(LinkNegotiator.OWNER_UNKNOWN, emptyList(), ownerGroup = true)),
-            n.wifiDirectGroups(),
-        )
-        // Members heard in the owner's group before its id is known: no pair groups, also
-        // after the first look; one silent since gets its own.
-        now += LinkNegotiator.OWNER_FIRST_MS + 1
         n.onFrame(idB, WIFI_DIRECT, true, LinkCtl(offers = listOf(LinkOffer(WIFI_DIRECT))))
-        assertEquals(1, n.wifiDirectGroups().size, "the owner's group alone")
-        now += LinkNegotiator.PAIR_QUIET_MAX_MS + 1
-        assertEquals(2, n.wifiDirectGroups().size, "nobody heard: a pair group as well")
-        n.onFrame(idB, WIFI_DIRECT, true, LinkCtl(offers = listOf(LinkOffer(WIFI_DIRECT))))
-                // Learned: the owner's own pair group, same name (see SessionManager).
-        n.setOwner(idB)
-        assertEquals(listOf(LinkNegotiator.WifiDirectGroup(idB, listOf(idB), ownerGroup = true)), n.wifiDirectGroups())
+        assertEquals(emptyList(), n.wifiDirectGroups())
     }
 
     @Test
-    fun `members meet in the owner's group alone while the owner reaches them, a pair group only when it does not`() {
-        // O owns the network; A and C are members with Wi-Fi Direct.
+    fun `the handshake runs over Bluetooth, an agreed pair keeps its link control on any radio`() {
+        val both = listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT))
+        a.setOffers(both); b.setOffers(both)
+        exchange(WIFI_DIRECT)
+        assertTrue(a.common(idB).isEmpty(), "offers over Wi-Fi Direct before any agreement: not taken")
+        a.announceNow(); b.announceNow()
+        exchange(BLUETOOTH)
+        a.confirm(idB); b.confirm(idA)
+        repeat(2) { exchange(BLUETOOTH) }
+        assertTrue(a.agreed(idB))
+        // Bluetooth off afterwards: the pair goes on over Wi-Fi Direct, its acks included.
+        a.setOffers(listOf(LinkOffer(WIFI_DIRECT))); b.setOffers(listOf(LinkOffer(WIFI_DIRECT)))
+        repeat(2) { exchange(WIFI_DIRECT) }
+        assertEquals(listOf(WIFI_DIRECT), a.common(idB))
+        assertEquals(WIFI_DIRECT, a.link(idB))
+        // After a restart, what was decided lets the link control in over Wi-Fi Direct.
+        val a2 = LinkNegotiator(idA, { now }, beacon, sms).apply { setOffers(listOf(LinkOffer(WIFI_DIRECT))); restore(a.decisions()) }
+        a2.onFrame(idB, WIFI_DIRECT, true, b.run { announceNow(); outgoing() })
+        assertEquals(listOf(WIFI_DIRECT), a2.common(idB))
+    }
+
+    /** Three members, O the owner; [agree] the pairs (by index into the list) on Wi-Fi Direct. */
+    private inner class Trio(vararg agree: Pair<Int, Int>) {
         val idO = MemberId(ByteArray(32) { 7 })
         val idC = MemberId(ByteArray(32) { 3 })
-        val wd = listOf(LinkOffer(WIFI_DIRECT))
-        val c = LinkNegotiator(idC, { now }, beacon, sms)
-        listOf(a, c).forEach { it.setOffers(wd); it.setOwner(idO); it.setMembers(listOf(idA, idC, idO)) }
-        val ownerOnly = listOf(LinkNegotiator.WifiDirectGroup(idO, listOf(idO), ownerGroup = true))
-        assertEquals(ownerOnly, a.wifiDirectGroups(), "at start: the owner's group alone, never-heard C meets A there")
-        // A hears O, and C relayed through O: still the owner's group alone.
-        a.onFrame(idO, WIFI_DIRECT, true, LinkCtl(offers = wd))
-        a.onFrame(idC, WIFI_DIRECT, false, LinkCtl(offers = wd))
-        now += 20_000
-        a.onFrame(idO, WIFI_DIRECT, true, LinkCtl(offers = wd))
-        a.onFrame(idC, WIFI_DIRECT, false, LinkCtl(offers = wd))
-        assertEquals(ownerOnly, a.wifiDirectGroups(), "no phone takes turns while the owner relays")
-        // C goes silent (out of O's reach): A and C get a pair group, the owner's first.
+        val ids = listOf(idO, idA, idC)
+        val n = ids.map { LinkNegotiator(it, { now }, beacon, sms) }
+        val both = listOf(LinkOffer(BLUETOOTH), LinkOffer(WIFI_DIRECT))
+        init {
+            n.forEach { it.setOffers(both); it.setOwner(idO); it.setMembers(ids) }
+            round()
+            for (x in 0..2) for (y in 0..2) if (x != y) {
+                val yes = agree.any { it == x to y || it == y to x }
+                n[x].allow(ids[y], WIFI_DIRECT, yes)
+                n[x].allow(ids[y], BLUETOOTH, true)
+            }
+            repeat(3) { round() }
+        }
+        /** Every member's link control reaches the other two over Bluetooth. */
+        fun round() {
+            val out = n.map { it.announceNow(); it.outgoing() }
+            for (x in 0..2) for (y in 0..2) if (x != y) n[y].onFrame(ids[x], BLUETOOTH, true, out[x])
+        }
+        fun groups(i: Int) = n[i].wifiDirectGroups()
+        fun g(host: MemberId, vararg members: MemberId) = LinkNegotiator.WifiDirectGroup(host, members.toList())
+    }
+
+    @Test
+    fun `members all agreed on Wi-Fi Direct meet in the owner's group, nobody takes turns`() {
+        val t = Trio(0 to 1, 0 to 2, 1 to 2)
+        assertEquals(listOf(t.g(t.idO, idA, t.idC)), t.groups(0))
+        assertEquals(listOf(t.g(t.idO, t.idO)), t.groups(1), "A and C meet in O's group")
+        assertEquals(listOf(t.g(t.idO, t.idO)), t.groups(2))
+        // C goes silent (out of O's reach): A and C get a pair group, the sure one first.
         now += LinkNegotiator.PAIR_QUIET_MAX_MS + 1
-        a.onFrame(idO, WIFI_DIRECT, true, LinkCtl(offers = wd))
-        assertEquals(
-            listOf(LinkNegotiator.WifiDirectGroup(idO, listOf(idO), ownerGroup = true), LinkNegotiator.WifiDirectGroup(idA, listOf(idC))),
-            a.wifiDirectGroups(),
-        )
-        // The owner out of reach after the first look: pairs meet on their own, C included.
-        assertEquals(
-            listOf(LinkNegotiator.WifiDirectGroup(idO, listOf(idO), ownerGroup = true), LinkNegotiator.WifiDirectGroup(idA, listOf(idA))),
-            c.wifiDirectGroups(),
-        )
-        // A host picked by the users always gets its group.
-        val idD = MemberId(ByteArray(32) { 4 })
-        a.onFrame(idD, WIFI_DIRECT, true, LinkCtl(offers = wd))
-        a.pickHost(idD, meHosts = false)
-        assertTrue(a.wifiDirectGroups().any { it.host == idD })
+        t.n[1].onFrame(t.idO, BLUETOOTH, true, null)
+        assertEquals(listOf(t.g(t.idO, t.idO), t.g(idA, t.idC)), t.groups(1))
+    }
+
+    @Test
+    fun `pairs that pick one host share its group, the owner joins it as well`() {
+        val t = Trio(0 to 1, 0 to 2, 1 to 2)
+        t.n[2].pickHost(t.idO, meHosts = true) // O-C: C hosts
+        t.n[2].pickHost(idA, meHosts = true) // A-C: C hosts
+        repeat(3) { t.round() }
+        assertEquals(listOf(t.g(t.idC, idA, t.idO)), t.groups(2), "one subgroup: C hosts A and O")
+        assertEquals(listOf(t.g(t.idC, t.idC)), t.groups(0), "the owner only joins, no group of its own")
+        assertEquals(listOf(t.g(t.idC, t.idC)), t.groups(1))
+    }
+
+    @Test
+    fun `a member out of every shared group pairs on its own`() {
+        // A turned Wi-Fi Direct down with O: A and C cannot meet in O's group.
+        val t = Trio(0 to 2, 1 to 2)
+        assertEquals(listOf(t.g(idA, t.idC)), t.groups(1), "A hosts the pair (lower id)")
+        assertEquals(listOf(t.g(t.idO, t.idO), t.g(idA, idA)), t.groups(2), "C takes turns: O's group and A's")
+        assertEquals(listOf(t.g(t.idO, t.idC)), t.groups(0))
+    }
+
+    @Test
+    fun `the link view lists every radio that heard the peer lately, not relayed copies`() {
+        handshake() // over Bluetooth
+        a.onFrame(idB, WIFI_DIRECT, true, null)
+        a.onFrame(idB, LORA, false, null) // relayed: not heard on LoRa
+        assertEquals(listOf(BLUETOOTH, WIFI_DIRECT), a.all().single().heard)
+        now += beacon
+        a.onFrame(idB, WIFI_DIRECT, true, null)
+        now += beacon
+        assertEquals(listOf(WIFI_DIRECT), a.all().single().heard, "Bluetooth quiet for two beacons")
     }
 
     @Test
@@ -361,12 +403,22 @@ class LinkNegotiatorTest {
         a.pickHost(idB, meHosts = true)
         repeat(2) { exchange() }
         assertEquals(idA, b.wifiDirectHostOf(idA), "the newer pick wins")
-        repeat(4) { exchange() } // picks are announced a few times only
+        repeat(4) { exchange() } // picks are urgent a few times only
         assertEquals(idA, a.wifiDirectHostOf(idB))
+        // A peer that missed those beacons learns the pick from any later link control.
+        val late = LinkNegotiator(idB, { now }, beacon, sms).apply { setOffers(b.offers()); restore(b.decisions()) }
+        a.announceNow()
+        late.onFrame(idA, BLUETOOTH, true, a.outgoing())
+        assertEquals(idA, late.wifiDirectHostOf(idA), "the pick still rides on A's link control")
+        // A restart keeps the pick: it is saved with the decisions.
+        assertEquals(true, a.decisions()[idB]?.get(LinkNegotiator.HOST_KEY))
+        val a2 = LinkNegotiator(idA, { now }, beacon, sms).apply { setOffers(a.offers()); restore(a.decisions()) }
+        a2.onFrame(idB, BLUETOOTH, true, null)
+        assertEquals(idA, a2.wifiDirectHostOf(idB), "picked host after a restart")
     }
 
     @Test
-    fun `a phone serves its hosted group and one per host it joins, a pair group for every member it can pair with`() {
+    fun `a phone serves its hosted group and one per host it joins, a pair group for every member agreed on it`() {
         val idC = MemberId(ByteArray(32) { 0 }) // lowest of all
         val idD = MemberId(ByteArray(32) { 9 })
         val c = LinkNegotiator(idC, { now }, beacon, sms)
@@ -375,12 +427,12 @@ class LinkNegotiatorTest {
         listOf(a, b, c, d).forEach { it.setOffers(wd) }
         fun ctl(n: LinkNegotiator) = n.run { announceNow(); outgoing() }
         fun meet(x: LinkNegotiator, xi: MemberId, y: LinkNegotiator, yi: MemberId) {
-            y.onFrame(xi, WIFI_DIRECT, true, ctl(x))
-            x.onFrame(yi, WIFI_DIRECT, true, ctl(y))
+            y.onFrame(xi, BLUETOOTH, true, ctl(x))
+            x.onFrame(yi, BLUETOOTH, true, ctl(y))
             x.allow(yi, WIFI_DIRECT, true); y.allow(xi, WIFI_DIRECT, true)
             repeat(3) {
-                y.onFrame(xi, WIFI_DIRECT, true, ctl(x))
-                x.onFrame(yi, WIFI_DIRECT, true, ctl(y))
+                y.onFrame(xi, BLUETOOTH, true, ctl(x))
+                x.onFrame(yi, BLUETOOTH, true, ctl(y))
             }
         }
         meet(a, idA, b, idB) // A hosts B
@@ -391,30 +443,23 @@ class LinkNegotiatorTest {
             a.wifiDirectGroups(),
             "A hosts one group for B and D, and joins C's in turn",
         )
-        // A member heard but undecided meets A in their pair's group, where the handshake runs.
+        val plan = listOf(LinkNegotiator.WifiDirectGroup(idA, listOf(idB, idD)), LinkNegotiator.WifiDirectGroup(idC, listOf(idC)))
+        // A member heard but undecided gets no group: its handshake runs over Bluetooth.
         val idE = MemberId(ByteArray(32) { 5 })
-        a.onFrame(idE, WIFI_DIRECT, true, LinkCtl(offers = wd))
-        assertEquals(LinkNegotiator.WifiDirectGroup(idA, listOf(idB, idE, idD)), a.wifiDirectGroups().first())
-        // Every member of the network can pair: one never heard gets its pair group too.
-        val idF = MemberId(ByteArray(32) { 0x0f })
-        a.setMembers(listOf(idA, idB, idF))
-        assertTrue(idF in a.wifiDirectGroups().first().members)
-        // A member that does not offer Wi-Fi Direct has no group with A.
-        a.onFrame(idF, BLUETOOTH, true, LinkCtl(offers = listOf(LinkOffer(BLUETOOTH))))
-        assertFalse(idF in a.wifiDirectGroups().first().members)
-        // E turns Wi-Fi Direct down: refused, no common group needed for it any more.
+        a.onFrame(idE, BLUETOOTH, true, LinkCtl(offers = wd))
+        assertEquals(plan, a.wifiDirectGroups())
+        // Nor does a member of the network never heard.
+        a.setMembers(listOf(idA, idB, MemberId(ByteArray(32) { 0x0f })))
+        assertEquals(plan, a.wifiDirectGroups())
+        // E turns Wi-Fi Direct down: refused.
         val e = LinkNegotiator(idE, { now }, beacon, sms).apply { setOffers(wd) }
-        e.onFrame(idA, WIFI_DIRECT, true, LinkCtl(offers = wd))
+        e.onFrame(idA, BLUETOOTH, true, LinkCtl(offers = wd))
         e.allow(idA, WIFI_DIRECT, false)
-        a.onFrame(idE, WIFI_DIRECT, true, e.outgoing())
+        a.onFrame(idE, BLUETOOTH, true, e.outgoing())
         assertTrue(a.wifiDirectRefused(idE))
         assertFalse(a.wifiDirectRefused(idB))
         assertFalse(a.wifiDirectRefused(MemberId(ByteArray(32) { 7 })), "unknown member")
-        assertEquals(
-            listOf(LinkNegotiator.WifiDirectGroup(idA, listOf(idB, idD)), LinkNegotiator.WifiDirectGroup(idC, listOf(idC))),
-            a.wifiDirectGroups(),
-            "the member that turned Wi-Fi Direct down has no group with A",
-        )
+        assertEquals(plan, a.wifiDirectGroups(), "the member that turned Wi-Fi Direct down has no group with A")
         a.allow(idB, WIFI_DIRECT, false)
         assertTrue(a.wifiDirectRefused(idB), "this user's No counts too")
     }

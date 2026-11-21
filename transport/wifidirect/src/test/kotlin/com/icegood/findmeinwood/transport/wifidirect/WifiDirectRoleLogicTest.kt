@@ -129,6 +129,33 @@ class WifiDirectRoleLogicTest {
     }
 
     @Test
+    fun `a host creates its group on its Wi-Fi's channel when that is in the group's band`() = runBlocking<Unit> {
+        val w = FakeWiring().apply { station = 2437 }
+        val t = transport(w, owner = true)
+        t.start(cfg)
+        assertEquals(listOf(creds.copy(frequency = 2437)), w.created)
+        t.stop()
+        val far = FakeWiring().apply { station = 5180 } // Wi-Fi on 5 GHz, group on 2.4 GHz
+        val t2 = transport(far, owner = true)
+        t2.start(cfg)
+        assertEquals(listOf(creds), far.created, "another band runs alongside: the group keeps its channel")
+        t2.stop()
+    }
+
+    @Test
+    fun `the host's channel follows its Wi-Fi only within the group's band and the allowed channels`() {
+        val c24 = GroupCredentials("DIRECT-fm-x", "passphrase", com.icegood.findmeinwood.core.model.WifiBand.GHZ_2_4, 2412)
+        val c5 = c24.copy(band = com.icegood.findmeinwood.core.model.WifiBand.GHZ_5, frequency = 5200)
+        assertEquals(2412, GroupCredentials.hostChannel(c24, null), "no Wi-Fi")
+        assertEquals(2462, GroupCredentials.hostChannel(c24, 2462))
+        assertEquals(2412, GroupCredentials.hostChannel(c24, 5180), "other band")
+        assertEquals(5180, GroupCredentials.hostChannel(c5, 5180))
+        assertEquals(5745, GroupCredentials.hostChannel(c5, 5745))
+        assertEquals(5200, GroupCredentials.hostChannel(c5, 5500), "radar channel: no group there")
+        assertEquals(2437, GroupCredentials.hostChannel(c24.copy(band = null), 2437), "band not known yet: 2.4 GHz")
+    }
+
+    @Test
     fun `host preference creates the group with the credentials and never joins`() = runBlocking<Unit> {
         val w = FakeWiring()
         val t = transport(w, owner = true)
@@ -141,7 +168,9 @@ class WifiDirectRoleLogicTest {
     @Test
     fun `several groups are served in turn, an urgent one at once`() = runBlocking<Unit> {
         val slot = WifiDirectTransport.SLOT_MS
+        val hostSlot = WifiDirectTransport.HOST_SLOT_MS
         WifiDirectTransport.SLOT_MS = 100
+        WifiDirectTransport.HOST_SLOT_MS = 400
         val other = ByteArray(32) { (it + 7).toByte() }
         try {
             val w = FakeWiring()
@@ -149,6 +178,8 @@ class WifiDirectRoleLogicTest {
             t.start(cfg)
             t.setGroups(listOf(GroupPlan(secret, GroupRole.HOST), GroupPlan(other, GroupRole.JOIN)))
             assertEquals(creds, w.created.last(), "hosts its own group first")
+            delay(200)
+            assertTrue(w.joins.none { it == GroupCredentials.from(other) }, "hosting: a slow joiner gets the longer slot")
             // Nobody joined within the slot: on to the group it joins.
             withTimeout(5_000) { while (w.joins.none { it == GroupCredentials.from(other) }) delay(10) }
             // ...and back to its own one after that slot.
@@ -167,6 +198,7 @@ class WifiDirectRoleLogicTest {
             t.stop()
         } finally {
             WifiDirectTransport.SLOT_MS = slot
+            WifiDirectTransport.HOST_SLOT_MS = hostSlot
         }
     }
 
@@ -545,6 +577,25 @@ class WifiDirectRoleLogicTest {
         t.start(cfg)
         delay(200)
         assertTrue(w.createGroupCalls >= 2, "group creation must be retried")
+        t.stop()
+    }
+
+    @Test
+    fun `no group to serve - no discovery, and the radio is not reported down`() = runBlocking<Unit> {
+        val w = FakeWiring()
+        val t = transport(w, pollMs = 20L, role = null)
+        val events = t.start(cfg)
+        delay(200)
+        assertEquals(0, w.discoverCalls, "idle: nobody to find, the radio stays on the phone's Wi-Fi")
+        assertEquals(RadioState.SCANNING, lastState(events))
+        t.setGroups(listOf(GroupPlan(secret, GroupRole.JOIN)))
+        delay(100)
+        assertEquals(1, w.discoverCalls, "a group to join: discovery starts")
+        t.setGroups(emptyList())
+        assertEquals(1, w.stopDiscoverCalls, "back to idle: the running scan is stopped")
+        t.setGroups(listOf(GroupPlan(secret, GroupRole.JOIN)))
+        delay(100)
+        assertEquals(2, w.discoverCalls, "and starts again at once with the next group")
         t.stop()
     }
 

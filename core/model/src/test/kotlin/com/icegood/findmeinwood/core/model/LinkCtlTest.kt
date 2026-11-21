@@ -14,6 +14,7 @@ class LinkCtlTest {
             acks = listOf(LinkAck(byteArrayOf(5, 6, 7, 8), 42)),
             sel = listOf(sel),
             name = "Ira",
+            hubs = listOf(LinkHub(byteArrayOf(9, 9, 9, 9), picked = true)),
         )
         val back = PayloadCodec.decode(PayloadCodec.encode(BeaconPayload(link = ctl))).link!!
         assertEquals(3, back.v)
@@ -23,6 +24,7 @@ class LinkCtlTest {
         assertEquals(7, back.sel.single().e)
         assertEquals(42, back.acks.single().h)
         assertEquals("Ira", back.name)
+        assertTrue(back.hubs.single().p.contentEquals(byteArrayOf(9, 9, 9, 9)) && back.hubs.single().picked)
         assertNull(PayloadCodec.decode(PayloadCodec.encode(BeaconPayload())).link)
         assertEquals(LinkCtl(), LinkCtl(v = 3, offers = emptyList(), acks = emptyList(), sel = emptyList()))
         assertEquals("+1", LinkOffer(TransportId.SMS, "+1").copy().addr)

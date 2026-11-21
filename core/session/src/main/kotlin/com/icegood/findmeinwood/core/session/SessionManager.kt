@@ -201,7 +201,7 @@ class SessionManager(
             tracker.setLinkInfo(
                 v.peer, v.link, v.agreed, v.suggestion,
                 common = v.common, allowedByMe = v.allowedByMe, deniedByMe = v.deniedByMe, allowedByPeer = v.allowedByPeer,
-                wifiDirectHost = host,
+                wifiDirectHost = host, heard = v.heard,
             )
         }
         // Answer handshake steps / announce selections at once instead of with the next
@@ -351,9 +351,7 @@ class SessionManager(
         val plans = groups.map { g ->
             val mine = g.host == profile.myMemberId
             GroupPlan(
-                // The owner's group is named by the network key alone: a member that has not
-                // learned the owner's id yet (a password join) joins it all the same.
-                wifiDirectSecret(key, if (g.ownerGroup) LinkNegotiator.OWNER_UNKNOWN else g.host, hour),
+                wifiDirectSecret(key, g.host, hour),
                 if (mine) GroupRole.HOST else GroupRole.JOIN,
                 pairs = g.members.size,
                 // Hosting: the band this user chose; joining: the one the host said.
@@ -375,11 +373,9 @@ class SessionManager(
 
     /** The Wi-Fi Direct groups this phone serves now, as the link log shows them: "host", "join <member>". */
     fun wifiDirectGroupNames(): List<String> = links?.wifiDirectGroups().orEmpty().map { g ->
-        when {
-            g.host == profile.myMemberId -> if (g.ownerGroup) "host (owner)" else "host"
-            g.host == LinkNegotiator.OWNER_UNKNOWN -> "join owner (not known yet)"
-            else -> "join " + shortId(g.host) + if (g.ownerGroup) " (owner)" else ""
-        }
+        val who = (if (g.host == profile.myMemberId) "host" else "join " + shortId(g.host)) +
+            if (g.host == (book?.masterId ?: profile.ownerMemberId)) " (owner)" else ""
+        who + " [" + g.members.joinToString(" ") { shortId(it) } + "]"
     }
 
     private fun shortId(id: MemberId) = id.bytes.take(4).joinToString("") { "%02x".format(it) }
@@ -575,13 +571,27 @@ class SessionManager(
             bump { it.copy(authFailed = it.authFailed + 1) }
             return // auth fail: drop silently (FR-8.6 / T5.5)
         }
+        // The link reaches the sender's phone (a relayed frame carries a lower ttl): a radio
+        // with two links to one phone (Bluetooth under a new address) closes the older.
+        // Before the replay check, since the copy on the second link is the duplicate.
+        val heardOn = ev.link
+        if (f.ttl == INITIAL_TTL && heardOn != null) {
+            transports.firstOrNull { it.id == ev.source }?.linkHeard(heardOn, f.senderId.bytes)
+        }
         // Replay check only after authentication: the window records the seq, so checking
         // first would let a forged frame with a huge seq lock the real sender out.
         if (!replay.accept(f.senderId.bytes, f.seq, f.sentAtMs)) {
             bump { it.copy(dropped = it.dropped + 1) }
             // The same frame over a second radio is a duplicate, but it still proves that
             // radio reaches the peer — without this the slower radio never counts as heard.
-            if (f.ttl == INITIAL_TTL) links?.let { announce(it.onFrame(f.senderId, ev.source, direct = true, ctl = null)) }
+            // The handshake runs over Bluetooth: its copy brings the link control even when a
+            // copy over another radio came first (and was not allowed to).
+            val ctl = if (ev.source == TransportId.BLUETOOTH && links?.handshakeOnBluetoothOnly(f.senderId) == true) {
+                runCatching { PayloadCodec.decode(plain) }.getOrNull()?.takeIf { verifyOrigin(f, it) }?.link
+            } else null
+            if (f.ttl == INITIAL_TTL || ctl != null) {
+                links?.let { announce(it.onFrame(f.senderId, ev.source, direct = f.ttl == INITIAL_TTL, ctl = ctl)) }
+            }
             return
         }
         com.icegood.findmeinwood.transport.api.DebugLog.d {

@@ -123,13 +123,17 @@ class MapMathTest {
         kotlin.test.assertTrue(needsLinkDecision(listOf(common)))
         kotlin.test.assertEquals(LinkVerdict(LinkVerdict.Kind.WAIT_PEER, listOf(wd)), linkVerdict(common.copy(linkAllowedByMe = listOf(wd), linkDeniedByMe = listOf(bt)), now))
         kotlin.test.assertEquals(LinkVerdict.Kind.ALL_OFF, linkVerdict(common.copy(linkDeniedByMe = listOf(bt, wd), linkAllowedByPeer = listOf(wd)), now)?.kind)
-        val agreed = common.copy(link = wd, linkAllowedByMe = listOf(wd), linkAllowedByPeer = listOf(wd), linkDeniedByMe = listOf(bt), transport = wd)
+        val agreed = common.copy(link = wd, linkAllowedByMe = listOf(wd), linkAllowedByPeer = listOf(wd), linkDeniedByMe = listOf(bt), transport = wd, linkHeard = listOf(wd))
         kotlin.test.assertEquals(LinkVerdict(LinkVerdict.Kind.CONNECTED, listOf(wd)), linkVerdict(agreed, now))
         kotlin.test.assertEquals(
-            LinkVerdict(LinkVerdict.Kind.OTHER_RADIO, listOf(bt)), linkVerdict(agreed.copy(transport = bt), now),
-            "agreed on Wi-Fi Direct, frames over Bluetooth: not connected over Wi-Fi Direct",
+            LinkVerdict(LinkVerdict.Kind.CONNECTED, listOf(wd)), linkVerdict(agreed.copy(transport = bt, linkHeard = listOf(bt, wd)), now),
+            "Bluetooth's copies come first, Wi-Fi Direct's arrive too: connected over Wi-Fi Direct",
         )
-        kotlin.test.assertEquals(LinkVerdict.Kind.RELAYED, linkVerdict(agreed.copy(transport = null), now)?.kind)
+        kotlin.test.assertEquals(
+            LinkVerdict(LinkVerdict.Kind.OTHER_RADIO, listOf(bt)), linkVerdict(agreed.copy(transport = bt, linkHeard = listOf(bt)), now),
+            "agreed on Wi-Fi Direct, frames over Bluetooth only: not connected over Wi-Fi Direct",
+        )
+        kotlin.test.assertEquals(LinkVerdict.Kind.RELAYED, linkVerdict(agreed.copy(transport = null, linkHeard = emptyList()), now)?.kind)
         kotlin.test.assertEquals(LinkVerdict.Kind.SILENT, linkVerdict(agreed, now + 4 * 60_000)?.kind)
         kotlin.test.assertFalse(needsLinkDecision(listOf(agreed)))
     }

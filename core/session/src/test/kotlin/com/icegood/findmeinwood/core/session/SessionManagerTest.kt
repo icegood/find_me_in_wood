@@ -148,4 +148,28 @@ class SessionManagerTest {
             kotlin.test.assertTrue(decoded is com.icegood.findmeinwood.core.model.BeaconPayload)
         } finally { mA.stop(); mB.stop(); scope.cancel() }
     }
+
+    @Test
+    fun `a direct frame tells its radio which member the link reaches, a relayed one does not`() = runBlocking {
+        val alice = Member("alice"); val bob = Member("bob")
+        val tA = FakeTransport(TransportId.BLUETOOTH)
+        val tB = FakeTransport(TransportId.BLUETOOTH)
+        val mA = SessionManager(alice.profile, listOf(tA), flowOf(), { now }, scope = scope)
+        val mB = SessionManager(bob.profile, listOf(tB), flowOf(), { now }, scope = scope)
+        mA.start(); mB.start()
+        try {
+            mA.sendBeacon(null)
+            val direct = FrameCodec.decode(tA.sentHistory.peek()!!)
+            tB.deliver(direct, link = "AA:01")
+            // The same frame again on a second link: the duplicate still names the link.
+            tB.deliver(direct, link = "AA:02")
+            mA.sendBeacon(null)
+            val relayed = FrameCodec.decode(tA.sentHistory.last())
+            tB.deliver(EncryptedFrame(relayed.networkId, relayed.senderId, relayed.seq, (relayed.ttl - 1u).toUByte(), relayed.sentAtMs, relayed.ciphertext), link = "AA:03")
+            withTimeout(5_000) { while (tB.heardLinks.size < 2) kotlinx.coroutines.delay(10) }
+            kotlinx.coroutines.delay(200)
+            val hex = alice.memberId.bytes.joinToString("") { "%02x".format(it) }
+            assertEquals(listOf("AA:01" to hex, "AA:02" to hex), tB.heardLinks.toList())
+        } finally { mA.stop(); mB.stop(); scope.cancel() }
+    }
 }

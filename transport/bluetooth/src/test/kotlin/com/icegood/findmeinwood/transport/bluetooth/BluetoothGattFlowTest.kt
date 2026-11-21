@@ -505,4 +505,144 @@ class BluetoothLinkSupervisionTest {
         assertIs<SendResult.Sent>(t.send(meshWire(4)))
         t.stop()
     }
+
+    private fun readyLink(cb: BluetoothGattCallback, address: String): BluetoothGatt {
+        val g = gatt(address)
+        cb.onConnectionStateChange(g, 0, 2)
+        cb.onMtuChanged(g, 185, 0)
+        cb.onServicesDiscovered(g, 0)
+        cb.onDescriptorWrite(g, null, 0)
+        return g
+    }
+
+    private val alice = byteArrayOf(1, 2, 3, 4)
+    private val bob = byteArrayOf(5, 6, 7, 8)
+
+    @Test
+    fun `two links to one phone - the older one is closed`() = runBlocking {
+        val t = transport()
+        t.start(SessionConfig(NetworkId(ByteArray(8)), emptySet()))
+        val cb = clientCallback(t)
+        val old = readyLink(cb, "EE:00:00:00:01:01")
+        t.linkHeard("EE:00:00:00:01:01", alice)
+        now += 1_000
+        // The same phone under its new random address.
+        val new = readyLink(cb, "EE:00:00:00:01:02")
+        t.linkHeard("EE:00:00:00:01:02", alice)
+        Mockito.verify(old).disconnect()
+        Mockito.verify(new, Mockito.never()).disconnect()
+        assertEquals(1, t.centralLinkCount())
+        assertIs<SendResult.Sent>(t.send(meshWire(4)))
+        // The old link going away afterwards changes nothing.
+        cb.onConnectionStateChange(old, 0, 0)
+        assertEquals(1, t.centralLinkCount())
+        t.stop()
+    }
+
+    @Test
+    fun `the older link is closed even when it is the one heard last`() = runBlocking {
+        val t = transport()
+        t.start(SessionConfig(NetworkId(ByteArray(8)), emptySet()))
+        val cb = clientCallback(t)
+        val old = readyLink(cb, "EE:00:00:00:02:01")
+        now += 1_000
+        val new = readyLink(cb, "EE:00:00:00:02:02")
+        t.linkHeard("EE:00:00:00:02:02", alice)
+        t.linkHeard("EE:00:00:00:02:01", alice)
+        Mockito.verify(old).disconnect()
+        Mockito.verify(new, Mockito.never()).disconnect()
+        t.stop()
+    }
+
+    @Test
+    fun `links to different phones are both kept`() = runBlocking {
+        val t = transport()
+        t.start(SessionConfig(NetworkId(ByteArray(8)), emptySet()))
+        val cb = clientCallback(t)
+        val a = readyLink(cb, "EE:00:00:00:03:01")
+        val b = readyLink(cb, "EE:00:00:00:03:02")
+        t.linkHeard("EE:00:00:00:03:01", alice)
+        t.linkHeard("EE:00:00:00:03:02", bob)
+        t.linkHeard("EE:00:00:00:03:01", alice)
+        Mockito.verify(a, Mockito.never()).disconnect()
+        Mockito.verify(b, Mockito.never()).disconnect()
+        assertEquals(2, t.centralLinkCount())
+        t.stop()
+    }
+
+    @Test
+    fun `a newer link this phone cannot send on yet replaces nothing`() = runBlocking {
+        val t = transport()
+        t.start(SessionConfig(NetworkId(ByteArray(8)), emptySet()))
+        val cb = clientCallback(t)
+        val old = readyLink(cb, "EE:00:00:00:04:01")
+        t.linkHeard("EE:00:00:00:04:01", alice)
+        now += 1_000
+        val half = gatt("EE:00:00:00:04:02")
+        cb.onConnectionStateChange(half, 0, 2) // connected, notifications not on yet
+        t.linkHeard("EE:00:00:00:04:02", alice)
+        Mockito.verify(old, Mockito.never()).disconnect()
+        Mockito.verify(half, Mockito.never()).disconnect()
+        t.stop()
+    }
+
+    @Test
+    fun `a link the other phone opened is never closed for a duplicate`() = runBlocking {
+        val t = transport()
+        t.start(SessionConfig(NetworkId(ByteArray(8)), emptySet()))
+        val f = BluetoothTransport::class.java.getDeclaredField("serverCallback")
+        f.isAccessible = true
+        val server = f.get(t) as android.bluetooth.BluetoothGattServerCallback
+        val cb = clientCallback(t)
+        // Ours to alice's advertised address, and alice's to us from another address.
+        val ours = readyLink(cb, "EE:00:00:00:07:01")
+        val device = Mockito.mock(BluetoothDevice::class.java)
+        Mockito.`when`(device.address).thenReturn("EE:00:00:00:07:02")
+        val cccd = Mockito.mock(BluetoothGattDescriptor::class.java)
+        Mockito.`when`(cccd.uuid).thenReturn(BluetoothTransport.CCCD_UUID)
+        server.onConnectionStateChange(device, 0, 2)
+        server.onDescriptorWriteRequest(device, 1, cccd, false, false, 0, byteArrayOf(1, 0))
+        t.linkHeard("EE:00:00:00:07:01", alice)
+        t.linkHeard("EE:00:00:00:07:02", alice)
+        t.linkHeard("EE:00:00:00:07:01", alice)
+        Mockito.verify(ours, Mockito.never()).disconnect()
+        assertEquals(1, t.centralLinkCount())
+        assertEquals(1, t.peripheralLinkCount())
+        t.stop()
+    }
+
+    @Test
+    fun `a link that went away is forgotten`() = runBlocking {
+        val t = transport()
+        t.start(SessionConfig(NetworkId(ByteArray(8)), emptySet()))
+        val cb = clientCallback(t)
+        val gone = readyLink(cb, "EE:00:00:00:05:01")
+        t.linkHeard("EE:00:00:00:05:01", alice)
+        cb.onConnectionStateChange(gone, 0, 0)
+        now += 1_000
+        val again = readyLink(cb, "EE:00:00:00:05:02")
+        t.linkHeard("EE:00:00:00:05:02", alice)
+        Mockito.verify(again, Mockito.never()).disconnect()
+        assertEquals(1, t.centralLinkCount())
+        t.stop()
+    }
+
+    @Test
+    fun `closeLink drops the phone's incoming link too`() = runBlocking {
+        val t = transport()
+        t.start(SessionConfig(NetworkId(ByteArray(8)), emptySet()))
+        val f = BluetoothTransport::class.java.getDeclaredField("serverCallback")
+        f.isAccessible = true
+        val server = f.get(t) as android.bluetooth.BluetoothGattServerCallback
+        val device = Mockito.mock(BluetoothDevice::class.java)
+        Mockito.`when`(device.address).thenReturn("EE:00:00:00:06:01")
+        val cccd = Mockito.mock(BluetoothGattDescriptor::class.java)
+        Mockito.`when`(cccd.uuid).thenReturn(BluetoothTransport.CCCD_UUID)
+        server.onConnectionStateChange(device, 0, 2)
+        server.onDescriptorWriteRequest(device, 1, cccd, false, false, 0, byteArrayOf(1, 0))
+        assertEquals(1, t.peripheralLinkCount())
+        t.closeLink("EE:00:00:00:06:01")
+        assertEquals(0, t.peripheralLinkCount())
+        t.stop()
+    }
 }

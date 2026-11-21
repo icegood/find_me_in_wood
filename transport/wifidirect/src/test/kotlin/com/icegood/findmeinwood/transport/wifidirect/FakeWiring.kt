@@ -29,6 +29,15 @@ internal open class FakeWiring : WifiDirectWiring(
         done(P2pResult.OK)
     }
 
+    var stopDiscoverCalls = 0
+    var station: Int? = null
+
+    override fun stationMhz(): Int? = station
+
+    override fun stopPeerDiscovery(channel: WifiP2pManager.Channel?) {
+        stopDiscoverCalls++
+    }
+
     override fun requestPeers(channel: WifiP2pManager.Channel?, peers: (List<String>) -> Unit) {
         peerCallbacks += peers
     }

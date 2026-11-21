@@ -120,6 +120,13 @@ interface Transport {
     fun closeLink(link: String) {}
 
     /**
+     * An authenticated frame came in on [link] straight from [member] (not relayed): the
+     * link reaches that member's phone. A radio that can end up with two links to one phone
+     * (Bluetooth: the phone changed its random address) closes the older one.
+     */
+    fun linkHeard(link: String, member: ByteArray) {}
+
+    /**
      * The network key moved to a new epoch (a member was removed): radios use [current]
      * from now on ([SessionConfig.groupSecret] was the one at start). [older] secrets only
      * recognise members that missed the rekey, so they can be handed the new key.

@@ -31,6 +31,11 @@ data class PeerState(
     val linkAllowedByPeer: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
     /** Who hosts the Wi-Fi Direct group; null while Wi-Fi Direct is agreed with nobody. */
     val wifiDirectHost: WifiDirectHost? = null,
+    /**
+     * Radios that carried frames straight from the peer lately, every one of them: whether
+     * the selected link works, unlike [transport] (only the radio whose copy came first).
+     */
+    val linkHeard: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
 )
 
 /**
@@ -76,6 +81,7 @@ class PeerTracker(
             linkDeniedByMe = cur?.linkDeniedByMe ?: emptyList(),
             linkAllowedByPeer = cur?.linkAllowedByPeer ?: emptyList(),
             wifiDirectHost = cur?.wifiDirectHost,
+            linkHeard = cur?.linkHeard ?: emptyList(),
         ))
     }
 
@@ -90,12 +96,13 @@ class PeerTracker(
         deniedByMe: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
         allowedByPeer: List<com.icegood.findmeinwood.core.model.TransportId> = options,
         wifiDirectHost: WifiDirectHost? = null,
+        heard: List<com.icegood.findmeinwood.core.model.TransportId> = emptyList(),
     ) {
         val cur = peers.value[member] ?: return
         val next = cur.copy(
             link = link, linkOptions = options, linkSuggestion = suggestion, linkCommon = common,
             linkAllowedByMe = allowedByMe, linkDeniedByMe = deniedByMe, linkAllowedByPeer = allowedByPeer,
-            wifiDirectHost = wifiDirectHost,
+            wifiDirectHost = wifiDirectHost, linkHeard = heard,
         )
         if (next != cur) peers.value = peers.value + (member to next)
     }

@@ -29,6 +29,20 @@ adb -s <serial> shell settings put global stay_on_while_plugged_in 7  # awake on
 adb -s <serial> shell dumpsys power | grep -E "mStayOn=|mSettingBatterySaverEnabled="  # expect true / false
 ```
 
+Then check the transports on every phone before any link test (they get switched off by
+hand between sessions): don't start connecting peers, or investigate why a link is missing,
+until all three are on. Switch on whatever is off, without investigating why.
+
+```sh
+adb -s <serial> shell settings get global wifi_on                          # 1
+adb -s <serial> shell settings get secure location_mode                    # 3
+adb -s <serial> shell dumpsys bluetooth_manager | grep -m1 -i "state:"     # ON (BLE_ON = off)
+adb -s <serial> shell svc wifi enable
+adb -s <serial> shell settings put secure location_mode 3
+# Bluetooth: `cmd bluetooth_manager enable` on Android 13+; else the app's Bluetooth switch
+# (Networks tab Radios card) and the system dialog's Allow
+```
+
 - EMUI power saving caps the screen timeout at 30 s (the user cannot raise it in Settings)
   and throttles the app in the background: fewer beacons, late Bluetooth/Wi-Fi Direct.
 - Use 7, not `svc power stayon usb` (= 2): the JAD-LX9 reports the laptop's USB port as an
@@ -62,6 +76,9 @@ adb -s <serial> shell dumpsys power | grep -E "mStayOn=|mSettingBatterySaverEnab
 
 - Read the screen as text with tap centers:
   `adb shell uiautomator dump /sdcard/ui.xml` then parse `text=… bounds=[x1,y1][x2,y2]`.
+  A dump can leave auto-rotate switched on (UiAutomation thaws rotation when it
+  disconnects, also when a `timeout` kills it), which the user does not want: run
+  `settings put system accelerometer_rotation 0` after every dump.
   A screenshot (`adb exec-out screencap -p`) only when the dump is not enough; a black
   screenshot means the screen is off or a secure window is showing.
 - Wake: `input keyevent KEYCODE_WAKEUP`; swipe to unlock works only without a PIN. Keep the

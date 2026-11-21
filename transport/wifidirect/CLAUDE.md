@@ -17,21 +17,26 @@ goes through `moveState` (logged as `wifi direct: A -> B`).
   group: while members are linked it keeps the old name (`renamePending`) and only re-forms
   under the new one when the last socket closes. Before this fix the link dropped every hour.
 - **Several groups per phone** (3+ members on Wi-Fi Direct, FR-3.5b): a phone that hosts
-  one pair and joins another, or joins two hosts, serves them in turn (`rotate`, 5 s after a
-  link or 12 s without). Each phone rotates on its own clock, so a joiner often arrives
+  one pair and joins another, or joins two hosts, serves them in turn (`rotate`, 15 s after a
+  link, or without one 25 s hosting and 12 s joining). Each phone rotates on its own clock, so a joiner often arrives
   while its host is away in another group: links flap every few seconds. Seen with a
   forgotten third member (Pixel) lying nearby with the app running.
 - **Channel sweep was the slow part of a join.** Without a channel, the VOG-L29 swept
   2.4 + 5 GHz (`for join with frequency 0`), ~1.5 s per pass, and needed 8.7 s to find a
   host next to it. Groups now run on `GroupCredentials.frequency` (from the secret);
   `for join with frequency 2412` joined in 0.8 s. DHCP adds 2.5-3 s after that.
-- **Wi-Fi-only rendezvous:** the owner hosts a group named from the network key alone
-  (`LinkNegotiator.OWNER_UNKNOWN`), so a password joiner finds it without Bluetooth. Measured
-  cold (no groups, JAD Bluetooth off): first frames 5.4 s after both apps started.
+- **No Wi-Fi rendezvous any more:** the owner used to host a group named from the network
+  key alone, so a password joiner found it without Bluetooth (first frames 5.4 s cold). Now
+  joining and the first handshake run over Bluetooth (or QR); groups exist only for pairs
+  agreed on Wi-Fi Direct.
 - `am force-stop` leaves the P2P group up in the system: toggle Wi-Fi for a cold test.
-- **One group per network:** `LinkNegotiator.pairGroupNeeded` keeps members in the owner's
-  group while the owner relays them, so 3+ phones no longer take turns. The host reports its
-  group's real channel (`TransportEvent.HostedChannel` → `LinkCtl.freq`), joiners use it.
+- **Subgroups:** `LinkNegotiator.pairGroupNeeded` skips a pair's own group when both
+  members are surely in one host's group (`LinkCtl.hubs`: a picked host, or the owner by
+  default), so 3+ phones need not take turns. A member that agreed Wi-Fi Direct with nobody
+  in a shared group (config "JAD–owner Bluetooth only") gets a pair group, and the other
+  phone then takes turns: hosting ~10 s, ~6 s in the other group; the slow EMUI joiner
+  (6–16 s to join + DHCP) mostly misses its slot. The host reports its group's real channel
+  (`TransportEvent.HostedChannel` → `LinkCtl.freq`), joiners use it.
 - A drop the host caused reaches the member as `P2P-GROUP-REMOVED … reason=GO_ENDING_SESSION`
   (only while in range). A real range loss shows up as lost beacons/deauth instead.
 - Huawei (EMUI) rejected associations with `CTRL-EVENT-ASSOC-REJECT status_code=5201`

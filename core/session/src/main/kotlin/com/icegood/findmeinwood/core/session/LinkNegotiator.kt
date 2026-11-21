@@ -29,17 +29,19 @@ import java.util.zip.CRC32
  *   negotiator only [suggest]s the next agreed transport; switching is the user's choice.
  * - Routing: frames go out only on radios this user allowed for some peer ([radios]), so
  *   a pair stays in touch while any of its agreed radios reaches.
- * - Wi-Fi Direct is per pair too ([wifiDirectHostOf]): of the two, the network's owner hosts,
- *   else the lower member id, unless the pair picked the other way round ([pickHost],
- *   announced like a selection). This phone serves one group it hosts and one per member it
- *   joins ([wifiDirectGroups]); the radio takes them in turn.
- * - Rendezvous over Wi-Fi alone: the owner always hosts its group, named from the network
- *   key alone ([WifiDirectGroup.ownerGroup]), so a member that knows nobody yet, not even
- *   the owner's id (a password join), still knows which group to join.
- * - One group per network where possible: every member joins the owner's group and the
- *   owner relays between them, so no phone has to take turns between groups. Two members
- *   other than the owner get a group of their own only when they cannot hear each other
- *   that way ([pairGroupNeeded]), or when their users picked a host for the pair.
+ * - Wi-Fi Direct is per pair too ([wifiDirectHostOf]), only once the pair agreed on it: of
+ *   the two, the network's owner hosts, else the lower member id, unless the pair picked the
+ *   other way round ([pickHost], announced like a selection). This phone serves one group
+ *   it hosts and one per member it joins ([wifiDirectGroups]); the radio takes them in turn.
+ * - Subgroups: every pair that makes one phone host shares its one group, and the host
+ *   relays between them. Two members both surely in one host's group (a picked host, or the
+ *   owner by default; announced as [LinkCtl.hubs]) meet there and get no group of their own
+ *   ([pairGroupNeeded]); picked hosts win over the owner's default.
+ * - Bluetooth is the control channel for the handshake: offers and acknowledgements count
+ *   only over Bluetooth until the pair agreed on something. Joining and the first handshake
+ *   need it; afterwards Bluetooth may be off, the agreed links carry on (and their link
+ *   control) over any radio. Wi-Fi Direct carries no rendezvous: there is no group for
+ *   members that have not agreed yet.
  * - The host says the channel its group really runs on ([setHostedFrequency]); its joiners
  *   scan only that one ([frequencyOf]).
  */
@@ -63,17 +65,14 @@ class LinkNegotiator(
 
         fun prefix(id: MemberId): ByteArray = id.bytes.copyOf(4)
 
-        /** The id an owner not learned yet goes by (as in NetworkProfile): it names the owner's group. */
+        /** The id an owner not learned yet goes by (as in NetworkProfile). */
         val OWNER_UNKNOWN = MemberId(ByteArray(32))
+
+        /** Decision key of the pair's Wi-Fi Direct host pick (true = this phone hosts), kept across runs. */
+        const val HOST_KEY = "host"
 
         /** At most this long without hearing a member before the pair forms its own group. */
         const val PAIR_QUIET_MAX_MS = 60_000L
-
-        /**
-         * After a start the owner's group has the radio alone this long: it is joined in
-         * ~5 s when the owner is near, and taking turns with pair groups only slows that.
-         */
-        const val OWNER_FIRST_MS = 15_000L
     }
 
     /** The selected link to a peer changed (for the log and the UI). */
@@ -97,6 +96,8 @@ class LinkNegotiator(
         /** Next agreed transport when the selected link is quiet; never applied by itself. */
         val suggestion: TransportId?,
         val lastHeardMs: Long,
+        /** Radios that carried a frame straight from the peer lately (not relayed), in standard order. */
+        val heard: List<TransportId> = emptyList(),
     )
 
     private class Peer {
@@ -128,6 +129,10 @@ class LinkNegotiator(
         var freq: Int? = null
         /** Last frame from the peer by any path, relayed ones too. */
         var lastAnyMs = 0L
+        /** Hosts of the Wi-Fi Direct groups the peer said it is surely in (hex prefix -> picked). */
+        var hubs: Map<String, Boolean> = emptyMap()
+        /** The pair agreed on something this run: its link control is taken over any radio. */
+        var agreedOnce = false
     }
 
     /** Band of the Wi-Fi Direct group this phone hosts (the user's choice). */
@@ -174,6 +179,8 @@ class LinkNegotiator(
     private val echoSent = HashMap<MemberId, Int?>()
     /** The peer is waiting for our answer (handshake step or a selection to announce). */
     private var urgent = false
+    /** [LinkCtl.hubs] as last announced. */
+    private var hubsSent: Map<String, Boolean> = emptyMap()
 
     /**
      * True when link control should go out now rather than with the next scheduled beacon:
@@ -216,6 +223,8 @@ class LinkNegotiator(
     @Synchronized
     fun outgoing(): LinkCtl? {
         beaconCount++
+        val hubs = anchors().mapKeys { (h, _) -> hexOf(prefix(h)) }
+        if (hubs != hubsSent) { dirty = true; urgent = true }
         // Acknowledge exactly what this phone's user allowed, echoing the peer's own ack.
         val acks = peers.mapNotNull { (id, p) ->
             val offers = p.offers ?: return@mapNotNull null
@@ -227,6 +236,8 @@ class LinkNegotiator(
         val handshaking = acks.any { (id, ack) -> ackSent[id] != ack.h || peers[id]?.theirEcho != ack.h || echoSent[id] != ack.e }
         val sels = peers.filter { (_, p) -> p.announce > 0 && p.selected != null }
         val hostPicks = peers.filter { (_, p) -> p.hostAnnounce > 0 && p.hostMe != null }
+        // Every pick rides on every link control, not only its first beacons: a pair out of
+        // touch then (no common radio for a while) would never learn it.
         // An answer the peer waits for always goes out (and clears [urgent]), else every
         // frame heard meanwhile would ask for one more extra beacon.
         if (!dirty && !urgent && !handshaking && sels.isEmpty() && hostPicks.isEmpty() &&
@@ -234,6 +245,7 @@ class LinkNegotiator(
         ) return null
         dirty = false
         urgent = false
+        hubsSent = hubs
         acks.forEach { (id, ack) -> ackSent[id] = ack.h; echoSent[id] = ack.e }
         sels.values.forEach { it.announce-- }
         hostPicks.values.forEach { it.hostAnnounce-- }
@@ -242,9 +254,10 @@ class LinkNegotiator(
             acks = acks.map { it.second },
             sel = sels.map { (id, p) -> LinkSel(prefix(id), p.selected!!, p.epoch) },
             name = myName,
-            hosts = hostPicks.map { (id, p) -> LinkHost(prefix(id), p.hostMe!!, p.hostEpoch) },
+            hosts = peers.filter { (_, p) -> p.hostMe != null }.map { (id, p) -> LinkHost(prefix(id), p.hostMe!!, p.hostEpoch) },
             band = myBand,
             freq = myFreq,
+            hubs = anchors().map { (h, picked) -> com.icegood.findmeinwood.core.model.LinkHub(prefix(h), picked) },
         )
     }
 
@@ -264,6 +277,14 @@ class LinkNegotiator(
             p.lastHeardMs = now
         }
         if (ctl != null && ctl.v == 3) {
+            ctl.band?.let { p.band = it }
+            p.freq = ctl.freq
+            p.hubs = ctl.hubs.associate { hexOf(it.p) to it.picked }
+        }
+        // The handshake runs over Bluetooth: elsewhere only for a pair that agreed before.
+        if (agreedSet(peer, p).isNotEmpty()) p.agreedOnce = true
+        val handshake = source == TransportId.BLUETOOTH || p.agreedOnce || restoredAllowsAny(peer)
+        if (ctl != null && ctl.v == 3 && handshake) {
             val offers = ctl.offers.filter { it.t in RUNGS }.distinctBy { it.t }
             val ack = ctl.acks.firstOrNull { it.p.contentEquals(prefix(self)) }
             // Answer at once: new offers, a changed ack (to echo), or ours not yet echoed.
@@ -275,8 +296,6 @@ class LinkNegotiator(
             p.theirAckT = ack?.t
             p.theirAckH = ack?.h
             p.theirEcho = ack?.e
-            ctl.band?.let { p.band = it }
-            p.freq = ctl.freq
             ctl.sel.firstOrNull { it.p.contentEquals(prefix(self)) }?.let { s ->
                 val newer = s.e > p.epoch || s.e == p.epoch && s.t != p.selected && hex(peer) < hex(self)
                 if (newer && s.t in agreedSet(peer, p)) {
@@ -290,8 +309,10 @@ class LinkNegotiator(
                 val meHosts = !h.h
                 val newer = h.e > p.hostEpoch || h.e == p.hostEpoch && p.hostMe != meHosts && hex(peer) < hex(self)
                 if (newer) {
+                    val changed = p.hostMe != meHosts
                     p.hostMe = meHosts
                     p.hostEpoch = h.e
+                    if (changed) onDecided?.invoke() // kept across restarts, as this user's own
                 }
             }
         }
@@ -337,13 +358,20 @@ class LinkNegotiator(
     /** Every decision this user made, per peer: decision key (transport and both addresses) -> allowed. */
     @Synchronized
     fun decisions(): Map<MemberId, Map<String, Boolean>> =
-        restored + peers.filterValues { it.decisions.isNotEmpty() }.mapValues { (_, p) -> HashMap(p.decisions) }
+        restored + peers.filterValues { it.decisions.isNotEmpty() || it.hostMe != null }.mapValues { (_, p) ->
+            HashMap(p.decisions).apply { p.hostMe?.let { put(HOST_KEY, it) } }
+        }
 
     private fun seed(id: MemberId, p: Peer) {
         val saved = restored[id] ?: return
-        saved.forEach { (k, v) -> p.decisions.putIfAbsent(k, v) }
-        if (saved.isNotEmpty()) { p.acking = true; dirty = true }
+        saved.forEach { (k, v) -> if (k != HOST_KEY) p.decisions.putIfAbsent(k, v) }
+        // The pick of the last run holds; a newer one from the peer wins (higher epoch).
+        saved[HOST_KEY]?.let { if (p.hostMe == null) { p.hostMe = it; p.hostEpoch = maxOf(p.hostEpoch, 1) } }
+        if (saved.keys.any { it != HOST_KEY }) { p.acking = true; dirty = true }
     }
+
+    /** This user allowed some transport for [peer] in an earlier run. */
+    private fun restoredAllowsAny(peer: MemberId): Boolean = restored[peer]?.any { (k, v) -> v && k != HOST_KEY } == true
 
     /** This phone's user allows every transport currently common with [peer]. */
     @Synchronized
@@ -362,6 +390,15 @@ class LinkNegotiator(
         urgent = true
         return listOfNotNull(changed(peer, p))
     }
+
+    /**
+     * [peer]'s link control counts only over Bluetooth for now (nothing agreed yet): a
+     * frame's Bluetooth copy brings it even when another radio's copy came first. Taking
+     * the same link control twice changes nothing.
+     */
+    @Synchronized
+    fun handshakeOnBluetoothOnly(peer: MemberId): Boolean =
+        peers[peer]?.agreedOnce != true && !restoredAllowsAny(peer)
 
     /** Re-evaluates links (e.g. a handshake completing or an offer withdrawn). */
     @Synchronized
@@ -384,14 +421,10 @@ class LinkNegotiator(
         return peers.flatMap { (id, p) -> allowedByMe(id, p) + undecided(id, p) }.toSet()
     }
 
-    /**
-     * One Wi-Fi Direct group this phone serves: hosted by [host] (this phone or a member), with
-     * [members]. [ownerGroup]: the owner's group, whose name comes from the network key alone
-     * (see [OWNER_UNKNOWN]); [host] is then the owner, or [OWNER_UNKNOWN] while not known.
-     */
-    data class WifiDirectGroup(val host: MemberId, val members: List<MemberId>, val ownerGroup: Boolean = false)
+    /** One Wi-Fi Direct group this phone serves: hosted by [host] (this phone or a member), with [members]. */
+    data class WifiDirectGroup(val host: MemberId, val members: List<MemberId>)
 
-    /** The network's members (its member list): being one means being able to pair with every other. */
+    /** The network's members (its member list). */
     private var members: Set<MemberId> = emptySet()
 
     /** The network's owner (master); null while this phone has not learned it. */
@@ -402,14 +435,10 @@ class LinkNegotiator(
         members = ids.toSet() - self
     }
 
-    /** Told that the owner is not known yet: its group is joined by the network's name alone. */
-    private var ownerUnknown = false
-
     /** The network's owner, or null / [OWNER_UNKNOWN] while this phone has not learned it. */
     @Synchronized
     fun setOwner(id: MemberId?) {
         owner = id?.takeIf { it != OWNER_UNKNOWN }
-        ownerUnknown = owner == null
     }
 
     /**
@@ -418,15 +447,17 @@ class LinkNegotiator(
      * counts until the peer is heard again).
      */
     @Synchronized
-    fun wifiDirectHostOf(peer: MemberId): MemberId? {
+    fun wifiDirectHostOf(peer: MemberId): MemberId? = if (wifiDirectAgreed(peer)) pairHost(peer) else null
+
+    /** The pair agreed on Wi-Fi Direct; before its link control is heard, as decided last run. */
+    private fun wifiDirectAgreed(peer: MemberId): Boolean {
         val p = peers[peer]
-        val agreed = if (p != null) TransportId.WIFI_DIRECT in agreedSet(peer, p) else restoredAllows(peer)
-        return if (agreed) pairHost(peer) else null
+        return if (p?.offers != null) TransportId.WIFI_DIRECT in agreedSet(peer, p) else restoredAllows(peer)
     }
 
     /**
      * The pair's host by the pair alone: the pick one of the two made, else the owner when it
-     * is one of the two (its group is where newcomers look first), else the lower member id.
+     * is one of the two, else the lower member id.
      */
     private fun pairHost(peer: MemberId): MemberId = when (peers[peer]?.hostMe) {
         true -> self
@@ -439,61 +470,64 @@ class LinkNegotiator(
     }
 
     /**
-     * The groups this phone serves (FR-3.5b): every member it can pair with over Wi-Fi
-     * Direct meets it in their pair's group — agreed or not yet decided (the handshake runs
-     * there), never one that turned it down or does not offer it. The group this phone
-     * hosts comes first (shared by every pair that makes it host, each still a pair of its
-     * own), then one per member it joins.
+     * The groups this phone serves (FR-3.5b): one per pair agreed on Wi-Fi Direct that needs
+     * its own ([pairGroupNeeded]). The group this phone hosts is shared by every pair that
+     * makes it host (each still a pair of its own); then one per member it joins. Groups it
+     * is surely in ([anchors]) come first, picked ones before the owner's.
      */
     @Synchronized
     fun wifiDirectGroups(): List<WifiDirectGroup> {
         if (myOffers.none { it.t == TransportId.WIFI_DIRECT }) return emptyList()
-        val ids = (members + peers.keys + restored.keys + listOfNotNull(owner)).filter { it != self }.distinct().sortedBy { hex(it) }
-        val pairable = ids.filter { id ->
-            val offers = peers[id]?.offers
-            !wifiDirectRefused(id) && !restoredDenies(id) &&
-                (offers == null || TransportId.WIFI_DIRECT in commonOf(offers))
-        }
-        val byHost = pairable.filter { pairGroupNeeded(it) }.groupBy { pairHost(it) }
-        val owned = owner == self
-        // The owner hosts even with nobody known yet: newcomers find it there.
-        val mine = (byHost[self] ?: if (owned) emptyList() else null)
-            ?.let { listOf(WifiDirectGroup(self, it, ownerGroup = owned)) }.orEmpty()
+        val ids = (members + peers.keys + restored.keys).filter { it != self }.distinct().sortedBy { hex(it) }
+        val byHost = ids.filter { wifiDirectAgreed(it) && pairGroupNeeded(it) }.groupBy { pairHost(it) }
+        val mine = byHost[self]?.let { listOf(WifiDirectGroup(self, it)) }.orEmpty()
         val joins = byHost.filterKeys { it != self }.toSortedMap(compareBy { hex(it) })
-            .map { (host, members) -> WifiDirectGroup(host, members, ownerGroup = host == owner) }
-        // Owner not known yet: its group is joined by the network's name alone.
-        val bootstrap = if (ownerUnknown) listOf(WifiDirectGroup(OWNER_UNKNOWN, emptyList(), ownerGroup = true)) else emptyList()
-        // The owner's group first: it is where the network meets, the radio goes there first.
-        return (mine + joins + bootstrap).sortedByDescending { it.ownerGroup }
+            .map { (host, members) -> WifiDirectGroup(host, members) }
+        val anchored = anchors()
+        return (mine + joins).sortedByDescending { g -> anchored[g.host]?.let { if (it) 2 else 1 } ?: 0 }
     }
 
     /**
-     * Whether this phone and [peer] need a group of their own. With the owner known (or
-     * looked for), two members other than it meet in the owner's group: a group of their
-     * own only splits the radio's time. They get one when their users picked a host, or
-     * when they were in touch before and have not heard each other by any path for a while
-     * (out of the owner's reach together). Without an owner (never told) every pair has one.
+     * The groups this phone is surely in, by host (true = a user picked that host): every
+     * pair agreed on Wi-Fi Direct whose host was picked, and every pair with the owner (its
+     * default host) unless both are in a picked group anyway. Announced in [LinkCtl.hubs].
      */
-    private fun pairGroupNeeded(peer: MemberId): Boolean {
-        if (owner == null && !ownerUnknown) return true
-        if (peer == owner || self == owner) return true
-        val p = peers[peer]
-        if (p?.hostMe != null) return true
-        val now = nowMs()
-        // The owner out of reach (after a first look for it): members pair on their own.
-        // Not known yet (a password join): members heard lately came through its group.
-        val ownerHeard = owner?.let { peers[it] }?.let { now - it.lastAnyMs <= pairQuietMs() }
-            ?: (ownerUnknown && peers.values.any { now - it.lastAnyMs <= pairQuietMs() })
-        if (!ownerHeard && now - startedAtMs > OWNER_FIRST_MS) return true
-        // Through the owner: a member heard lately needs nothing more; one heard before and
-        // silent since is out of the owner's reach, so the pair meets on its own.
-        return p != null && p.lastAnyMs > 0 && now - p.lastAnyMs > pairQuietMs()
+    private fun anchors(): Map<MemberId, Boolean> {
+        if (myOffers.none { it.t == TransportId.WIFI_DIRECT }) return emptyMap()
+        val agreed = (peers.keys + restored.keys).filter { it != self && wifiDirectAgreed(it) }
+        val picked = agreed.filter { peers[it]?.hostMe != null }.associate { pairHost(it) to true }
+        val owners = agreed.filter { (it == owner || self == owner) && peers[it]?.hostMe == null }
+            .filter { !meetIn(it, picked.keys, pickedOnly = true) }
+            .associate { pairHost(it) to false }
+        return owners + picked
     }
 
-    /** Session start: the owner's group is tried alone first. */
-    private val startedAtMs = nowMs()
+    /** [peer], heard lately, said it is surely in the group of a host in [hosts] (not one of the two). */
+    private fun meetIn(peer: MemberId, hosts: Collection<MemberId>, pickedOnly: Boolean): Boolean {
+        val p = peers[peer] ?: return false
+        if (p.lastAnyMs == 0L || nowMs() - p.lastAnyMs > pairQuietMs()) return false
+        return hosts.any { h -> h != self && h != peer && p.hubs[hexOf(prefix(h))]?.let { !pickedOnly || it } == true }
+    }
 
-    /** Silence after which two members stop counting on the owner's group to meet. */
+    /**
+     * Whether this phone and [peer] (agreed on Wi-Fi Direct) need a group of their own: not
+     * when both are surely in one host's group, where that host relays between them. A
+     * picked host always gets its group; the owner's pairs too, unless both members are in a
+     * picked group; other pairs meet in a group both are in, and wait in this phone's own
+     * group for a member not heard yet. One heard before and silent since is out of the
+     * shared host's reach: the pair meets on its own.
+     */
+    private fun pairGroupNeeded(peer: MemberId): Boolean {
+        val p = peers[peer]
+        if (p?.hostMe != null) return true
+        val anchored = anchors()
+        val picked = anchored.filterValues { it }.keys
+        if (peer == owner || self == owner) return !meetIn(peer, picked, pickedOnly = true)
+        if (p == null || p.lastAnyMs == 0L) return anchored.isEmpty()
+        return !meetIn(peer, anchored.keys, pickedOnly = false)
+    }
+
+    /** Silence after which two members stop counting on a shared host's group to meet. */
     private fun pairQuietMs() = minOf(3 * beaconIntervalMs, PAIR_QUIET_MAX_MS)
 
     /** This user picks who hosts the pair's Wi-Fi Direct group; the peer follows from the next beacon. */
@@ -504,6 +538,7 @@ class LinkNegotiator(
         p.hostEpoch++
         p.hostAnnounce = SELECT_BEACONS
         urgent = true
+        onDecided?.invoke()
     }
 
     /**
@@ -524,10 +559,6 @@ class LinkNegotiator(
 
     private fun restoredAllows(peer: MemberId): Boolean =
         restored[peer]?.any { (k, v) -> v && k.startsWith("${TransportId.WIFI_DIRECT.name}:") } == true
-
-    /** Kept from the last run: this user turned Wi-Fi Direct down for [peer] (until it is heard again). */
-    private fun restoredDenies(peer: MemberId): Boolean =
-        peer !in peers && restored[peer]?.any { (k, v) -> !v && k.startsWith("${TransportId.WIFI_DIRECT.name}:") } == true
 
     @Synchronized
     fun common(peer: MemberId): List<TransportId> = peers[peer]?.offers?.let { commonOf(it) } ?: emptyList()
@@ -554,6 +585,7 @@ class LinkNegotiator(
             id, common, agreedSet(id, p), mine,
             common.filter { t -> p.offers?.let { entry(t, it) }?.let { p.decisions[it] } == false },
             allowedByPeer(id, p), linkOf(id, p), suggestionOf(id, p), p.lastHeardMs,
+            heardOn(p),
         )
     }
 
@@ -624,6 +656,12 @@ class LinkNegotiator(
     /** Heard directly within three beacon intervals (the staleness of a peer). */
     private fun heardLately(p: Peer, now: Long) = p.lastHeardMs > 0 && now - p.lastHeardMs <= beaconIntervalMs * 3
 
+    /** Radios that heard [p] directly within the window its link would call quiet. */
+    private fun heardOn(p: Peer): List<TransportId> {
+        val now = nowMs()
+        return RUNGS.filter { t -> p.heard[t]?.let { now - it <= window(t) * 3 / 2 } == true }
+    }
+
     private fun window(t: TransportId) = if (t == TransportId.SMS) smsIntervalMs else beaconIntervalMs
 
     private fun suggestionOf(id: MemberId, p: Peer): TransportId? {
@@ -643,5 +681,7 @@ class LinkNegotiator(
         return sw
     }
 
-    private fun hex(id: MemberId) = id.bytes.joinToString("") { "%02x".format(it) }
+    private fun hex(id: MemberId) = hexOf(id.bytes)
+
+    private fun hexOf(b: ByteArray) = b.joinToString("") { "%02x".format(it) }
 }
