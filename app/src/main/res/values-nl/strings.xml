@@ -70,9 +70,9 @@
     <string name="auth_to_register">Nog geen account? Registreren</string>
     <string name="auth_to_sign_in">Al een account? Inloggen</string>
     <string name="networks_around">Netwerken om je heen</string>
-    <string name="discover_turn_on_radios">Zet de radio\'s aan om netwerken in de buurt te zien. Een netwerk verschijnt alleen zolang een van de leden het vindbaar maakt (‘Vindbaar maken’ of ‘Uitnodigen’ op diens telefoon).</string>
+    <string name="discover_turn_on_radios">Zet de radio\'s aan om netwerken in de buurt te zien. Een netwerk verschijnt alleen zolang een van de leden het vindbaar maakt (‘Vindbaar’ of ‘Uitnodigen’ op diens telefoon).</string>
     <string name="look_for_networks">Netwerken zoeken</string>
-    <string name="discover_looking">Zoeken… een netwerk verschijnt binnen seconden zodra een lid in de buurt het vindbaar maakt (‘Vindbaar maken’ of ‘Uitnodigen’ op diens telefoon).</string>
+    <string name="discover_looking">Zoeken… een netwerk verschijnt binnen seconden zodra een lid in de buurt het vindbaar maakt (‘Vindbaar’ of ‘Uitnodigen’ op diens telefoon).</string>
     <string name="discover_listening_while">Luistert terwijl ‘%1$s’ actief is.</string>
     <string name="your_network">je netwerk</string>
     <string name="unnamed">(naamloos)</string>

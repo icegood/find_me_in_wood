@@ -70,9 +70,9 @@
     <string name="auth_to_register">ليس لديك حساب؟ أنشئ حسابًا</string>
     <string name="auth_to_sign_in">لديك حساب؟ سجّل الدخول</string>
     <string name="networks_around">الشبكات من حولك</string>
-    <string name="discover_turn_on_radios">شغّل أجهزة الراديو لرؤية الشبكات القريبة. لا تظهر الشبكة إلا ما دام أحد أعضائها يجعلها مرئية («اجعلها مرئية» أو «دعوة» على هاتفه).</string>
+    <string name="discover_turn_on_radios">شغّل أجهزة الراديو لرؤية الشبكات القريبة. لا تظهر الشبكة إلا ما دام أحد أعضائها يجعلها مرئية («قابل للاكتشاف» أو «دعوة» على هاتفه).</string>
     <string name="look_for_networks">البحث عن شبكات</string>
-    <string name="discover_looking">جارٍ البحث… تظهر الشبكة خلال ثوانٍ عندما يجعلها عضو قريب مرئية («اجعلها مرئية» أو «دعوة» على هاتفه).</string>
+    <string name="discover_looking">جارٍ البحث… تظهر الشبكة خلال ثوانٍ عندما يجعلها عضو قريب مرئية («قابل للاكتشاف» أو «دعوة» على هاتفه).</string>
     <string name="discover_listening_while">جارٍ الاستماع أثناء عمل «%1$s».</string>
     <string name="your_network">شبكتك</string>
     <string name="unnamed">(بلا اسم)</string>

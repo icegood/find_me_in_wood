@@ -49,13 +49,14 @@ Phone serials and models: `CLAUDE.local.md`. Always `source ./env.sh` first (adb
 - Wake: `input keyevent KEYCODE_WAKEUP`; swipe to unlock works only without a PIN. Keep the
   screen on while on USB: `svc power stayon usb` (the user may need to set "Stay awake").
 - Turn radios on: `svc wifi enable`, `cmd location set-location-enabled true`; Bluetooth
-  through the app's "Turn on Bluetooth" button (system dialog → Allow).
+  through the app's "Bluetooth" switch (Networks tab Radios card, or under the red blocker
+  sentence on Discover; system dialog → Allow).
 - Never accept another app's terms, and never type the user's account credentials: ask.
 - Launch: `am start -n com.icegood.findmeinwoods/com.icegood.findmeinwood.app.MainActivity`.
 
 ## Connecting two phones
 
-1. Master phone: Networks → its network → "Start discovery" (findable for 10 min, needs
+1. Master phone: Networks → its network → "Discoverable" switch on (findable for 10 min, needs
    Bluetooth on).
 2. Joiner: Networks → "Find networks nearby" → "Look for networks" → network card →
    "Ask a member" (or "Enter password").

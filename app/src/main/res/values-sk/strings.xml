@@ -70,9 +70,9 @@
     <string name="auth_to_register">Nemáte účet? Zaregistrujte sa</string>
     <string name="auth_to_sign_in">Už máte účet? Prihláste sa</string>
     <string name="networks_around">Siete okolo vás</string>
-    <string name="discover_turn_on_radios">Zapnite rádiá, aby ste videli siete v okolí. Sieť sa zobrazí, len kým ju niektorý z jej členov zviditeľní („Zviditeľniť“ alebo „Pozvať“ na svojom telefóne).</string>
+    <string name="discover_turn_on_radios">Zapnite rádiá, aby ste videli siete v okolí. Sieť sa zobrazí, len kým ju niektorý z jej členov zviditeľní („Viditeľná“ alebo „Pozvať“ na svojom telefóne).</string>
     <string name="look_for_networks">Hľadať siete</string>
-    <string name="discover_looking">Hľadám… sieť sa objaví o pár sekúnd, keď ju člen nablízku zviditeľní („Zviditeľniť“ alebo „Pozvať“ na svojom telefóne).</string>
+    <string name="discover_looking">Hľadám… sieť sa objaví o pár sekúnd, keď ju člen nablízku zviditeľní („Viditeľná“ alebo „Pozvať“ na svojom telefóne).</string>
     <string name="discover_listening_while">Počúvam, kým beží „%1$s“.</string>
     <string name="your_network">vaša sieť</string>
     <string name="unnamed">(bez názvu)</string>

@@ -70,9 +70,9 @@
     <string name="auth_to_register">Nav konta? Reģistrējieties</string>
     <string name="auth_to_sign_in">Jau ir konts? Pierakstieties</string>
     <string name="networks_around">Tīkli ap jums</string>
-    <string name="discover_turn_on_radios">Ieslēdziet radio, lai redzētu tuvumā esošos tīklus. Tīkls parādās tikai tad, kamēr kāds tā dalībnieks to padara redzamu (“Padarīt redzamu” vai “Uzaicināt” savā tālrunī).</string>
+    <string name="discover_turn_on_radios">Ieslēdziet radio, lai redzētu tuvumā esošos tīklus. Tīkls parādās tikai tad, kamēr kāds tā dalībnieks to padara redzamu (“Atrodams” vai “Uzaicināt” savā tālrunī).</string>
     <string name="look_for_networks">Meklēt tīklus</string>
-    <string name="discover_looking">Meklē… tīkls parādās dažu sekunžu laikā, kad tuvumā esošs dalībnieks to padara redzamu (“Padarīt redzamu” vai “Uzaicināt” savā tālrunī).</string>
+    <string name="discover_looking">Meklē… tīkls parādās dažu sekunžu laikā, kad tuvumā esošs dalībnieks to padara redzamu (“Atrodams” vai “Uzaicināt” savā tālrunī).</string>
     <string name="discover_listening_while">Klausās, kamēr darbojas “%1$s”.</string>
     <string name="your_network">jūsu tīkls</string>
     <string name="unnamed">(bez nosaukuma)</string>

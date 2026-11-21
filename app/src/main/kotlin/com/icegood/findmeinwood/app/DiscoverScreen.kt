@@ -162,7 +162,8 @@ internal fun DiscoveryBlockers(ctx: android.content.Context, finding: Boolean): 
     val loc = radioOn(ctx, Radio.LOCATION)
     val why = UiText.discoveryBlocked(ctx, bt, loc, finding) ?: return false
     Text(why, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-    RadioSwitchRows(ctx, RadioScreen.DISCOVERY_BLOCKERS, withHints = false)
+    val state = mapOf(Radio.BLUETOOTH to bt, Radio.LOCATION to loc)
+    RadioSwitchRows(ctx, RadioToggles.rows(RadioScreen.DISCOVERY_BLOCKERS) { state.getValue(it) }, withHints = false)
     return true
 }
 

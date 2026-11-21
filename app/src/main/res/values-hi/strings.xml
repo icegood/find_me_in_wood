@@ -70,9 +70,9 @@
     <string name="auth_to_register">खाता नहीं है? रजिस्टर करें</string>
     <string name="auth_to_sign_in">पहले से खाता है? साइन इन करें</string>
     <string name="networks_around">आपके आस-पास के नेटवर्क</string>
-    <string name="discover_turn_on_radios">आस-पास के नेटवर्क देखने के लिए रेडियो चालू करें। नेटवर्क तभी दिखता है जब उसका कोई सदस्य उसे दिखने लायक बनाता है (अपने फ़ोन पर “दिखने लायक बनाएँ” या “आमंत्रित करें”)।</string>
+    <string name="discover_turn_on_radios">आस-पास के नेटवर्क देखने के लिए रेडियो चालू करें। नेटवर्क तभी दिखता है जब उसका कोई सदस्य उसे दिखने लायक बनाता है (अपने फ़ोन पर “खोजने योग्य” या “आमंत्रित करें”)।</string>
     <string name="look_for_networks">नेटवर्क खोजें</string>
-    <string name="discover_looking">खोज रहे हैं… जैसे ही पास का कोई सदस्य नेटवर्क को दिखने लायक बनाता है, वह कुछ सेकंड में दिख जाता है (अपने फ़ोन पर “दिखने लायक बनाएँ” या “आमंत्रित करें”)।</string>
+    <string name="discover_looking">खोज रहे हैं… जैसे ही पास का कोई सदस्य नेटवर्क को दिखने लायक बनाता है, वह कुछ सेकंड में दिख जाता है (अपने फ़ोन पर “खोजने योग्य” या “आमंत्रित करें”)।</string>
     <string name="discover_listening_while">“%1$s” चलने तक सुन रहे हैं।</string>
     <string name="your_network">आपका नेटवर्क</string>
     <string name="unnamed">(बिना नाम)</string>

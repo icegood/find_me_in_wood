@@ -70,9 +70,9 @@
     <string name="auth_to_register">Нямате профил? Регистрация</string>
     <string name="auth_to_sign_in">Вече имате профил? Вход</string>
     <string name="networks_around">Мрежи около вас</string>
-    <string name="discover_turn_on_radios">Включете радиото, за да виждате мрежите наблизо. Мрежата се вижда само докато някой от членовете ѝ я прави видима („Направи видима“ или „Покани“ на телефона си).</string>
+    <string name="discover_turn_on_radios">Включете радиото, за да виждате мрежите наблизо. Мрежата се вижда само докато някой от членовете ѝ я прави видима („Откриваем“ или „Покани“ на телефона си).</string>
     <string name="look_for_networks">Търси мрежи</string>
-    <string name="discover_looking">Търсене… мрежата се появява до секунди, щом член наблизо я направи видима („Направи видима“ или „Покани“ на телефона си).</string>
+    <string name="discover_looking">Търсене… мрежата се появява до секунди, щом член наблизо я направи видима („Откриваем“ или „Покани“ на телефона си).</string>
     <string name="discover_listening_while">Слушане, докато работи „%1$s“.</string>
     <string name="your_network">вашата мрежа</string>
     <string name="unnamed">(без име)</string>

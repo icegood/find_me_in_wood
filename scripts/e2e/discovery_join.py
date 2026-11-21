@@ -137,11 +137,12 @@ class Phone:
             self.sh("cmd bluetooth_manager enable || svc bluetooth enable")
             time.sleep(3)
         if self.sh("settings get global bluetooth_on") != "1":
-            # Some phones (EMUI) refuse adb: press the app's own button and allow it.
+            # Some phones (EMUI) refuse adb: tap the app's Bluetooth switch (under the red
+            # blocker sentence on Discover) and allow it.
             self.back_to_tabs()
             self.tap("Discover", exact=True)
-            if self.find("Turn on Bluetooth", exact=True):
-                self.tap("Turn on Bluetooth", exact=True)
+            if self.find("Bluetooth", exact=True):
+                self.tap("Bluetooth", exact=True)
                 time.sleep(1)
                 if self.find("@button1", exact=True):
                     self.tap("@button1", exact=True)

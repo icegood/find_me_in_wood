@@ -12,8 +12,10 @@ internal enum class RadioScreen {
     DISCOVERY_BLOCKERS,
 }
 
-/** One radio switch row: [on] is the polled system state, [blocker] paints it in error colour. */
-internal data class RadioRow(val radio: Radio, val on: Boolean, val blocker: Boolean)
+/** One radio switch row: [on] is the polled system state; an off radio is a [blocker], in error colour. */
+internal data class RadioRow(val radio: Radio, val on: Boolean) {
+    val blocker: Boolean get() = !on
+}
 
 /**
  * Decisions behind the radio switch rows, with no Android types (constitution P6): which
@@ -23,6 +25,9 @@ internal data class RadioRow(val radio: Radio, val on: Boolean, val blocker: Boo
  * ```
  *  system state off ──tap──▶ intent (prompt / panel / settings) ──user turns it on──▶ poll: on
  *  system state on  ──tap──▶ intent (settings / panel)          ──user turns it off─▶ poll: off
+ *
+ *  Bluetooth off: enable prompt, settings as fallback.  Bluetooth on: settings (the prompt
+ *  would close at once with nothing to ask).  Wi-Fi: panel from SDK 29, settings as fallback.
  * ```
  */
 internal object RadioToggles {
@@ -36,13 +41,13 @@ internal object RadioToggles {
     const val WIFI_PANEL_SDK = 29
 
     /**
-     * Intent actions to try, in order, when [radio]'s row is tapped on [sdk]: the caller
-     * starts the first one, and the next only when starting it fails. Bluetooth asks the
-     * system prompt first, with its settings page as the fallback.
+     * Intent actions to try, in order, when [radio]'s row is tapped on [sdk] while its system
+     * state is [on]: the caller starts the first one, and the next only when starting it fails.
+     * Bluetooth that is off asks the system prompt first, with its settings page as the fallback.
      */
-    fun actions(radio: Radio, sdk: Int): List<String> = when (radio) {
-        Radio.BLUETOOTH -> listOf(BT_REQUEST_ENABLE, BT_SETTINGS)
-        Radio.WIFI -> listOf(if (sdk >= WIFI_PANEL_SDK) WIFI_PANEL else WIFI_SETTINGS)
+    fun actions(radio: Radio, sdk: Int, on: Boolean): List<String> = when (radio) {
+        Radio.BLUETOOTH -> if (on) listOf(BT_SETTINGS) else listOf(BT_REQUEST_ENABLE, BT_SETTINGS)
+        Radio.WIFI -> if (sdk >= WIFI_PANEL_SDK) listOf(WIFI_PANEL, WIFI_SETTINGS) else listOf(WIFI_SETTINGS)
         Radio.LOCATION -> listOf(LOCATION_SETTINGS)
     }
 
@@ -52,12 +57,15 @@ internal object RadioToggles {
         RadioScreen.DISCOVERY_BLOCKERS -> listOf(Radio.BLUETOOTH, Radio.LOCATION)
     }
 
-    /** A radio that is off blocks what the app needs it for. */
-    fun isBlocker(on: Boolean): Boolean = !on
-
     /** The rows for [screen], given the polled system state of each radio. */
     fun rows(screen: RadioScreen, state: (Radio) -> Boolean): List<RadioRow> =
-        radios(screen).map { r -> state(r).let { on -> RadioRow(r, on, isBlocker(on)) } }
+        radios(screen).map { r -> RadioRow(r, state(r)) }
+
+    /**
+     * Runs [actions] in order through [start] (true when it started) until one starts;
+     * false when none did.
+     */
+    fun open(actions: List<String>, start: (String) -> Boolean): Boolean = actions.any(start)
 
     /** The debug log line for a tap on [radio]'s row while the system state is [on]. */
     fun tapLog(radio: Radio, on: Boolean): String =

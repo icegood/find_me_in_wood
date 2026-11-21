@@ -70,9 +70,9 @@
     <string name="auth_to_register">Nimate računa? Registrirajte se</string>
     <string name="auth_to_sign_in">Že imate račun? Prijavite se</string>
     <string name="networks_around">Omrežja okoli vas</string>
-    <string name="discover_turn_on_radios">Vklopite radio, da vidite bližnja omrežja. Omrežje se prikaže le, dokler ga eden od članov naredi vidnega (»Naredi vidno« ali »Povabi« na svojem telefonu).</string>
+    <string name="discover_turn_on_radios">Vklopite radio, da vidite bližnja omrežja. Omrežje se prikaže le, dokler ga eden od članov naredi vidnega (»Vidno« ali »Povabi« na svojem telefonu).</string>
     <string name="look_for_networks">Išči omrežja</string>
-    <string name="discover_looking">Iskanje … omrežje se pojavi v nekaj sekundah, ko ga bližnji član naredi vidnega (»Naredi vidno« ali »Povabi« na svojem telefonu).</string>
+    <string name="discover_looking">Iskanje … omrežje se pojavi v nekaj sekundah, ko ga bližnji član naredi vidnega (»Vidno« ali »Povabi« na svojem telefonu).</string>
     <string name="discover_listening_while">Poslušanje, medtem ko teče »%1$s«.</string>
     <string name="your_network">vaše omrežje</string>
     <string name="unnamed">(brez imena)</string>

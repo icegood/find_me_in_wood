@@ -38,14 +38,14 @@ Status language (used consistently on every screen):
 | # | Screen | Spec source |
 |---|---|---|
 | S1 | Permissions/onboarding primer | plan §3.8 |
-| S2 | Networks list (`name @ PROTOCOL`) | US-1/3, P4 |
+| S2 | Networks list (`name @ PROTOCOL`); Radios card (Wi-Fi / Bluetooth / Location switches); running card: Share my position / Discoverable switches | US-1/3, P4 |
 | S3 | Create network (name + generated key → join string) | US-1 |
 | S4 | Join hub: nearby discovered networks (owner, members, policy chip) + join-code entry | US-8, US-2 |
 | S5 | Map view — main screen (self+peers, unlocated badge, tile sources) | US-6, FR-6.5 |
 | S6 | Members list: per-member edge line (`LoRa · direct`, `via Misha · LoRa`) | US-3, FR-6.4 |
 | S7 | Network detail: CONNECTIONS (member chips → per-edge transport selector), LoRa node, per-network sharing toggle, diagnostics | US-3, FR-7.4, T5.5 |
 | S8 | LoRa node picker (BLE\|USB link type, scan results, pin device) | US-7 |
-| S9 | User settings: appearance (theme), map tiles, defaults for new networks, about | FR-6.5, app-global |
+| S9 | User settings: appearance (theme), map tiles, defaults for new networks, Wi-Fi Direct (segmented band, "Always host the group" switch), about | FR-6.5, app-global |
 | S10 | Join handshake progress: request → waiting for owner → SAS compare → connected (joiner side, PRIVATE) | US-8, FR-8.3 |
 | S11 | Owner accept dialog: "Dana asks to join", SAS compare, Reject/Accept | US-8, FR-8.4 |
 

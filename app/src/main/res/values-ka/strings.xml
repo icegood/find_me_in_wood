@@ -70,9 +70,9 @@
     <string name="auth_to_register">არ გაქვთ ანგარიში? დარეგისტრირდით</string>
     <string name="auth_to_sign_in">უკვე გაქვთ ანგარიში? შედით</string>
     <string name="networks_around">ქსელები თქვენ გარშემო</string>
-    <string name="discover_turn_on_radios">ჩართეთ რადიო, რომ ნახოთ ახლომდებარე ქსელები. ქსელი ჩანს მხოლოდ მაშინ, როცა მისი რომელიმე წევრი მას ხილულს ხდის („ხილულად ქცევა“ ან „მოწვევა“ საკუთარ ტელეფონზე).</string>
+    <string name="discover_turn_on_radios">ჩართეთ რადიო, რომ ნახოთ ახლომდებარე ქსელები. ქსელი ჩანს მხოლოდ მაშინ, როცა მისი რომელიმე წევრი მას ხილულს ხდის („აღმოჩენადი“ ან „მოწვევა“ საკუთარ ტელეფონზე).</string>
     <string name="look_for_networks">ქსელების ძებნა</string>
-    <string name="discover_looking">ძებნა… ქსელი წამებში გამოჩნდება, როცა ახლოს მყოფი წევრი მას ხილულს გახდის („ხილულად ქცევა“ ან „მოწვევა“ საკუთარ ტელეფონზე).</string>
+    <string name="discover_looking">ძებნა… ქსელი წამებში გამოჩნდება, როცა ახლოს მყოფი წევრი მას ხილულს გახდის („აღმოჩენადი“ ან „მოწვევა“ საკუთარ ტელეფონზე).</string>
     <string name="discover_listening_while">ვუსმენთ, სანამ „%1$s“ მუშაობს.</string>
     <string name="your_network">თქვენი ქსელი</string>
     <string name="unnamed">(უსახელო)</string>

@@ -24,6 +24,6 @@ class ChoicesTest {
     @Test
     fun `tap log names the setting and the value`() {
         assertEquals("ui: choice theme set to DARK", Choices.tapLog(Choices.THEME, ThemeMode.DARK.toString()))
-        assertEquals("ui: choice wifi direct band set to 5 GHz", Choices.tapLog(Choices.WIFI_BAND, "5 GHz"))
+        assertEquals("ui: choice wifi direct band set to GHZ_5", Choices.tapLog(Choices.WIFI_BAND, WifiBand.GHZ_5.toString()))
     }
 }

@@ -70,9 +70,9 @@
     <string name="auth_to_register">حساب ندارید؟ ثبت‌نام کنید</string>
     <string name="auth_to_sign_in">حساب دارید؟ وارد شوید</string>
     <string name="networks_around">شبکه‌های اطراف شما</string>
-    <string name="discover_turn_on_radios">برای دیدن شبکه‌های نزدیک، رادیوها را روشن کنید. یک شبکه فقط تا وقتی دیده می‌شود که یکی از اعضایش آن را قابل دیدن کند («قابل دیدن کن» یا «دعوت» روی تلفن خودش).</string>
+    <string name="discover_turn_on_radios">برای دیدن شبکه‌های نزدیک، رادیوها را روشن کنید. یک شبکه فقط تا وقتی دیده می‌شود که یکی از اعضایش آن را قابل کشفد («قابل کشف» یا «دعوت» روی تلفن خودش).</string>
     <string name="look_for_networks">جستجوی شبکه</string>
-    <string name="discover_looking">در حال جستجو… وقتی عضوی در نزدیکی شبکه را قابل دیدن کند، ظرف چند ثانیه نمایان می‌شود («قابل دیدن کن» یا «دعوت» روی تلفن خودش).</string>
+    <string name="discover_looking">در حال جستجو… وقتی عضوی در نزدیکی شبکه را قابل کشفد، ظرف چند ثانیه نمایان می‌شود («قابل کشف» یا «دعوت» روی تلفن خودش).</string>
     <string name="discover_listening_while">در حال گوش دادن تا وقتی «%1$s» در حال اجراست.</string>
     <string name="your_network">شبکهٔ شما</string>
     <string name="unnamed">(بی‌نام)</string>

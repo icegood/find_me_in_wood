@@ -70,9 +70,9 @@
     <string name="auth_to_register">Neturite paskyros? Registruokitės</string>
     <string name="auth_to_sign_in">Jau turite paskyrą? Prisijunkite</string>
     <string name="networks_around">Tinklai aplink jus</string>
-    <string name="discover_turn_on_radios">Įjunkite radijo ryšius, kad matytumėte netoliese esančius tinklus. Tinklas matomas tik tol, kol kuris nors jo narys jį padaro matomą („Padaryti matomą“ arba „Pakviesti“ savo telefone).</string>
+    <string name="discover_turn_on_radios">Įjunkite radijo ryšius, kad matytumėte netoliese esančius tinklus. Tinklas matomas tik tol, kol kuris nors jo narys jį padaro matomą („Aptinkamas“ arba „Pakviesti“ savo telefone).</string>
     <string name="look_for_networks">Ieškoti tinklų</string>
-    <string name="discover_looking">Ieškoma… tinklas atsiranda per kelias sekundes, kai netoliese esantis narys jį padaro matomą („Padaryti matomą“ arba „Pakviesti“ savo telefone).</string>
+    <string name="discover_looking">Ieškoma… tinklas atsiranda per kelias sekundes, kai netoliese esantis narys jį padaro matomą („Aptinkamas“ arba „Pakviesti“ savo telefone).</string>
     <string name="discover_listening_while">Klausomasi, kol veikia „%1$s“.</string>
     <string name="your_network">jūsų tinklas</string>
     <string name="unnamed">(be pavadinimo)</string>

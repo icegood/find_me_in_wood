@@ -16,26 +16,48 @@ class RadioTogglesTest {
     }
 
     @Test
-    fun `bluetooth asks the system prompt first, settings as fallback, on any sdk`() {
+    fun `bluetooth off asks the system prompt first, settings as fallback, on any sdk`() {
         for (sdk in listOf(26, 29, 33, 36)) {
             assertEquals(
                 listOf(RadioToggles.BT_REQUEST_ENABLE, RadioToggles.BT_SETTINGS),
-                RadioToggles.actions(Radio.BLUETOOTH, sdk),
+                RadioToggles.actions(Radio.BLUETOOTH, sdk, on = false),
             )
         }
     }
 
     @Test
-    fun `wifi opens the panel from 29, the settings page before`() {
-        assertEquals(listOf(RadioToggles.WIFI_SETTINGS), RadioToggles.actions(Radio.WIFI, 28))
-        assertEquals(listOf(RadioToggles.WIFI_PANEL), RadioToggles.actions(Radio.WIFI, 29))
-        assertEquals(listOf(RadioToggles.WIFI_PANEL), RadioToggles.actions(Radio.WIFI, 35))
+    fun `bluetooth on opens its settings, where it can be turned off`() {
+        for (sdk in listOf(26, 29, 33, 36)) {
+            assertEquals(listOf(RadioToggles.BT_SETTINGS), RadioToggles.actions(Radio.BLUETOOTH, sdk, on = true))
+        }
+    }
+
+    @Test
+    fun `wifi opens the panel from 29 with settings as fallback, the settings page before`() {
+        for (on in listOf(false, true)) {
+            assertEquals(listOf(RadioToggles.WIFI_SETTINGS), RadioToggles.actions(Radio.WIFI, 28, on))
+            val panel = listOf(RadioToggles.WIFI_PANEL, RadioToggles.WIFI_SETTINGS)
+            assertEquals(panel, RadioToggles.actions(Radio.WIFI, 29, on))
+            assertEquals(panel, RadioToggles.actions(Radio.WIFI, 35, on))
+        }
+    }
+
+    @Test
+    fun `open starts the first action that starts and stops there`() {
+        val tried = mutableListOf<String>()
+        assertTrue(RadioToggles.open(listOf("a", "b")) { tried += it; true })
+        assertEquals(listOf("a"), tried, "the fallback is not tried once the first started")
+        tried.clear()
+        assertTrue(RadioToggles.open(listOf("a", "b")) { tried += it; it == "b" })
+        assertEquals(listOf("a", "b"), tried, "the fallback is tried when the first fails")
+        assertFalse(RadioToggles.open(listOf("a", "b")) { false }, "none started")
+        assertFalse(RadioToggles.open(emptyList()) { true })
     }
 
     @Test
     fun `location opens the location source settings on any sdk`() {
-        assertEquals(listOf(RadioToggles.LOCATION_SETTINGS), RadioToggles.actions(Radio.LOCATION, 26))
-        assertEquals(listOf(RadioToggles.LOCATION_SETTINGS), RadioToggles.actions(Radio.LOCATION, 35))
+        assertEquals(listOf(RadioToggles.LOCATION_SETTINGS), RadioToggles.actions(Radio.LOCATION, 26, on = false))
+        assertEquals(listOf(RadioToggles.LOCATION_SETTINGS), RadioToggles.actions(Radio.LOCATION, 35, on = true))
     }
 
     @Test
@@ -46,14 +68,14 @@ class RadioTogglesTest {
 
     @Test
     fun `off radios are blockers, rows carry the polled state`() {
-        assertTrue(RadioToggles.isBlocker(on = false))
-        assertFalse(RadioToggles.isBlocker(on = true))
+        assertTrue(RadioRow(Radio.WIFI, on = false).blocker)
+        assertFalse(RadioRow(Radio.WIFI, on = true).blocker)
         val rows = RadioToggles.rows(RadioScreen.NETWORKS) { it != Radio.BLUETOOTH }
         assertEquals(
             listOf(
-                RadioRow(Radio.WIFI, on = true, blocker = false),
-                RadioRow(Radio.BLUETOOTH, on = false, blocker = true),
-                RadioRow(Radio.LOCATION, on = true, blocker = false),
+                RadioRow(Radio.WIFI, on = true),
+                RadioRow(Radio.BLUETOOTH, on = false),
+                RadioRow(Radio.LOCATION, on = true),
             ),
             rows,
         )

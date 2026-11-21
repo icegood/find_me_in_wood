@@ -70,9 +70,9 @@
     <string name="auth_to_register">Ingen konto? Opret en</string>
     <string name="auth_to_sign_in">Har du en konto? Log ind</string>
     <string name="networks_around">Netværk omkring dig</string>
-    <string name="discover_turn_on_radios">Tænd for radioerne for at se netværk i nærheden. Et netværk vises kun, mens et af dets medlemmer gør det synligt (“Gør synligt” eller “Inviter” på sin telefon).</string>
+    <string name="discover_turn_on_radios">Tænd for radioerne for at se netværk i nærheden. Et netværk vises kun, mens et af dets medlemmer gør det synligt (“Synlig” eller “Inviter” på sin telefon).</string>
     <string name="look_for_networks">Søg efter netværk</string>
-    <string name="discover_looking">Søger… et netværk dukker op inden for sekunder, når et medlem i nærheden gør det synligt (“Gør synligt” eller “Inviter” på sin telefon).</string>
+    <string name="discover_looking">Søger… et netværk dukker op inden for sekunder, når et medlem i nærheden gør det synligt (“Synlig” eller “Inviter” på sin telefon).</string>
     <string name="discover_listening_while">Lytter, mens “%1$s” kører.</string>
     <string name="your_network">dit netværk</string>
     <string name="unnamed">(uden navn)</string>

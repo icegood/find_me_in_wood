@@ -70,9 +70,9 @@
     <string name="auth_to_register">Pole kontot? Registreeru</string>
     <string name="auth_to_sign_in">On juba konto? Logi sisse</string>
     <string name="networks_around">Võrgud teie ümber</string>
-    <string name="discover_turn_on_radios">Lülitage raadiod sisse, et näha lähedal olevaid võrke. Võrk on nähtav ainult siis, kui mõni selle liige teeb selle nähtavaks („Tee nähtavaks“ või „Kutsu“ oma telefonis).</string>
+    <string name="discover_turn_on_radios">Lülitage raadiod sisse, et näha lähedal olevaid võrke. Võrk on nähtav ainult siis, kui mõni selle liige teeb selle nähtavaks („Leitav“ või „Kutsu“ oma telefonis).</string>
     <string name="look_for_networks">Otsi võrke</string>
-    <string name="discover_looking">Otsimine… võrk ilmub sekunditega, kui lähedal olev liige teeb selle nähtavaks („Tee nähtavaks“ või „Kutsu“ oma telefonis).</string>
+    <string name="discover_looking">Otsimine… võrk ilmub sekunditega, kui lähedal olev liige teeb selle nähtavaks („Leitav“ või „Kutsu“ oma telefonis).</string>
     <string name="discover_listening_while">Kuulamine, kuni „%1$s“ töötab.</string>
     <string name="your_network">teie võrk</string>
     <string name="unnamed">(nimeta)</string>

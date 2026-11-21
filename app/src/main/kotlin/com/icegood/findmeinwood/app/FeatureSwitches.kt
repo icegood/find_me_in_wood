@@ -8,7 +8,8 @@ package com.icegood.findmeinwood.app
  * ```
  *  Share my position   on ──tap──▶ Prefs sharingPaused = true  ──▶ off (beacons stop)
  *  Discoverable        off ──tap──▶ SessionBus.setFindable(true) ──▶ on until findableUntil
- *                      (disabled while Bluetooth or Location blocks discovery)
+ *                      (can't be turned on while Bluetooth or Location blocks discovery,
+ *                       but an open window can always be turned off)
  *  Always host group   off ──tap──▶ Prefs p2pGroupOwner = true  ──▶ on
  * ```
  */
@@ -19,6 +20,12 @@ internal object FeatureSwitches {
 
     /** The master is discoverable while its findable window is still open. */
     fun discoverable(findableUntilMs: Long, nowMs: Long): Boolean = findableUntilMs > nowMs
+
+    /**
+     * The Discoverable switch takes taps unless discovery is [blocked] and it is off: a
+     * blocked master can't open a window, but can always close one that is [on].
+     */
+    fun discoverableEnabled(on: Boolean, blocked: Boolean): Boolean = on || !blocked
 
     /** Debug log line for a tap: [on] is the state the switch asks for. */
     fun tapLog(feature: String, on: Boolean): String = "ui: switch $feature tapped, now ${if (on) "on" else "off"}"

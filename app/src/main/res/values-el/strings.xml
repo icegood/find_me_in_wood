@@ -70,9 +70,9 @@
     <string name="auth_to_register">Δεν έχετε λογαριασμό; Εγγραφή</string>
     <string name="auth_to_sign_in">Έχετε ήδη λογαριασμό; Σύνδεση</string>
     <string name="networks_around">Δίκτυα γύρω σας</string>
-    <string name="discover_turn_on_radios">Ενεργοποιήστε τους πομπούς για να δείτε κοντινά δίκτυα. Ένα δίκτυο εμφανίζεται μόνο όσο ένα μέλος του το κάνει ορατό («Κάνε ορατό» ή «Πρόσκληση» στο τηλέφωνό του).</string>
+    <string name="discover_turn_on_radios">Ενεργοποιήστε τους πομπούς για να δείτε κοντινά δίκτυα. Ένα δίκτυο εμφανίζεται μόνο όσο ένα μέλος του το κάνει ορατό («Ορατό» ή «Πρόσκληση» στο τηλέφωνό του).</string>
     <string name="look_for_networks">Αναζήτηση δικτύων</string>
-    <string name="discover_looking">Αναζήτηση… ένα δίκτυο εμφανίζεται σε δευτερόλεπτα μόλις ένα κοντινό μέλος το κάνει ορατό («Κάνε ορατό» ή «Πρόσκληση» στο τηλέφωνό του).</string>
+    <string name="discover_looking">Αναζήτηση… ένα δίκτυο εμφανίζεται σε δευτερόλεπτα μόλις ένα κοντινό μέλος το κάνει ορατό («Ορατό» ή «Πρόσκληση» στο τηλέφωνό του).</string>
     <string name="discover_listening_while">Ακρόαση όσο λειτουργεί το «%1$s».</string>
     <string name="your_network">το δίκτυό σας</string>
     <string name="unnamed">(χωρίς όνομα)</string>

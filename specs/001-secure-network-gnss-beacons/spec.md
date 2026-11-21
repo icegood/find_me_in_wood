@@ -209,8 +209,9 @@ frame is encrypted and authenticated with the network's key.
   while the node is away.
 
 ### US-8 — Discovery and radio behaviour
-- FR-8.1 A network is findable only while its master has discovery on: "Start discovery" /
-  "Stop discovery" on the active network card; on for 10 min after the network starts,
+- FR-8.1 A network is findable only while its master has discovery on: the "Discoverable"
+  switch on the active network card (it can't be turned on while FR-8.8 blocks discovery,
+  but an open window can always be turned off); on for 10 min after the network starts,
   Invite or an approval, then off by itself. Non-masters see no discovery controls.
 - FR-8.2 While findable, the Bluetooth scan response carries network id, join policy and
   name (≤18 bytes); a newcomer lists it from a scan without connecting. Nothing about the
@@ -247,7 +248,7 @@ frame is encrypted and authenticated with the network's key.
 - FR-8.8 Discovery needs Bluetooth and Location on, on both phones (Android hides nearby
   phones from scans while Location is off). Whatever is off is named in red, with switches
   that show the radio state and open the system control: on the master's running network
-  card, in place of "findable…" ("Nobody can find this network: Bluetooth is off."), and on
+  card, above its Discoverable switch ("Nobody can find this network: Bluetooth is off."), and on
   the joining phone's Discover screen. The networks screen always shows a Radios card with
   Wi-Fi, Bluetooth and Location switches. A switch follows the polled system state and never
   flips by itself on a tap.

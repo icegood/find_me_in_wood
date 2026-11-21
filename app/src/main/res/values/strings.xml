@@ -70,9 +70,9 @@
     <string name="auth_to_register">Don\'t have an account? Register</string>
     <string name="auth_to_sign_in">Already have an account? Sign in</string>
     <string name="networks_around">Networks around you</string>
-    <string name="discover_turn_on_radios">Turn on the radios to see networks nearby. A network shows up only while one of its members has discovery on (Start discovery or Invite on their phone).</string>
+    <string name="discover_turn_on_radios">Turn on the radios to see networks nearby. A network shows up only while one of its members has discovery on (Discoverable or Invite on their phone).</string>
     <string name="look_for_networks">Look for networks</string>
-    <string name="discover_looking">Looking… a network appears within seconds once a member nearby has discovery on (Start discovery or Invite on their phone).</string>
+    <string name="discover_looking">Looking… a network appears within seconds once a member nearby has discovery on (Discoverable or Invite on their phone).</string>
     <string name="discover_listening_while">Listening while “%1$s” runs.</string>
     <string name="your_network">your network</string>
     <string name="unnamed">(unnamed)</string>

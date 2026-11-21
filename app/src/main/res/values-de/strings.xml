@@ -70,9 +70,9 @@
     <string name="auth_to_register">Noch kein Konto? Registrieren</string>
     <string name="auth_to_sign_in">Schon ein Konto? Anmelden</string>
     <string name="networks_around">Netzwerke in deiner Nähe</string>
-    <string name="discover_turn_on_radios">Schalte die Funkverbindungen ein, um Netzwerke in der Nähe zu sehen. Ein Netzwerk erscheint nur, solange eines seiner Mitglieder die Suche erlaubt („Auffindbar machen“ oder „Einladen“ auf dessen Telefon).</string>
+    <string name="discover_turn_on_radios">Schalte die Funkverbindungen ein, um Netzwerke in der Nähe zu sehen. Ein Netzwerk erscheint nur, solange eines seiner Mitglieder die Suche erlaubt („Auffindbar“ oder „Einladen“ auf dessen Telefon).</string>
     <string name="look_for_networks">Netzwerke suchen</string>
-    <string name="discover_looking">Suche… ein Netzwerk erscheint innerhalb von Sekunden, sobald ein Mitglied in der Nähe es auffindbar macht („Auffindbar machen“ oder „Einladen“ auf dessen Telefon).</string>
+    <string name="discover_looking">Suche… ein Netzwerk erscheint innerhalb von Sekunden, sobald ein Mitglied in der Nähe es auffindbar macht („Auffindbar“ oder „Einladen“ auf dessen Telefon).</string>
     <string name="discover_listening_while">Lauscht, während „%1$s“ läuft.</string>
     <string name="your_network">dein Netzwerk</string>
     <string name="unnamed">(ohne Namen)</string>

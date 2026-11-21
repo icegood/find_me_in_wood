@@ -6,6 +6,17 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class FeatureSwitchesTest {
+    @kotlin.test.AfterTest
+    fun closeFindableWindow() = SessionBus.setFindable(false)
+
+    @Test
+    fun discoverableCanAlwaysBeTurnedOffButNotOnWhileBlocked() {
+        assertTrue(FeatureSwitches.discoverableEnabled(on = false, blocked = false))
+        assertTrue(FeatureSwitches.discoverableEnabled(on = true, blocked = false))
+        assertTrue(FeatureSwitches.discoverableEnabled(on = true, blocked = true), "a blocked master can close its window")
+        assertFalse(FeatureSwitches.discoverableEnabled(on = false, blocked = true), "but can't open one")
+    }
+
     @Test
     fun discoverableWhileTheWindowIsOpen() {
         assertFalse(FeatureSwitches.discoverable(0, 1_000), "not findable at all")

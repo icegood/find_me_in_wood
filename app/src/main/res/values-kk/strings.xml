@@ -70,9 +70,9 @@
     <string name="auth_to_register">Аккаунт жоқ па? Тіркеліңіз</string>
     <string name="auth_to_sign_in">Аккаунт бар ма? Кіріңіз</string>
     <string name="networks_around">Айналаңыздағы желілер</string>
-    <string name="discover_turn_on_radios">Маңайдағы желілерді көру үшін радионы қосыңыз. Желі оның бір мүшесі оны көрінетін еткенде ғана шығады (өз телефонында «Көрінетін ету» не «Шақыру»).</string>
+    <string name="discover_turn_on_radios">Маңайдағы желілерді көру үшін радионы қосыңыз. Желі оның бір мүшесі оны көрінетін еткенде ғана шығады (өз телефонында «Табылатын» не «Шақыру»).</string>
     <string name="look_for_networks">Желілерді іздеу</string>
-    <string name="discover_looking">Іздеу… маңайдағы мүше желіні көрінетін еткенде ол бірнеше секундта шығады (өз телефонында «Көрінетін ету» не «Шақыру»).</string>
+    <string name="discover_looking">Іздеу… маңайдағы мүше желіні көрінетін еткенде ол бірнеше секундта шығады (өз телефонында «Табылатын» не «Шақыру»).</string>
     <string name="discover_listening_while">«%1$s» жұмыс істеп тұрғанда тыңдалуда.</string>
     <string name="your_network">желіңіз</string>
     <string name="unnamed">(атаусыз)</string>

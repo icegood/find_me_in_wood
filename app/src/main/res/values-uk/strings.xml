@@ -70,9 +70,9 @@
     <string name="auth_to_register">Немає облікового запису? Зареєструватися</string>
     <string name="auth_to_sign_in">Уже є обліковий запис? Увійти</string>
     <string name="networks_around">Мережі поруч</string>
-    <string name="discover_turn_on_radios">Увімкніть радіо, щоб бачити мережі поруч. Мережу видно, лише поки в когось із її учасників увімкнено виявлення («Почати виявлення» або «Запросити» на його телефоні).</string>
+    <string name="discover_turn_on_radios">Увімкніть радіо, щоб бачити мережі поруч. Мережу видно, лише поки в когось із її учасників увімкнено виявлення («Видима для пошуку» або «Запросити» на його телефоні).</string>
     <string name="look_for_networks">Шукати мережі</string>
-    <string name="discover_looking">Пошук… мережа з\'явиться за кілька секунд, щойно учасник поруч увімкне виявлення («Почати виявлення» або «Запросити» на його телефоні).</string>
+    <string name="discover_looking">Пошук… мережа з\'явиться за кілька секунд, щойно учасник поруч увімкне виявлення («Видима для пошуку» або «Запросити» на його телефоні).</string>
     <string name="discover_listening_while">Слухаємо, поки працює «%1$s».</string>
     <string name="your_network">ваша мережа</string>
     <string name="unnamed">(без назви)</string>

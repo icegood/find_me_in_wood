@@ -20,7 +20,7 @@ only (no unit test can see it). Tests: `./gradlew test coverageVerify` (green).
 | FR-3.5–3.8 LNP/3 | `LinkNegotiator`, `SessionManager` | OK — `LinkNegotiatorTest`, `LinkE2ETest` |
 | FR-3.9 SMS cadence and budget | `SmsLogic`, `SmsBudget`, `SessionService.runLinks` | OK — tested; **not tested on phones** (needs both numbers) |
 | FR-4.2 interval 5–300 s, default 60 s | `Prefs` | OK |
-| FR-4.4 pause sharing | `SessionManager.sharingPaused`, card "Pause" | **Fixed** — was missing; test `FR-4_4` |
+| FR-4.4 pause sharing | `SessionManager.sharingPaused`, card "Share my position" switch | **Fixed** — was missing; test `FR-4_4` |
 | FR-2.6 join by QR | `JoinInvite`, `InviteQr`, Invite dialog, `PasswordDialog` "Scan QR", `fmiw://join` link | OK — tested; QR decoded from the Pixel screen, link joined the P30 |
 | FR-8.8 radios that stop discovery | `UiText.discoveryBlocked`, `DiscoveryBlockers` on the network card and Discover | OK — tested; seen on the Pixel with Bluetooth off (master card and Discover) |
 | FR-12.3 app icon, home screen | `res/mipmap-anydpi/ic_launcher*`, `offerHomeScreenIcon` | OK — icon on both phones; offer checked on the Pixel |

@@ -70,9 +70,9 @@
     <string name="auth_to_register">ยังไม่มีบัญชี? ลงทะเบียน</string>
     <string name="auth_to_sign_in">มีบัญชีแล้ว? ลงชื่อเข้าใช้</string>
     <string name="networks_around">เครือข่ายรอบตัวคุณ</string>
-    <string name="discover_turn_on_radios">เปิดวิทยุเพื่อดูเครือข่ายใกล้เคียง เครือข่ายจะแสดงเฉพาะเมื่อสมาชิกคนหนึ่งเปิดให้มองเห็น (“เปิดให้มองเห็น” หรือ “เชิญ” บนโทรศัพท์ของเขา)</string>
+    <string name="discover_turn_on_radios">เปิดวิทยุเพื่อดูเครือข่ายใกล้เคียง เครือข่ายจะแสดงเฉพาะเมื่อสมาชิกคนหนึ่งค้นพบได้ (“ค้นพบได้” หรือ “เชิญ” บนโทรศัพท์ของเขา)</string>
     <string name="look_for_networks">ค้นหาเครือข่าย</string>
-    <string name="discover_looking">กำลังค้นหา… เครือข่ายจะแสดงภายในไม่กี่วินาทีเมื่อสมาชิกที่อยู่ใกล้เปิดให้มองเห็น (“เปิดให้มองเห็น” หรือ “เชิญ” บนโทรศัพท์ของเขา)</string>
+    <string name="discover_looking">กำลังค้นหา… เครือข่ายจะแสดงภายในไม่กี่วินาทีเมื่อสมาชิกที่อยู่ใกล้ค้นพบได้ (“ค้นพบได้” หรือ “เชิญ” บนโทรศัพท์ของเขา)</string>
     <string name="discover_listening_while">กำลังฟังขณะที่ “%1$s” ทำงาน</string>
     <string name="your_network">เครือข่ายของคุณ</string>
     <string name="unnamed">(ไม่มีชื่อ)</string>

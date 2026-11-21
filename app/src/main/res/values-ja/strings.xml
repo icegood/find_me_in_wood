@@ -70,9 +70,9 @@
     <string name="auth_to_register">アカウントをお持ちでない方は登録</string>
     <string name="auth_to_sign_in">アカウントをお持ちの方はログイン</string>
     <string name="networks_around">周辺のネットワーク</string>
-    <string name="discover_turn_on_radios">周辺のネットワークを見るには無線をオンにしてください。ネットワークは、メンバーの誰かが公開している間だけ表示されます（その人の電話で「公開する」か「招待」）。</string>
+    <string name="discover_turn_on_radios">周辺のネットワークを見るには無線をオンにしてください。ネットワークは、メンバーの誰かが公開している間だけ表示されます（その人の電話で「検出可能」か「招待」）。</string>
     <string name="look_for_networks">ネットワークを探す</string>
-    <string name="discover_looking">検索中… 近くのメンバーが公開すると数秒で表示されます（その人の電話で「公開する」か「招待」）。</string>
+    <string name="discover_looking">検索中… 近くのメンバーが検出可能と数秒で表示されます（その人の電話で「検出可能」か「招待」）。</string>
     <string name="discover_listening_while">「%1$s」の実行中に受信しています。</string>
     <string name="your_network">あなたのネットワーク</string>
     <string name="unnamed">（名前なし）</string>

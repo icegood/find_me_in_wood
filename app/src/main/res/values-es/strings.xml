@@ -70,9 +70,9 @@
     <string name="auth_to_register">¿No tienes cuenta? Regístrate</string>
     <string name="auth_to_sign_in">¿Ya tienes cuenta? Inicia sesión</string>
     <string name="networks_around">Redes cerca de ti</string>
-    <string name="discover_turn_on_radios">Enciende las radios para ver redes cercanas. Una red solo aparece mientras uno de sus miembros la tiene visible («Hacer visible» o «Invitar» en su teléfono).</string>
+    <string name="discover_turn_on_radios">Enciende las radios para ver redes cercanas. Una red solo aparece mientras uno de sus miembros la tiene visible («Visible» o «Invitar» en su teléfono).</string>
     <string name="look_for_networks">Buscar redes</string>
-    <string name="discover_looking">Buscando… una red aparece en segundos en cuanto un miembro cercano la hace visible («Hacer visible» o «Invitar» en su teléfono).</string>
+    <string name="discover_looking">Buscando… una red aparece en segundos en cuanto un miembro cercano la hace visible («Visible» o «Invitar» en su teléfono).</string>
     <string name="discover_listening_while">Escuchando mientras «%1$s» funciona.</string>
     <string name="your_network">tu red</string>
     <string name="unnamed">(sin nombre)</string>

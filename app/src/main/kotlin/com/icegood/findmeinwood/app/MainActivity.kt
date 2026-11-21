@@ -320,11 +320,11 @@ class MainActivity : ComponentActivity() {
                         onLinkFix = { fix ->
                             when (fix) {
                                 com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_BLUETOOTH ->
-                                    openRadioControl(this@MainActivity, Radio.BLUETOOTH)
+                                    openRadioControl(this@MainActivity, Radio.BLUETOOTH, on = false)
                                 com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_WIFI ->
-                                    openRadioControl(this@MainActivity, Radio.WIFI)
+                                    openRadioControl(this@MainActivity, Radio.WIFI, on = false)
                                 com.icegood.findmeinwood.core.model.LinkFix.TURN_ON_LOCATION ->
-                                    openRadioControl(this@MainActivity, Radio.LOCATION)
+                                    openRadioControl(this@MainActivity, Radio.LOCATION, on = false)
                                 com.icegood.findmeinwood.core.model.LinkFix.SET_PHONE_NUMBER -> tab = "settings"
                                 com.icegood.findmeinwood.core.model.LinkFix.ALLOW_SMS -> smsPermissionLauncher.launch(smsPermissions)
                             }
@@ -457,7 +457,10 @@ class MainActivity : ComponentActivity() {
                                     title = stringResource(R.string.discoverable),
                                     hint = UiText.findable(this@MainActivity, findableUntil, nowMs),
                                     checked = FeatureSwitches.discoverable(findableUntil, nowMs),
-                                    enabled = !blocked,
+                                    enabled = FeatureSwitches.discoverableEnabled(
+                                        on = FeatureSwitches.discoverable(findableUntil, nowMs),
+                                        blocked = blocked,
+                                    ),
                                     onCheckedChange = { on ->
                                         DebugLog.d { FeatureSwitches.tapLog(FeatureSwitches.DISCOVERABLE, on) }
                                         SessionBus.setFindable(on)
@@ -612,13 +615,15 @@ class MainActivity : ComponentActivity() {
      * The "Radios" card body: Wi-Fi, Bluetooth and Location as switch rows that always show
      * the system state, re-polled every 3 s since the user flips them in system UI. A tap opens
      * the system control; the row follows once the radio really changes. A radio that is off
-     * is the usual reason nobody is found, so its explanation shows in error colour.
+     * is the usual reason nobody is found, so it shows in error colour, with an explanation
+     * for Wi-Fi and Location.
      */
     @Composable
     private fun RadioSwitches() {
         var tick by remember { mutableStateOf(0) }
         LaunchedEffect(Unit) { while (true) { delay(3_000); tick++ } }
-        if (tick >= 0) RadioSwitchRows(this, RadioScreen.NETWORKS, withHints = true)
+        val rows = if (tick >= 0) RadioToggles.rows(RadioScreen.NETWORKS) { radioOn(this, it) } else emptyList()
+        RadioSwitchRows(this, rows, withHints = true)
     }
 
     /** Shows a network's password, to read out or send to someone who should join. */

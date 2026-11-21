@@ -70,9 +70,9 @@
     <string name="auth_to_register">Belum punya akun? Daftar</string>
     <string name="auth_to_sign_in">Sudah punya akun? Masuk</string>
     <string name="networks_around">Jaringan di sekitar Anda</string>
-    <string name="discover_turn_on_radios">Nyalakan radio untuk melihat jaringan di sekitar. Jaringan hanya muncul selama salah satu anggotanya membuatnya terlihat (“Buat terlihat” atau “Undang” di ponselnya).</string>
+    <string name="discover_turn_on_radios">Nyalakan radio untuk melihat jaringan di sekitar. Jaringan hanya muncul selama salah satu anggotanya membuatnya terlihat (“Dapat ditemukan” atau “Undang” di ponselnya).</string>
     <string name="look_for_networks">Cari jaringan</string>
-    <string name="discover_looking">Mencari… jaringan muncul dalam hitungan detik begitu anggota di dekat membuatnya terlihat (“Buat terlihat” atau “Undang” di ponselnya).</string>
+    <string name="discover_looking">Mencari… jaringan muncul dalam hitungan detik begitu anggota di dekat membuatnya terlihat (“Dapat ditemukan” atau “Undang” di ponselnya).</string>
     <string name="discover_listening_while">Mendengarkan selama “%1$s” berjalan.</string>
     <string name="your_network">jaringan Anda</string>
     <string name="unnamed">(tanpa nama)</string>

@@ -24,24 +24,27 @@ internal fun radioOn(ctx: Context, radio: Radio): Boolean = runCatching {
  * Opens the system control for [radio] (prompt, panel or settings, from [RadioToggles.actions]):
  * the first action that starts wins, the next is the fallback.
  */
-internal fun openRadioControl(ctx: Context, radio: Radio) {
-    for (action in RadioToggles.actions(radio, Build.VERSION.SDK_INT)) {
+internal fun openRadioControl(ctx: Context, radio: Radio, on: Boolean) {
+    val opened = RadioToggles.open(RadioToggles.actions(radio, Build.VERSION.SDK_INT, on)) { action ->
         val intent = Intent(action).apply {
             if (ctx !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        if (runCatching { ctx.startActivity(intent) }.isSuccess) return
+        runCatching { ctx.startActivity(intent) }.isSuccess
     }
+    if (!opened) DebugLog.d { "ui: radio ${radio.name.lowercase()}: no system control could be opened" }
 }
 
 /**
- * The radio switch rows of [screen]. Checked is the system state polled by the caller (it
- * recomposes every few seconds); a tap only opens the system control, so the row never flips
- * by itself and follows the system once the user has turned the radio on or off there.
- * [withHints] shows each radio's explanation, in error colour, while it is off.
+ * Radio switch rows. [rows] carry the system state polled by the caller every few seconds:
+ * the caller builds them in its own polled scope and passes them in, so a new poll is a new
+ * argument and these rows recompose (state read in here would be skipped). A tap only opens
+ * the system control, so the row never flips by itself and follows the system once the user
+ * has turned the radio on or off there. [withHints] shows the Wi-Fi / Location explanation,
+ * in error colour, while that radio is off (Bluetooth has none).
  */
 @Composable
-internal fun RadioSwitchRows(ctx: Context, screen: RadioScreen, withHints: Boolean, enabled: Boolean = true) {
-    RadioToggles.rows(screen) { radioOn(ctx, it) }.forEach { row ->
+internal fun RadioSwitchRows(ctx: Context, rows: List<RadioRow>, withHints: Boolean) {
+    rows.forEach { row ->
         SwitchRow(
             title = stringResource(
                 when (row.radio) {
@@ -53,9 +56,8 @@ internal fun RadioSwitchRows(ctx: Context, screen: RadioScreen, withHints: Boole
             checked = row.on,
             onCheckedChange = {
                 DebugLog.d { RadioToggles.tapLog(row.radio, row.on) }
-                openRadioControl(ctx, row.radio)
+                openRadioControl(ctx, row.radio, row.on)
             },
-            enabled = enabled,
             hint = if (!withHints || !row.blocker) null else when (row.radio) {
                 Radio.WIFI -> stringResource(R.string.wifi_off_explain)
                 Radio.LOCATION -> stringResource(R.string.location_off_explain)

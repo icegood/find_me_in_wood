@@ -70,9 +70,9 @@
     <string name="auth_to_register">계정이 없나요? 가입하기</string>
     <string name="auth_to_sign_in">계정이 있나요? 로그인</string>
     <string name="networks_around">주변 네트워크</string>
-    <string name="discover_turn_on_radios">주변 네트워크를 보려면 무선을 켜세요. 네트워크는 멤버 중 누군가 공개해 둔 동안에만 표시됩니다(그 사람의 휴대전화에서 “공개” 또는 “초대”).</string>
+    <string name="discover_turn_on_radios">주변 네트워크를 보려면 무선을 켜세요. 네트워크는 멤버 중 누군가 검색 허용해 둔 동안에만 표시됩니다(그 사람의 휴대전화에서 “검색 허용” 또는 “초대”).</string>
     <string name="look_for_networks">네트워크 찾기</string>
-    <string name="discover_looking">찾는 중… 주변 멤버가 공개하면 몇 초 안에 네트워크가 나타납니다(그 사람의 휴대전화에서 “공개” 또는 “초대”).</string>
+    <string name="discover_looking">찾는 중… 주변 멤버가 검색 허용하면 몇 초 안에 네트워크가 나타납니다(그 사람의 휴대전화에서 “검색 허용” 또는 “초대”).</string>
     <string name="discover_listening_while">“%1$s” 실행 중 수신하고 있습니다.</string>
     <string name="your_network">내 네트워크</string>
     <string name="unnamed">(이름 없음)</string>

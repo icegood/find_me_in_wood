@@ -70,9 +70,9 @@
     <string name="auth_to_register">אין לכם חשבון? הירשמו</string>
     <string name="auth_to_sign_in">כבר יש לכם חשבון? היכנסו</string>
     <string name="networks_around">רשתות סביבכם</string>
-    <string name="discover_turn_on_radios">הפעילו את מכשירי הקשר כדי לראות רשתות קרובות. רשת מופיעה רק כל עוד אחד מחבריה הופך אותה לגלויה („הפוך לגלויה” או „הזמנה” בטלפון שלו).</string>
+    <string name="discover_turn_on_radios">הפעילו את מכשירי הקשר כדי לראות רשתות קרובות. רשת מופיעה רק כל עוד אחד מחבריה הופך אותה לגלויה („ניתן לגילוי” או „הזמנה” בטלפון שלו).</string>
     <string name="look_for_networks">חיפוש רשתות</string>
-    <string name="discover_looking">מחפש… רשת מופיעה תוך שניות כשחבר קרוב הופך אותה לגלויה („הפוך לגלויה” או „הזמנה” בטלפון שלו).</string>
+    <string name="discover_looking">מחפש… רשת מופיעה תוך שניות כשחבר קרוב הופך אותה לגלויה („ניתן לגילוי” או „הזמנה” בטלפון שלו).</string>
     <string name="discover_listening_while">מאזין כל עוד „%1$s” פועלת.</string>
     <string name="your_network">הרשת שלך</string>
     <string name="unnamed">(ללא שם)</string>

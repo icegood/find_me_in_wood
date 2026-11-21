@@ -70,9 +70,9 @@
     <string name="auth_to_register">Нет аккаунта? Зарегистрироваться</string>
     <string name="auth_to_sign_in">Уже есть аккаунт? Войти</string>
     <string name="networks_around">Сети рядом</string>
-    <string name="discover_turn_on_radios">Включите радио, чтобы видеть сети рядом. Сеть видна, только пока у кого-то из её участников включено обнаружение («Начать обнаружение» или «Пригласить» на его телефоне).</string>
+    <string name="discover_turn_on_radios">Включите радио, чтобы видеть сети рядом. Сеть видна, только пока у кого-то из её участников включено обнаружение («Видна для поиска» или «Пригласить» на его телефоне).</string>
     <string name="look_for_networks">Искать сети</string>
-    <string name="discover_looking">Поиск… сеть появится через несколько секунд, как только участник рядом включит обнаружение («Начать обнаружение» или «Пригласить» на его телефоне).</string>
+    <string name="discover_looking">Поиск… сеть появится через несколько секунд, как только участник рядом включит обнаружение («Видна для поиска» или «Пригласить» на его телефоне).</string>
     <string name="discover_listening_while">Слушаем, пока работает «%1$s».</string>
     <string name="your_network">ваша сеть</string>
     <string name="unnamed">(без названия)</string>

@@ -70,9 +70,9 @@
     <string name="auth_to_register">Hesabınız yok mu? Kaydolun</string>
     <string name="auth_to_sign_in">Hesabınız var mı? Giriş yapın</string>
     <string name="networks_around">Çevrenizdeki ağlar</string>
-    <string name="discover_turn_on_radios">Yakındaki ağları görmek için telsizleri açın. Bir ağ yalnızca üyelerinden biri onu görünür yaptığı sürece görünür (kendi telefonunda “Görünür yap” veya “Davet et”).</string>
+    <string name="discover_turn_on_radios">Yakındaki ağları görmek için telsizleri açın. Bir ağ yalnızca üyelerinden biri onu görünür yaptığı sürece görünür (kendi telefonunda “Bulunabilir” veya “Davet et”).</string>
     <string name="look_for_networks">Ağ ara</string>
-    <string name="discover_looking">Aranıyor… yakındaki bir üye görünür yapınca ağ saniyeler içinde görünür (kendi telefonunda “Görünür yap” veya “Davet et”).</string>
+    <string name="discover_looking">Aranıyor… yakındaki bir üye görünür yapınca ağ saniyeler içinde görünür (kendi telefonunda “Bulunabilir” veya “Davet et”).</string>
     <string name="discover_listening_while">“%1$s” çalışırken dinleniyor.</string>
     <string name="your_network">ağınız</string>
     <string name="unnamed">(adsız)</string>

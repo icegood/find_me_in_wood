@@ -70,9 +70,9 @@
     <string name="auth_to_register">Nie masz konta? Zarejestruj się</string>
     <string name="auth_to_sign_in">Masz już konto? Zaloguj się</string>
     <string name="networks_around">Sieci w pobliżu</string>
-    <string name="discover_turn_on_radios">Włącz radia, aby zobaczyć sieci w pobliżu. Sieć jest widoczna tylko wtedy, gdy ktoś z jej członków ma włączone wykrywanie („Rozpocznij wykrywanie” lub „Zaproś” na swoim telefonie).</string>
+    <string name="discover_turn_on_radios">Włącz radia, aby zobaczyć sieci w pobliżu. Sieć jest widoczna tylko wtedy, gdy ktoś z jej członków ma włączone wykrywanie („Wykrywalna” lub „Zaproś” na swoim telefonie).</string>
     <string name="look_for_networks">Szukaj sieci</string>
-    <string name="discover_looking">Szukam… sieć pojawi się w ciągu kilku sekund, gdy członek w pobliżu włączy wykrywanie („Rozpocznij wykrywanie” lub „Zaproś” na swoim telefonie).</string>
+    <string name="discover_looking">Szukam… sieć pojawi się w ciągu kilku sekund, gdy członek w pobliżu włączy wykrywanie („Wykrywalna” lub „Zaproś” na swoim telefonie).</string>
     <string name="discover_listening_while">Nasłuchuję, gdy działa „%1$s”.</string>
     <string name="your_network">twoja sieć</string>
     <string name="unnamed">(bez nazwy)</string>

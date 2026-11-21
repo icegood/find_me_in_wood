@@ -70,9 +70,9 @@
     <string name="auth_to_register">Chưa có tài khoản? Đăng ký</string>
     <string name="auth_to_sign_in">Đã có tài khoản? Đăng nhập</string>
     <string name="networks_around">Mạng quanh bạn</string>
-    <string name="discover_turn_on_radios">Bật radio để xem các mạng gần đây. Một mạng chỉ hiện khi một thành viên của nó bật hiển thị (“Bật hiển thị” hoặc “Mời” trên điện thoại của họ).</string>
+    <string name="discover_turn_on_radios">Bật radio để xem các mạng gần đây. Một mạng chỉ hiện khi một thành viên của nó bật hiển thị (“Có thể khám phá” hoặc “Mời” trên điện thoại của họ).</string>
     <string name="look_for_networks">Tìm mạng</string>
-    <string name="discover_looking">Đang tìm… mạng sẽ hiện trong vài giây khi một thành viên gần đó bật hiển thị (“Bật hiển thị” hoặc “Mời” trên điện thoại của họ).</string>
+    <string name="discover_looking">Đang tìm… mạng sẽ hiện trong vài giây khi một thành viên gần đó bật hiển thị (“Có thể khám phá” hoặc “Mời” trên điện thoại của họ).</string>
     <string name="discover_listening_while">Đang nghe trong khi “%1$s” chạy.</string>
     <string name="your_network">mạng của bạn</string>
     <string name="unnamed">(không tên)</string>
