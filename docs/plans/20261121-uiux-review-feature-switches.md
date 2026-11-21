@@ -112,9 +112,9 @@ Multi-choice settings (theme, Wi-Fi Direct band) are not on/off, so they move fr
 
 ### Task 7: Verify acceptance criteria
 
-- [ ] `source ./env.sh && ./gradlew build coverageVerify` (build includes lint); must pass
-- [ ] coverage gate at 95 % lines (above the template's 80 %)
-- [ ] `./gradlew :app:assembleDebug` succeeds
+- [x] `source ./env.sh && ./gradlew build coverageVerify` (build includes lint); must pass
+- [x] coverage gate at 95 % lines (above the template's 80 %)
+- [x] `./gradlew :app:assembleDebug` succeeds
 
 ### Task 8: Update documentation
 
