@@ -3,6 +3,7 @@ package com.icegood.findmeinwood.app
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -530,6 +531,18 @@ class SessionService : Service() {
             .setContentTitle(getString(R.string.app_name))
             .setContentText(getString(if (listen) R.string.notif_listening else R.string.notif_active))
             .setOngoing(true)
+            // Tapping the notification brings the app forward (singleTask: the running
+            // activity, not a second copy).
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    this, 0,
+                    Intent(this, MainActivity::class.java)
+                        .setAction(Intent.ACTION_MAIN)
+                        .addCategory(Intent.CATEGORY_LAUNCHER)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ),
+            )
             .build()
     }
 

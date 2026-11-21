@@ -251,36 +251,35 @@ class MainActivity : ComponentActivity() {
         }
 
         Scaffold(bottomBar = {
-            NavigationBar {
-                @Composable
-                fun navItem(label: String, selected: Boolean, onClick: () -> Unit) {
-                    NavigationBarItem(
-                        selected = selected, onClick = onClick,
-                        icon = {},
-                        // Six items on a narrow screen leave ~60dp each: long words ("Networks",
-                        // "Налаштування") shrink to fit on one line instead of wrapping or clipping.
-                        label = {
-                            val style = MaterialTheme.typography.labelSmall
-                            androidx.compose.foundation.text.BasicText(
-                                label,
-                                style = style.copy(color = LocalContentColor.current),
-                                maxLines = 1,
-                                softWrap = false,
-                                autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(
-                                    minFontSize = 7.sp, maxFontSize = style.fontSize,
-                                ),
-                            )
-                        },
-                    )
-                }
-                navItem(stringResource(R.string.tab_map), tab == "map") { tab = "map" }
-                navItem(stringResource(R.string.tab_networks), tab == "networks") { tab = "networks" }
-                navItem(stringResource(R.string.tab_chat), tab == "chat") { tab = "chat" }
+            // A scrollable row instead of NavigationBar: six tabs no longer squeeze into
+            // ~60dp each, so long labels ("Налаштування") stay full size and swipe sideways.
+            val decide = com.icegood.findmeinwood.feature.map.needsLinkDecision(namedPeers.collectAsState().value.values)
+            val tabs = listOf(
+                "map" to stringResource(R.string.tab_map),
+                "networks" to stringResource(R.string.tab_networks),
+                "chat" to stringResource(R.string.tab_chat),
                 // "!" while a member waits for this user to allow a link: nothing connects before.
-                val decide = com.icegood.findmeinwood.feature.map.needsLinkDecision(namedPeers.collectAsState().value.values)
-                navItem((if (decide) "! " else "") + stringResource(R.string.tab_peers), tab == "peers") { tab = "peers" }
-                navItem(stringResource(R.string.tab_discover), tab == "discover") { tab = "discover" }
-                navItem(stringResource(R.string.tab_settings), tab == "settings") { tab = "settings" }
+                "peers" to (if (decide) "! " else "") + stringResource(R.string.tab_peers),
+                "discover" to stringResource(R.string.tab_discover),
+                "settings" to stringResource(R.string.tab_settings),
+            )
+            Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+                @OptIn(ExperimentalMaterial3Api::class)
+                PrimaryScrollableTabRow(
+                    selectedTabIndex = tabs.indexOfFirst { it.first == tab }.coerceAtLeast(0),
+                    modifier = Modifier.navigationBarsPadding(),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    edgePadding = 0.dp,
+                ) {
+                    tabs.forEach { (id, label) ->
+                        Tab(
+                            selected = tab == id,
+                            onClick = { tab = id },
+                            modifier = Modifier.heightIn(min = 56.dp),
+                            text = { Text(label, maxLines = 1, softWrap = false) },
+                        )
+                    }
+                }
             }
         }) { pad ->
             Box(Modifier.padding(pad)) {
