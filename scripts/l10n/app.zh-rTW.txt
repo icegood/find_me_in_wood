@@ -219,3 +219,4 @@ scanning_nodes=搜尋中（Nordic-UART 節點）…
 network_name=網路名稱
 password_or_generate=密碼（留空則自動產生）
 create=建立
+navigate_back=返回

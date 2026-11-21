@@ -219,3 +219,4 @@ scanning_nodes=Hľadanie (uzly Nordic-UART)…
 network_name=Názov siete
 password_or_generate=Heslo (prázdne = vygenerovať)
 create=Vytvoriť
+navigate_back=Späť

@@ -222,4 +222,5 @@
     <string name="network_name">Nome da rede</string>
     <string name="password_or_generate">Senha (vazia = gerar uma)</string>
     <string name="create">Criar</string>
+    <string name="navigate_back">Voltar</string>
 </resources>

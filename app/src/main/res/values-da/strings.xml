@@ -222,4 +222,5 @@
     <string name="network_name">Netværksnavn</string>
     <string name="password_or_generate">Adgangskode (tom = opret en)</string>
     <string name="create">Opret</string>
+    <string name="navigate_back">Tilbage</string>
 </resources>

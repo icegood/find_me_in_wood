@@ -115,4 +115,5 @@
     <string name="wd_in_turn">%1$d अन्य समूहों के साथ बारी-बारी से</string>
     <string name="wd_pick_me">इस फ़ोन पर Wi-Fi Direct समूह होस्ट करें</string>
     <string name="wd_pick_them">%1$s को Wi-Fi Direct समूह होस्ट करने दें</string>
+    <string name="center_on_me">मेरी स्थिति पर केंद्रित करें</string>
 </resources>

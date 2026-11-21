@@ -222,4 +222,5 @@
     <string name="network_name">Netwerknaam</string>
     <string name="password_or_generate">Wachtwoord (leeg = er een maken)</string>
     <string name="create">Maken</string>
+    <string name="navigate_back">Terug</string>
 </resources>

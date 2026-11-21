@@ -115,4 +115,5 @@
     <string name="wd_in_turn">střídavě s %1$d dalšími skupinami</string>
     <string name="wd_pick_me">Hostit skupinu Wi-Fi Direct na tomto telefonu</string>
     <string name="wd_pick_them">Nechat %1$s hostit skupinu Wi-Fi Direct</string>
+    <string name="center_on_me">Vycentrovat na mou polohu</string>
 </resources>

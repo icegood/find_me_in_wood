@@ -115,4 +115,5 @@
     <string name="wd_in_turn">vuorotellen %1$d muun ryhmän kanssa</string>
     <string name="wd_pick_me">Isännöi Wi-Fi Direct -ryhmää tällä puhelimella</string>
     <string name="wd_pick_them">Anna %1$s isännöidä Wi-Fi Direct -ryhmää</string>
+    <string name="center_on_me">Keskitä sijaintiini</string>
 </resources>

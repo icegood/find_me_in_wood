@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s hostí skupinu, tento telefon se připojuje
 wd_in_turn=střídavě s %1$d dalšími skupinami
 wd_pick_me=Hostit skupinu Wi-Fi Direct na tomto telefonu
 wd_pick_them=Nechat %1$s hostit skupinu Wi-Fi Direct
+center_on_me=Vycentrovat na mou polohu

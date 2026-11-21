@@ -222,4 +222,5 @@
     <string name="network_name">Име на мрежата</string>
     <string name="password_or_generate">Парола (празно = генерирай)</string>
     <string name="create">Създай</string>
+    <string name="navigate_back">Назад</string>
 </resources>

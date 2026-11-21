@@ -219,3 +219,4 @@ scanning_nodes=Keresés (Nordic-UART csomópontok)…
 network_name=Hálózat neve
 password_or_generate=Jelszó (üres = generálás)
 create=Létrehozás
+navigate_back=Vissza

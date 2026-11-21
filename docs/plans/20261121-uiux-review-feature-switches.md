@@ -79,16 +79,16 @@ Multi-choice settings (theme, Wi-Fi Direct band) are not on/off, so they move fr
 **Files:**
 - Modify: `app/src/main/kotlin/com/icegood/findmeinwood/app/MainActivity.kt`
 
-- [ ] Theme (System / Light / Dark) and Wi-Fi Direct band (2.4 / 5 GHz): replace the Button/OutlinedButton pairs, whose onClick does nothing for the selected one, with a SingleChoiceSegmentedButtonRow
-- [ ] review pass over the remaining controls, fixing only what violates the guidelines:
+- [x] Theme (System / Light / Dark) and Wi-Fi Direct band (2.4 / 5 GHz): replace the Button/OutlinedButton pairs, whose onClick does nothing for the selected one, with a SingleChoiceSegmentedButtonRow
+- [x] review pass over the remaining controls, fixing only what violates the guidelines (offline area Delete / Clear all now ask first; map FABs, chat back and the finding card ✕ got content descriptions, FABs a 48 dp touch target; navigate_back / center_on_me added to all languages already):
   - one primary (filled) button per card; others outlined or text
   - destructive actions (Delete, Remove, Clear all) only as text/outlined buttons with confirmation, as today
   - no fake toggle buttons left
   - touch targets of at least 48 dp
   - icon-only map FABs get contentDescription strings
-- [ ] grep check: no on/off feature implemented as a Button / OutlinedButton pair remains in `app/` or `feature/`
-- [ ] update / add tests for any logic touched
-- [ ] run `./gradlew :app:testDebugUnitTest :feature:map:testDebugUnitTest`; both must pass
+- [x] grep check: no on/off feature implemented as a Button / OutlinedButton pair remains in `app/` or `feature/`
+- [x] update / add tests for any logic touched (ChoicesTest)
+- [x] run `./gradlew :app:testDebugUnitTest :feature:map:testDebugUnitTest`; both must pass
 
 ### Task 5: Strings in all languages
 

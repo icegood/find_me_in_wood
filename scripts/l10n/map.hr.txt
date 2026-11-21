@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s je domaćin grupe, ovaj telefon se pridružuje
 wd_in_turn=naizmjence s još %1$d grupa
 wd_pick_me=Ovaj telefon je domaćin grupe Wi-Fi Direct
 wd_pick_them=Neka %1$s bude domaćin grupe Wi-Fi Direct
+center_on_me=Centriraj na moj položaj

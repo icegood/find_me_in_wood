@@ -223,4 +223,5 @@
     <string name="password_or_generate">Password (empty = generate one)</string>
     <string name="create">Create</string>
     <string name="app_name" translatable="false">find me in wood</string>
+    <string name="navigate_back">Back</string>
 </resources>

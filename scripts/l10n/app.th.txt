@@ -219,3 +219,4 @@ scanning_nodes=กำลังค้นหา (โหนด Nordic-UART)…
 network_name=ชื่อเครือข่าย
 password_or_generate=รหัสผ่าน (ว่าง = สร้างให้)
 create=สร้าง
+navigate_back=กลับ

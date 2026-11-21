@@ -115,4 +115,5 @@
     <string name="wd_in_turn">på skift med %1$d andre grupper</string>
     <string name="wd_pick_me">Vær vært for Wi-Fi Direct-gruppen på denne telefon</string>
     <string name="wd_pick_them">Lad %1$s være vært for Wi-Fi Direct-gruppen</string>
+    <string name="center_on_me">Centrér på min position</string>
 </resources>

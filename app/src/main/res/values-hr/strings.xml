@@ -222,4 +222,5 @@
     <string name="network_name">Naziv mreže</string>
     <string name="password_or_generate">Lozinka (prazno = generiraj)</string>
     <string name="create">Stvori</string>
+    <string name="navigate_back">Natrag</string>
 </resources>

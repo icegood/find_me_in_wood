@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s がグループをホストし、この端末が
 wd_in_turn=他の %1$d グループと交代で
 wd_pick_me=この端末で Wi-Fi Direct グループをホスト
 wd_pick_them=%1$s に Wi-Fi Direct グループをホストさせる
+center_on_me=現在地を中心に表示

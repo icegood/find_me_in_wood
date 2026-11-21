@@ -219,3 +219,4 @@ scanning_nodes=검색 중(Nordic-UART 노드)…
 network_name=네트워크 이름
 password_or_generate=비밀번호(비워 두면 자동 생성)
 create=만들기
+navigate_back=뒤로

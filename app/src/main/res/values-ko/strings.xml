@@ -222,4 +222,5 @@
     <string name="network_name">네트워크 이름</string>
     <string name="password_or_generate">비밀번호(비워 두면 자동 생성)</string>
     <string name="create">만들기</string>
+    <string name="navigate_back">뒤로</string>
 </resources>

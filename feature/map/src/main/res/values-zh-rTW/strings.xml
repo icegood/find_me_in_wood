@@ -115,4 +115,5 @@
     <string name="wd_in_turn">與另外 %1$d 個群組輪流</string>
     <string name="wd_pick_me">由本機建立 Wi-Fi Direct 群組</string>
     <string name="wd_pick_them">由 %1$s 建立 Wi-Fi Direct 群組</string>
+    <string name="center_on_me">以我的位置為中心</string>
 </resources>

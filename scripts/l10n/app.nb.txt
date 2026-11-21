@@ -219,3 +219,4 @@ scanning_nodes=Søker (Nordic-UART-noder)…
 network_name=Nettverksnavn
 password_or_generate=Passord (tomt = lag et)
 create=Opprett
+navigate_back=Tilbake

@@ -115,4 +115,5 @@
     <string name="wd_in_turn">om beurten met %1$d andere groepen</string>
     <string name="wd_pick_me">Wi-Fi Direct-groep op deze telefoon hosten</string>
     <string name="wd_pick_them">%1$s de Wi-Fi Direct-groep laten hosten</string>
+    <string name="center_on_me">Centreren op mijn positie</string>
 </resources>

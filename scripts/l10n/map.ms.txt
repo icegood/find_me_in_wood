@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s menjadi hos kumpulan, telefon ini menyertai
 wd_in_turn=bergilir dengan %1$d kumpulan lain
 wd_pick_me=Hos kumpulan Wi-Fi Direct pada telefon ini
 wd_pick_them=Biar %1$s menjadi hos kumpulan Wi-Fi Direct
+center_on_me=Tengahkan pada kedudukan saya

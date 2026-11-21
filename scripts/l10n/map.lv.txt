@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s vada grupu, šis tālrunis pievienojas
 wd_in_turn=pārmaiņus ar vēl %1$d grupām
 wd_pick_me=Šis tālrunis vadīs Wi-Fi Direct grupu
 wd_pick_them=Ļaut %1$s vadīt Wi-Fi Direct grupu
+center_on_me=Centrēt uz manu atrašanās vietu

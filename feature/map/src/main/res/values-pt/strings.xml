@@ -115,4 +115,5 @@
     <string name="wd_in_turn">à vez com outros %1$d grupos</string>
     <string name="wd_pick_me">Hospedar o grupo Wi-Fi Direct neste telefone</string>
     <string name="wd_pick_them">Deixar %1$s hospedar o grupo Wi-Fi Direct</string>
+    <string name="center_on_me">Centrar na minha posição</string>
 </resources>

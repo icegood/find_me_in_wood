@@ -104,3 +104,4 @@ wd_host_them=Wi-Fi Direct: %1$s hosts the group, this phone joins it
 wd_in_turn=in turn with %1$d other groups
 wd_pick_me=Host the Wi-Fi Direct group on this phone
 wd_pick_them=Let %1$s host the Wi-Fi Direct group
+center_on_me=Center on my position

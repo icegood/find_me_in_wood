@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s yra grupės šeimininkas, šis telefonas prisiju
 wd_in_turn=pakaitomis su dar %1$d grupėmis
 wd_pick_me=Šis telefonas bus Wi-Fi Direct grupės šeimininkas
 wd_pick_them=Tegul %1$s būna Wi-Fi Direct grupės šeimininkas
+center_on_me=Centruoti pagal mano padėtį

@@ -115,4 +115,5 @@
     <string name="wd_in_turn">εναλλάξ με %1$d άλλες ομάδες</string>
     <string name="wd_pick_me">Φιλοξενία της ομάδας Wi-Fi Direct σε αυτό το τηλέφωνο</string>
     <string name="wd_pick_them">Να φιλοξενεί το %1$s την ομάδα Wi-Fi Direct</string>
+    <string name="center_on_me">Κεντράρισμα στη θέση μου</string>
 </resources>

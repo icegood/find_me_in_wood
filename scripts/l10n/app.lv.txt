@@ -219,3 +219,4 @@ scanning_nodes=Meklē (Nordic-UART mezgli)…
 network_name=Tīkla nosaukums
 password_or_generate=Parole (tukša = ģenerēt)
 create=Izveidot
+navigate_back=Atpakaļ

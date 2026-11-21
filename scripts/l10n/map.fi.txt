@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s isännöi ryhmää, tämä puhelin liittyy
 wd_in_turn=vuorotellen %1$d muun ryhmän kanssa
 wd_pick_me=Isännöi Wi-Fi Direct -ryhmää tällä puhelimella
 wd_pick_them=Anna %1$s isännöidä Wi-Fi Direct -ryhmää
+center_on_me=Keskitä sijaintiini

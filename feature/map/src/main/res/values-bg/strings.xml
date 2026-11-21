@@ -115,4 +115,5 @@
     <string name="wd_in_turn">на смени с още %1$d групи</string>
     <string name="wd_pick_me">Тази група Wi-Fi Direct да е на този телефон</string>
     <string name="wd_pick_them">Нека %1$s е домакин на групата Wi-Fi Direct</string>
+    <string name="center_on_me">Центрирай върху моята позиция</string>
 </resources>

@@ -222,4 +222,5 @@
     <string name="network_name">Nama rangkaian</string>
     <string name="password_or_generate">Kata laluan (kosong = jana satu)</string>
     <string name="create">Cipta</string>
+    <string name="navigate_back">Kembali</string>
 </resources>

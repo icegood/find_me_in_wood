@@ -219,3 +219,4 @@ scanning_nodes=Αναζήτηση (κόμβοι Nordic-UART)…
 network_name=Όνομα δικτύου
 password_or_generate=Κωδικός (κενό = δημιουργία)
 create=Δημιουργία
+navigate_back=Πίσω

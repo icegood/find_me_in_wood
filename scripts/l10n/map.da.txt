@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s er vært for gruppen, denne telefon deltager
 wd_in_turn=på skift med %1$d andre grupper
 wd_pick_me=Vær vært for Wi-Fi Direct-gruppen på denne telefon
 wd_pick_them=Lad %1$s være vært for Wi-Fi Direct-gruppen
+center_on_me=Centrér på min position

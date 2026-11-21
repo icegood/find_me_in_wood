@@ -222,4 +222,5 @@
     <string name="network_name">Tinklo pavadinimas</string>
     <string name="password_or_generate">Slaptažodis (tuščia = sugeneruoti)</string>
     <string name="create">Sukurti</string>
+    <string name="navigate_back">Atgal</string>
 </resources>

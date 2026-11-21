@@ -219,3 +219,4 @@ scanning_nodes=در حال جستجو (گره‌های Nordic-UART)…
 network_name=نام شبکه
 password_or_generate=گذرواژه (خالی = ساختن یکی)
 create=ایجاد
+navigate_back=بازگشت

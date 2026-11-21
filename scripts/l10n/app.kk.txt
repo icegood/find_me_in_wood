@@ -219,3 +219,4 @@ scanning_nodes=Іздеу (Nordic-UART түйіндері)…
 network_name=Желі атауы
 password_or_generate=Құпиясөз (бос = жасау)
 create=Құру
+navigate_back=Артқа

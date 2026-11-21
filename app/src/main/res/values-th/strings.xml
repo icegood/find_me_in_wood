@@ -222,4 +222,5 @@
     <string name="network_name">ชื่อเครือข่าย</string>
     <string name="password_or_generate">รหัสผ่าน (ว่าง = สร้างให้)</string>
     <string name="create">สร้าง</string>
+    <string name="navigate_back">กลับ</string>
 </resources>

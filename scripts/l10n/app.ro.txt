@@ -219,3 +219,4 @@ scanning_nodes=Se caută (noduri Nordic-UART)…
 network_name=Numele rețelei
 password_or_generate=Parolă (gol = generează una)
 create=Creează
+navigate_back=Înapoi

@@ -219,3 +219,4 @@ scanning_nodes=Traženje (Nordic-UART čvorovi)…
 network_name=Naziv mreže
 password_or_generate=Lozinka (prazno = generiraj)
 create=Stvori
+navigate_back=Natrag

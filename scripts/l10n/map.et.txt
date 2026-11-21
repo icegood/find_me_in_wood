@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s on grupi host, see telefon liitub
 wd_in_turn=kordamööda veel %1$d grupiga
 wd_pick_me=Wi-Fi Directi grupi host on see telefon
 wd_pick_them=Lase %1$s olla Wi-Fi Directi grupi host
+center_on_me=Keskenda minu asukohale

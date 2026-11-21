@@ -219,3 +219,4 @@ scanning_nodes=検索中（Nordic-UART ノード）…
 network_name=ネットワーク名
 password_or_generate=パスワード（空欄 = 自動生成）
 create=作成
+navigate_back=戻る

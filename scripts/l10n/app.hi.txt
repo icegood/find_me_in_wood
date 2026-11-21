@@ -219,3 +219,4 @@ scanning_nodes=खोज रहे हैं (Nordic-UART नोड)…
 network_name=नेटवर्क का नाम
 password_or_generate=पासवर्ड (खाली = नया बनाएँ)
 create=बनाएँ
+navigate_back=वापस

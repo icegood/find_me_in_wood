@@ -15,6 +15,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -147,8 +150,9 @@ fun ChatScreen(
                 title = { Text(if (channelId == "group") stringResource(R.string.chat_group) else channelId) },
                 navigationIcon = {
                     if (onBack != null) {
-                        IconButton(onClick = onBack) {
-                            Text("‹", style = MaterialTheme.typography.headlineMedium)
+                        val backLabel = stringResource(R.string.navigate_back)
+                        IconButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = backLabel }) {
+                            Text("‹", Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.headlineMedium)
                         }
                     }
                 },

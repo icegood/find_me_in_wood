@@ -222,4 +222,5 @@
     <string name="network_name">Numele rețelei</string>
     <string name="password_or_generate">Parolă (gol = generează una)</string>
     <string name="create">Creează</string>
+    <string name="navigate_back">Înapoi</string>
 </resources>

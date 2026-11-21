@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s hospeda o grupo, este telefone entra
 wd_in_turn=à vez com outros %1$d grupos
 wd_pick_me=Hospedar o grupo Wi-Fi Direct neste telefone
 wd_pick_them=Deixar %1$s hospedar o grupo Wi-Fi Direct
+center_on_me=Centrar na minha posição

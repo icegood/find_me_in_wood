@@ -222,4 +222,5 @@
     <string name="network_name">Ime omrežja</string>
     <string name="password_or_generate">Geslo (prazno = ustvari)</string>
     <string name="create">Ustvari</string>
+    <string name="navigate_back">Nazaj</string>
 </resources>

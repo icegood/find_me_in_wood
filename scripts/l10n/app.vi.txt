@@ -219,3 +219,4 @@ scanning_nodes=Đang tìm (nút Nordic-UART)…
 network_name=Tên mạng
 password_or_generate=Mật khẩu (trống = tạo tự động)
 create=Tạo
+navigate_back=Quay lại

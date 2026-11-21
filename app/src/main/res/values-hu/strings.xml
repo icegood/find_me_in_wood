@@ -222,4 +222,5 @@
     <string name="network_name">Hálózat neve</string>
     <string name="password_or_generate">Jelszó (üres = generálás)</string>
     <string name="create">Létrehozás</string>
+    <string name="navigate_back">Vissza</string>
 </resources>

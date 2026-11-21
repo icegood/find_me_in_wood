@@ -219,3 +219,4 @@ scanning_nodes=Zoeken (Nordic-UART-knooppunten)…
 network_name=Netwerknaam
 password_or_generate=Wachtwoord (leeg = er een maken)
 create=Maken
+navigate_back=Terug

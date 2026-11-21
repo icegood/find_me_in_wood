@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s מארח את הקבוצה, הטלפון הזה 
 wd_in_turn=לסירוגין עם %1$d קבוצות נוספות
 wd_pick_me=הטלפון הזה יארח את קבוצת Wi-Fi Direct
 wd_pick_them=ש-%1$s יארח את קבוצת Wi-Fi Direct
+center_on_me=מרכז על המיקום שלי

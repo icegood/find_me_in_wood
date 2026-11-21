@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s میزبان گروه است و این گوشی 
 wd_in_turn=به نوبت با %1$d گروه دیگر
 wd_pick_me=میزبانی گروه Wi-Fi Direct روی این گوشی
 wd_pick_them=بگذارید %1$s میزبان گروه Wi-Fi Direct باشد
+center_on_me=مرکز روی موقعیت من

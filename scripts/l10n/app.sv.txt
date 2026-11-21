@@ -219,3 +219,4 @@ scanning_nodes=Söker (Nordic-UART-noder)…
 network_name=Nätverksnamn
 password_or_generate=Lösenord (tomt = skapa ett)
 create=Skapa
+navigate_back=Tillbaka

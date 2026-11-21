@@ -219,3 +219,4 @@ scanning_nodes=Procurando (nós Nordic-UART)…
 network_name=Nome da rede
 password_or_generate=Senha (vazia = gerar uma)
 create=Criar
+navigate_back=Voltar

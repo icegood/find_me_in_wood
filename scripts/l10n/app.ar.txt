@@ -219,3 +219,4 @@ scanning_nodes=جارٍ البحث (عقد Nordic-UART)…
 network_name=اسم الشبكة
 password_or_generate=كلمة المرور (فارغة = إنشاء واحدة)
 create=إنشاء
+navigate_back=رجوع

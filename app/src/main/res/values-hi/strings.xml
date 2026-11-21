@@ -222,4 +222,5 @@
     <string name="network_name">नेटवर्क का नाम</string>
     <string name="password_or_generate">पासवर्ड (खाली = नया बनाएँ)</string>
     <string name="create">बनाएँ</string>
+    <string name="navigate_back">वापस</string>
 </resources>

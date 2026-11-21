@@ -219,3 +219,4 @@ scanning_nodes=מחפש (צמתי Nordic-UART)…
 network_name=שם הרשת
 password_or_generate=סיסמה (ריק = יצירת סיסמה)
 create=יצירה
+navigate_back=חזרה

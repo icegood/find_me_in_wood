@@ -219,3 +219,4 @@ scanning_nodes=Otsimine (Nordic-UART sõlmed)…
 network_name=Võrgu nimi
 password_or_generate=Parool (tühi = loo)
 create=Loo
+navigate_back=Tagasi

@@ -219,3 +219,4 @@ scanning_nodes=Поиск (узлы Nordic-UART)…
 network_name=Название сети
 password_or_generate=Пароль (пусто — создать)
 create=Создать
+navigate_back=Назад

@@ -219,3 +219,4 @@ scanning_nodes=Wyszukiwanie (węzły Nordic-UART)…
 network_name=Nazwa sieci
 password_or_generate=Hasło (puste = wygeneruj)
 create=Utwórz
+navigate_back=Wstecz

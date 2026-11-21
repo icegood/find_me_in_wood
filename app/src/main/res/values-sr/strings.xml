@@ -222,4 +222,5 @@
     <string name="network_name">Назив мреже</string>
     <string name="password_or_generate">Лозинка (празно = генериши)</string>
     <string name="create">Направи</string>
+    <string name="navigate_back">Назад</string>
 </resources>

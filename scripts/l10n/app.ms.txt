@@ -219,3 +219,4 @@ scanning_nodes=Mencari (nod Nordic-UART)…
 network_name=Nama rangkaian
 password_or_generate=Kata laluan (kosong = jana satu)
 create=Cipta
+navigate_back=Kembali

@@ -115,4 +115,5 @@
     <string name="wd_in_turn">abwechselnd mit %1$d anderen Gruppen</string>
     <string name="wd_pick_me">Wi-Fi-Direct-Gruppe auf diesem Telefon stellen</string>
     <string name="wd_pick_them">%1$s die Wi-Fi-Direct-Gruppe stellen lassen</string>
+    <string name="center_on_me">Auf meine Position zentrieren</string>
 </resources>

@@ -222,4 +222,5 @@
     <string name="network_name">Ağ adı</string>
     <string name="password_or_generate">Şifre (boş = oluştur)</string>
     <string name="create">Oluştur</string>
+    <string name="navigate_back">Geri</string>
 </resources>

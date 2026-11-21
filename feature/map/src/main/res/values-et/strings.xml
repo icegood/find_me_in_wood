@@ -115,4 +115,5 @@
     <string name="wd_in_turn">kordamööda veel %1$d grupiga</string>
     <string name="wd_pick_me">Wi-Fi Directi grupi host on see telefon</string>
     <string name="wd_pick_them">Lase %1$s olla Wi-Fi Directi grupi host</string>
+    <string name="center_on_me">Keskenda minu asukohale</string>
 </resources>

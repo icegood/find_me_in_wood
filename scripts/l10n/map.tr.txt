@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s grubu barındırıyor, bu telefon katılıyor
 wd_in_turn=%1$d başka grupla sırayla
 wd_pick_me=Wi-Fi Direct grubunu bu telefonda barındır
 wd_pick_them=Wi-Fi Direct grubunu %1$s barındırsın
+center_on_me=Konumuma ortala

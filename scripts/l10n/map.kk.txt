@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s топты басқарады, бұл телеф
 wd_in_turn=басқа %1$d топпен кезекпен
 wd_pick_me=Wi-Fi Direct тобын осы телефон басқарсын
 wd_pick_them=Wi-Fi Direct тобын %1$s басқарсын
+center_on_me=Менің орныма ортаға келтіру

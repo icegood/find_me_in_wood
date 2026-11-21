@@ -222,4 +222,5 @@
     <string name="network_name">اسم الشبكة</string>
     <string name="password_or_generate">كلمة المرور (فارغة = إنشاء واحدة)</string>
     <string name="create">إنشاء</string>
+    <string name="navigate_back">رجوع</string>
 </resources>

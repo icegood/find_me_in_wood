@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s이(가) 그룹을 호스팅하고 이 휴대폰�
 wd_in_turn=다른 그룹 %1$d개와 번갈아
 wd_pick_me=이 휴대폰에서 Wi-Fi Direct 그룹 호스팅
 wd_pick_them=%1$s이(가) Wi-Fi Direct 그룹을 호스팅하게 하기
+center_on_me=내 위치를 중앙에 표시

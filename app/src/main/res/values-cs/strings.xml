@@ -222,4 +222,5 @@
     <string name="network_name">Název sítě</string>
     <string name="password_or_generate">Heslo (prázdné = vygenerovat)</string>
     <string name="create">Vytvořit</string>
+    <string name="navigate_back">Zpět</string>
 </resources>

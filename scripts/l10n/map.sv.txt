@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s är värd för gruppen, den här telefonen anslu
 wd_in_turn=turvis med %1$d andra grupper
 wd_pick_me=Var värd för Wi-Fi Direct-gruppen på den här telefonen
 wd_pick_them=Låt %1$s vara värd för Wi-Fi Direct-gruppen
+center_on_me=Centrera på min position

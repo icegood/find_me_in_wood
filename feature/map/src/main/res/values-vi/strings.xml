@@ -115,4 +115,5 @@
     <string name="wd_in_turn">luân phiên với %1$d nhóm khác</string>
     <string name="wd_pick_me">Làm chủ nhóm Wi-Fi Direct trên điện thoại này</string>
     <string name="wd_pick_them">Để %1$s làm chủ nhóm Wi-Fi Direct</string>
+    <string name="center_on_me">Căn giữa vào vị trí của tôi</string>
 </resources>

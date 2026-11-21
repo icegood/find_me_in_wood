@@ -222,4 +222,5 @@
     <string name="network_name">Tīkla nosaukums</string>
     <string name="password_or_generate">Parole (tukša = ģenerēt)</string>
     <string name="create">Izveidot</string>
+    <string name="navigate_back">Atpakaļ</string>
 </resources>

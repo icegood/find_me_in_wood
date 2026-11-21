@@ -115,4 +115,5 @@
     <string name="wd_in_turn">לסירוגין עם %1$d קבוצות נוספות</string>
     <string name="wd_pick_me">הטלפון הזה יארח את קבוצת Wi-Fi Direct</string>
     <string name="wd_pick_them">ש-%1$s יארח את קבוצת Wi-Fi Direct</string>
+    <string name="center_on_me">מרכז על המיקום שלי</string>
 </resources>

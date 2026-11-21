@@ -222,4 +222,5 @@
     <string name="network_name">Όνομα δικτύου</string>
     <string name="password_or_generate">Κωδικός (κενό = δημιουργία)</string>
     <string name="create">Δημιουργία</string>
+    <string name="navigate_back">Πίσω</string>
 </resources>

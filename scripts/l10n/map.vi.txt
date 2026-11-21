@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s làm chủ nhóm, điện thoại này tham gia
 wd_in_turn=luân phiên với %1$d nhóm khác
 wd_pick_me=Làm chủ nhóm Wi-Fi Direct trên điện thoại này
 wd_pick_them=Để %1$s làm chủ nhóm Wi-Fi Direct
+center_on_me=Căn giữa vào vị trí của tôi

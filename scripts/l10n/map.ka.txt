@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s მასპინძლობს ჯგუფ�
 wd_in_turn=რიგრიგობით სხვა %1$d ჯგუფთან
 wd_pick_me=Wi-Fi Direct ჯგუფის მასპინძელი იყოს ეს ტელეფონი
 wd_pick_them=Wi-Fi Direct ჯგუფს უმასპინძლოს %1$s-მა
+center_on_me=ჩემს მდებარეობაზე ცენტრირება

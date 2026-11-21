@@ -115,4 +115,5 @@
     <string name="wd_in_turn">naizmjence s još %1$d grupa</string>
     <string name="wd_pick_me">Ovaj telefon je domaćin grupe Wi-Fi Direct</string>
     <string name="wd_pick_them">Neka %1$s bude domaćin grupe Wi-Fi Direct</string>
+    <string name="center_on_me">Centriraj na moj položaj</string>
 </resources>

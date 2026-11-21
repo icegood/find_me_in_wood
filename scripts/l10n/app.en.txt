@@ -221,3 +221,4 @@ network_name=Network name
 password_or_generate=Password (empty = generate one)
 create=Create
 app_name!=find me in wood
+navigate_back=Back

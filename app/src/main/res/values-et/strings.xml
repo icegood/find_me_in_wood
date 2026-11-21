@@ -222,4 +222,5 @@
     <string name="network_name">Võrgu nimi</string>
     <string name="password_or_generate">Parool (tühi = loo)</string>
     <string name="create">Loo</string>
+    <string name="navigate_back">Tagasi</string>
 </resources>

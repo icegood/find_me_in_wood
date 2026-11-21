@@ -219,3 +219,4 @@ scanning_nodes=Søger (Nordic-UART-noder)…
 network_name=Netværksnavn
 password_or_generate=Adgangskode (tom = opret en)
 create=Opret
+navigate_back=Tilbage

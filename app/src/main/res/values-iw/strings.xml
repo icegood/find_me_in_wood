@@ -222,4 +222,5 @@
     <string name="network_name">שם הרשת</string>
     <string name="password_or_generate">סיסמה (ריק = יצירת סיסמה)</string>
     <string name="create">יצירה</string>
+    <string name="navigate_back">חזרה</string>
 </resources>

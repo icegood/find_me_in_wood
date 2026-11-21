@@ -219,3 +219,4 @@ scanning_nodes=Aranıyor (Nordic-UART düğümleri)…
 network_name=Ağ adı
 password_or_generate=Şifre (boş = oluştur)
 create=Oluştur
+navigate_back=Geri

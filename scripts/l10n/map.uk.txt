@@ -103,3 +103,4 @@ wd_host_them=Wi-Fi Direct: %1$s створює групу, цей телефон
 wd_in_turn=по черзі ще з %1$d групами
 wd_pick_me=Створювати групу Wi-Fi Direct на цьому телефоні
 wd_pick_them=Хай групу Wi-Fi Direct створює %1$s
+center_on_me=Центрувати на моєму місці

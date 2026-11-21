@@ -720,15 +720,13 @@ class MainActivity : ComponentActivity() {
                             stringResource(R.string.theme_hint),
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ThemeMode.entries.forEach { mode ->
-                                if (themeMode == mode) {
-                                    Button(onClick = { }) { Text(themeName(mode)) }
-                                } else {
-                                    OutlinedButton(onClick = { onThemeModeChange(mode) }) { Text(themeName(mode)) }
-                                }
-                            }
-                        }
+                        SegmentedChoice(
+                            name = Choices.THEME,
+                            options = ThemeMode.entries,
+                            selected = themeMode,
+                            label = { themeName(it) },
+                            onSelect = onThemeModeChange,
+                        )
                     }
                 }
                 Card(Modifier.fillMaxWidth()) {
@@ -743,6 +741,42 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         LaunchedEffect(Unit) { refreshRegions() }
+                        // Deleting map data costs a new download: both ways ask first.
+                        var deletingRegion by remember { mutableStateOf<OfflineRegion?>(null) }
+                        var clearingAll by remember { mutableStateOf(false) }
+                        deletingRegion?.let { r ->
+                            AlertDialog(
+                                onDismissRequest = { deletingRegion = null },
+                                title = { Text(stringResource(R.string.delete_named, r.name)) },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        deletingRegion = null
+                                        OfflineRegions.delete(this@MainActivity, r) {
+                                            refreshRegions()
+                                            uiScope.launch { snackbar.showSnackbar(getString(R.string.offline_area_deleted)) }
+                                        }
+                                    }) { Text(stringResource(R.string.delete)) }
+                                },
+                                dismissButton = { TextButton(onClick = { deletingRegion = null }) { Text(stringResource(R.string.cancel)) } },
+                            )
+                        }
+                        if (clearingAll) AlertDialog(
+                            onDismissRequest = { clearingAll = false },
+                            title = { Text(stringResource(R.string.clear_all)) },
+                            text = {
+                                Text(stringResource(R.string.saved_areas, regions.size, "%.1f".format(totalBytes / (1024.0 * 1024.0))))
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    clearingAll = false
+                                    OfflineRegions.clear(this@MainActivity) {
+                                        refreshRegions()
+                                        uiScope.launch { snackbar.showSnackbar(getString(R.string.offline_cleared)) }
+                                    }
+                                }) { Text(stringResource(R.string.clear_all)) }
+                            },
+                            dismissButton = { TextButton(onClick = { clearingAll = false }) { Text(stringResource(R.string.cancel)) } },
+                        )
                         Text(
                             stringResource(R.string.saved_areas, regions.size, "%.1f".format(totalBytes / (1024.0 * 1024.0))),
                             style = MaterialTheme.typography.bodySmall,
@@ -771,12 +805,7 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.height(32.dp),
                                     color = MaterialTheme.colorScheme.outlineVariant,
                                 )
-                                TextButton(onClick = {
-                                    OfflineRegions.delete(this@MainActivity, r) {
-                                        refreshRegions()
-                                        uiScope.launch { snackbar.showSnackbar(getString(R.string.offline_area_deleted)) }
-                                    }
-                                }) { Text(stringResource(R.string.delete), maxLines = 1, softWrap = false) }
+                                TextButton(onClick = { deletingRegion = r }) { Text(stringResource(R.string.delete), maxLines = 1, softWrap = false) }
                             }
                         }
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -785,12 +814,8 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             OutlinedButton(
-                                onClick = {
-                                    OfflineRegions.clear(this@MainActivity) {
-                                        refreshRegions()
-                                        uiScope.launch { snackbar.showSnackbar(getString(R.string.offline_cleared)) }
-                                    }
-                                },
+                                onClick = { clearingAll = true },
+                                enabled = regions.isNotEmpty(),
                                 modifier = Modifier.weight(1f),
                             ) { Text(stringResource(R.string.clear_all), maxLines = 1, softWrap = false) }
                             Button(
@@ -832,16 +857,16 @@ class MainActivity : ComponentActivity() {
                             ),
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            com.icegood.findmeinwood.core.model.WifiBand.entries.forEach { band ->
-                                val label = band.label
-                                if (band == wifiBand) Button(onClick = { }) { Text(label) }
-                                else OutlinedButton(onClick = {
-                                    wifiBand = band
-                                    SessionService.setWifiBand(this@MainActivity, band)
-                                }) { Text(label) }
-                            }
-                        }
+                        SegmentedChoice(
+                            name = Choices.WIFI_BAND,
+                            options = com.icegood.findmeinwood.core.model.WifiBand.entries,
+                            selected = wifiBand,
+                            label = { it.label },
+                            onSelect = { band ->
+                                wifiBand = band
+                                SessionService.setWifiBand(this@MainActivity, band)
+                            },
+                        )
                     }
                 }
                 Card(Modifier.fillMaxWidth()) {

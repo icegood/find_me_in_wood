@@ -222,4 +222,5 @@
     <string name="network_name">Tên mạng</string>
     <string name="password_or_generate">Mật khẩu (trống = tạo tự động)</string>
     <string name="create">Tạo</string>
+    <string name="navigate_back">Quay lại</string>
 </resources>

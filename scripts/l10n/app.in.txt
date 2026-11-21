@@ -219,3 +219,4 @@ scanning_nodes=Mencari (node Nordic-UART)…
 network_name=Nama jaringan
 password_or_generate=Sandi (kosong = buatkan)
 create=Buat
+navigate_back=Kembali

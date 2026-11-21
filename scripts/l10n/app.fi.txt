@@ -219,3 +219,4 @@ scanning_nodes=Etsitään (Nordic-UART-solmut)…
 network_name=Verkon nimi
 password_or_generate=Salasana (tyhjä = luo)
 create=Luo
+navigate_back=Takaisin

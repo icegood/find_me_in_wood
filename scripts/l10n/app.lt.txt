@@ -219,3 +219,4 @@ scanning_nodes=Ieškoma („Nordic-UART“ mazgai)…
 network_name=Tinklo pavadinimas
 password_or_generate=Slaptažodis (tuščia = sugeneruoti)
 create=Sukurti
+navigate_back=Atgal

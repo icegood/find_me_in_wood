@@ -115,4 +115,5 @@
     <string name="wd_in_turn">他の %1$d グループと交代で</string>
     <string name="wd_pick_me">この端末で Wi-Fi Direct グループをホスト</string>
     <string name="wd_pick_them">%1$s に Wi-Fi Direct グループをホストさせる</string>
+    <string name="center_on_me">現在地を中心に表示</string>
 </resources>

@@ -219,3 +219,4 @@ scanning_nodes=Iskanje (vozlišča Nordic-UART) …
 network_name=Ime omrežja
 password_or_generate=Geslo (prazno = ustvari)
 create=Ustvari
+navigate_back=Nazaj

@@ -219,3 +219,4 @@ scanning_nodes=Suche (Nordic-UART-Knoten)…
 network_name=Netzwerkname
 password_or_generate=Passwort (leer = eins erzeugen)
 create=Erstellen
+navigate_back=Zurück

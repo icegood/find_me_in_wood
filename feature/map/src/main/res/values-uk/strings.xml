@@ -115,4 +115,5 @@
     <string name="wd_in_turn">по черзі ще з %1$d групами</string>
     <string name="wd_pick_me">Створювати групу Wi-Fi Direct на цьому телефоні</string>
     <string name="wd_pick_them">Хай групу Wi-Fi Direct створює %1$s</string>
+    <string name="center_on_me">Центрувати на моєму місці</string>
 </resources>

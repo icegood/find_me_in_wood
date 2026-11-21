@@ -115,4 +115,5 @@
     <string name="wd_in_turn">pārmaiņus ar vēl %1$d grupām</string>
     <string name="wd_pick_me">Šis tālrunis vadīs Wi-Fi Direct grupu</string>
     <string name="wd_pick_them">Ļaut %1$s vadīt Wi-Fi Direct grupu</string>
+    <string name="center_on_me">Centrēt uz manu atrašanās vietu</string>
 </resources>

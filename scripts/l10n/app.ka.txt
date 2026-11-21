@@ -219,3 +219,4 @@ scanning_nodes=ძებნა (Nordic-UART კვანძები)…
 network_name=ქსელის სახელი
 password_or_generate=პაროლი (ცარიელი = გენერირება)
 create=შექმნა
+navigate_back=უკან

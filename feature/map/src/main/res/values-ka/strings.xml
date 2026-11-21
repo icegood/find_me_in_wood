@@ -115,4 +115,5 @@
     <string name="wd_in_turn">რიგრიგობით სხვა %1$d ჯგუფთან</string>
     <string name="wd_pick_me">Wi-Fi Direct ჯგუფის მასპინძელი იყოს ეს ტელეფონი</string>
     <string name="wd_pick_them">Wi-Fi Direct ჯგუფს უმასპინძლოს %1$s-მა</string>
+    <string name="center_on_me">ჩემს მდებარეობაზე ცენტრირება</string>
 </resources>
