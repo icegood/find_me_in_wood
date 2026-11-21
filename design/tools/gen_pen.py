@@ -85,9 +85,9 @@ def topbar(left_kids,right_kids):
               kids=[fr("l","horizontal",gap=8,align="center",kids=left_kids),
                     fr("r","horizontal",gap=8,align="center",kids=right_kids)])
 
-def btn(label,outline=False,outline_color=RED):
+def btn(label,outline=False,outline_color=RED,label_color=None):
     n=fr("btn","horizontal",w="fill_container",pad=[16,16],justify="center",align="center",
-         radius=99,kids=[t(label,15,RED if outline else BTN_FG,weight="600")])
+         radius=99,kids=[t(label,15,label_color or (RED if outline else BTN_FG),weight="600")])
     if outline: n.update({"stroke":outline_color,"strokeWidth":1.5})
     else: n["fill"]=GREEN
     return n
@@ -119,6 +119,20 @@ def switch_on():
     return fr("swt","horizontal",w=40,h=22,radius=99,fill=GREEN,pad=[2,2],
               justify="end",align="center",kids=[{"type":"ellipse","width":18,"height":18,
                                                   "fill":KNOB}])
+
+def switch_off():
+    return fr("swt","horizontal",w=40,h=22,radius=99,fill=SURF2,stroke=SUB,sw=1.5,pad=[2,3],
+              justify="start",align="center",kids=[{"type":"ellipse","width":14,"height":14,
+                                                    "fill":SUB}])
+
+def srow(title,hint=None,on=True,hint_color=None):
+    """SwitchRow: the whole row toggles (48 dp min), title + hint left, switch right."""
+    tx=[t(title,13,TXT)]
+    if hint: tx.append(t(hint,10,hint_color or SUB,width="fill_container",growth="fixed-width"))
+    return fr("srow","horizontal",w="fill_container",h=48 if not hint else None,gap=12,
+              pad=[6,0],align="center",justify="space_between",
+              kids=[fr("st","vertical",w="fill_container",gap=2,kids=tx),
+                    switch_on() if on else switch_off()])
 
 def s1():
     rows=[]
@@ -162,13 +176,33 @@ def s2():
               [chip("2 links",GREEN,"lan"),ic("settings",20,SUB)])
     fab=abspos(fr("fab","horizontal",w=52,h=52,radius=99,fill=GREEN,justify="center",
                   align="center",kids=[ic("add",26,BTN_FG)]),292,664)
+    radios=fr("radios","vertical",w="fill_container",pad=[10,16],gap=2,fill=SURF,radius=12,
+        stroke=LINE,sw=1,kids=[
+          t("Radios",13,TXT,weight="600"),
+          srow("Wi-Fi",on=True),
+          srow("Bluetooth","Bluetooth is off",on=False,
+               hint_color=RED),
+          srow("Location",on=True)])
+    running=fr("card","vertical",w="fill_container",pad=[14,16],gap=4,fill=SURF,radius=12,
+        stroke=LINE,sw=1,kids=[
+          fr("r1","horizontal",w="fill_container",gap=8,align="center",justify="space_between",
+             kids=[fr("nm","horizontal",gap=8,align="center",
+                      kids=[t("hunt-2026",16,TXT,weight="600"),dot(GREEN)]),
+                   ic("chevron_right",18,SUB)]),
+          t("PRIVATE · owner you · 2 links",12,GREEN,mono=True),
+          srow("Share my position","my position: shared",on=True),
+          srow("Discoverable","Nobody can find this network: Bluetooth is off.",on=False,
+               hint_color=RED),
+          fr("acts","horizontal",w="fill_container",gap=8,kids=[
+             btn("Invite"),btn("Members",outline=True,outline_color=LINE,label_color=TXT)])])
     return fr("S2 Networks","vertical",id="s2",w=W,h=H,fill=BG,kids=[
         tb,
         fr("list","vertical",w="fill_container",h="fill_container",pad=[8,16],gap=10,kids=[
+            radios,
             section("your networks"),
-            netcard("hunt-2026","PRIVATE · owner you · 2 links",GREEN,GREEN,"updated 12 s ago"),
+            running,
             netcard("mushroom-crew","OPEN · owner Olya · link down",RED,AMBER,"seen 42 min ago")]),
-        abspos(fab,0,0) if False else nav("networks"),fab])
+        nav("networks"),fab])
 
 def s3():
     tb=topbar([ic("arrow_back",20,TXT),t("Create network",16,TXT,weight="600")],
@@ -400,7 +434,13 @@ def s9():
     body=fr("body","vertical",w="fill_container",h="fill_container",pad=[12,16],gap=12,kids=[
         section("appearance"),
         fr("theme","horizontal",w="fill_container",gap=4,pad=[3,3],fill=SURF,radius=10,
-           kids=[seg("Dark",True),seg("Light",False),seg("System",False)]),
+           kids=[seg("System",False),seg("Light",False),seg("Dark",True)]),
+        section("wi-fi direct"),
+        fr("band","horizontal",w="fill_container",gap=4,pad=[3,3],fill=SURF,radius=10,
+           kids=[seg("2.4 GHz",True),seg("5 GHz",False)]),
+        fr("host","vertical",w="fill_container",pad=[4,14],fill=SURF,radius=12,stroke=LINE,
+           sw=1,kids=[srow("Always host the group",
+                           "role negotiated by the system",on=False)]),
         section("map tiles"),
         fr("tiles","horizontal",w="fill_container",gap=4,pad=[3,3],fill=SURF,radius=10,
            kids=[seg("OSM",True),seg("Google",False),seg("Sat",False)]),

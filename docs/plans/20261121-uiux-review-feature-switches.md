@@ -106,9 +106,9 @@ Multi-choice settings (theme, Wi-Fi Direct band) are not on/off, so they move fr
 - Modify: `design/s2-networks.pen`, `design/s2-networks-light.pen`, `design/s9-settings.pen`, `design/s9-settings-light.pen` (pencil MCP tools only)
 - Modify: `specs/001-secure-network-gnss-beacons/spec.md`
 
-- [ ] networks screen design: Radios card with three switch rows; network card with Share my position / Discoverable switches
-- [ ] settings screen design: segmented theme and band, "Always host the group" switch
-- [ ] FR-8.8 in spec.md: "switches that show the radio state and open the system control" instead of "buttons to turn it on"
+- [x] networks screen design: Radios card with three switch rows; network card with Share my position / Discoverable switches
+- [x] settings screen design: segmented theme and band, "Always host the group" switch (via design/tools/gen_pen.py, which drives pen over MCP; the pencil editor had no document open)
+- [x] FR-8.8 in spec.md: "switches that show the radio state and open the system control" instead of "buttons to turn it on"
 
 ### Task 7: Verify acceptance criteria
 

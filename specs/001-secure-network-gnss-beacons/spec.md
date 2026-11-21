@@ -245,9 +245,12 @@ frame is encrypted and authenticated with the network's key.
   Frames under an older key count for nothing else. The epoch salts and the newest rekey
   are kept with the network.
 - FR-8.8 Discovery needs Bluetooth and Location on, on both phones (Android hides nearby
-  phones from scans while Location is off). Whatever is off is named in red with "Turn on"
-  buttons: on the master's running network card, in place of "findable…" ("Nobody can find
-  this network: Bluetooth is off."), and on the joining phone's Discover screen.
+  phones from scans while Location is off). Whatever is off is named in red, with switches
+  that show the radio state and open the system control: on the master's running network
+  card, in place of "findable…" ("Nobody can find this network: Bluetooth is off."), and on
+  the joining phone's Discover screen. The networks screen always shows a Radios card with
+  Wi-Fi, Bluetooth and Location switches. A switch follows the polled system state and never
+  flips by itself on a tap.
 
 ### US-9 — Messenger carrier
 - FR-9.1 "Send my position via messenger…" shares the newest encrypted frame as a
